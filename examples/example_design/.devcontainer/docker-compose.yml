@@ -1,0 +1,81 @@
+---
+version: "3"
+
+x-nautobot-base: &nautobot-base
+  image: "nautobot-design-builder"
+  tty: true
+  volumes:
+    - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
+    - "/var/run/docker.sock:/var/run/docker-host.sock"
+    - "..:/workspace:cached"
+  env_file:
+    - "development.env"
+    - "creds.env"
+
+services:
+  devcontainer:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    <<: *nautobot-base
+
+  nautobot:
+    command: "/docker-entrypoint.sh nautobot-server runserver 0.0.0.0:8080"
+    ports:
+      - "8080"
+    healthcheck:
+      interval: "5s"
+      timeout: "5s"
+      start_period: "45s"
+      retries: 3
+      test:
+        - "CMD"
+        - "curl"
+        - "-f"
+        - "http://localhost:8080/health/"
+    <<: *nautobot-base
+
+  worker:
+    entrypoint: ["sh", "-c", "nautobot-server celery worker -l $$NAUTOBOT_LOG_LEVEL"]
+    depends_on:
+      - "nautobot"
+    healthcheck:
+      interval: "30s"
+      timeout: "10s"
+      start_period: "30s"
+      retries: 3
+      test: ["CMD", "bash", "-c", "nautobot-server celery inspect ping --destination celery@$$HOSTNAME"]
+    <<: *nautobot-base
+
+  db:
+    image: "postgres:13-alpine"
+    env_file:
+      - "development.env"
+      - "creds.env"
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: "pg_isready --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB"
+      interval: "10s"
+      timeout: "5s"
+      retries: 10
+
+  redis:
+    image: "redis:6-alpine"
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass $$NAUTOBOT_REDIS_PASSWORD"]
+    env_file:
+      - "development.env"
+      - "creds.env"
+  git:
+    build:
+      context: "./"
+      dockerfile: "Dockerfile.git-server"
+    volumes:
+      - "../repos:/home/git"
+    networks:
+      default:
+        aliases:
+          - "git.local"
+
+volumes:
+  postgres_data: {}

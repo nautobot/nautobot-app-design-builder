@@ -1,0 +1,33 @@
+{
+	"name": "Docker from Docker Compose",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "devcontainer",
+	"workspaceFolder": "/workspace",
+
+	"remoteEnv": {
+		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
+	},
+
+	"customizations": {
+		"vscode": {		
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"ms-python.vscode-pylance",
+				"streetsidesoftware.code-spell-checker",
+				"eamodio.gitlens",
+				"oderwat.indent-rainbow",
+				"ms-python.python",
+				"ms-vsliveshare.vsliveshare",
+				"mikestead.dotenv"
+			]
+		}
+	},
+
+	"settings": {
+		"python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.interpreterPath": "/usr/local/bin/python"
+    },
+	"remoteUser": "vscode",
+	"initializeCommand": ".devcontainer/initialize.sh",
+	"postCreateCommand": ".devcontainer/post_create.sh"
+}

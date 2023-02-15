@@ -1,0 +1,63 @@
+---
+manufacturers:
+  - "!create_or_update:name": "Juniper"
+    slug: "juniper"
+
+device_types:
+  - "!create_or_update:model": "PTX10016"
+    slug: "ptx10016"
+    manufacturer__slug: "juniper"
+    u_height: 21
+
+device_roles:
+  - "!create_or_update:name": "Core Router"
+    slug: "core_router"
+    color: "3f51b5"
+
+regions:
+    "!create_or_update:name": "Americas"
+    children:
+    - "!create_or_update:name": "United States"
+      children:
+      - "!create_or_update:name": "US-East-1"
+        sites:
+        - "!create_or_update:name": "IAD5"
+          status__name: "Active"
+          "!ref": "iad5"
+        - "!create_or_update:name": "LGA1"
+          status__name: "Active"
+          "!ref": "lga1"
+
+      - "!create_or_update:name": "US-West-1"
+        sites:
+        - "!create_or_update:name": "LAX11"
+          status__name: "Active"
+          "!ref": "lax11"
+        - "!create_or_update:name": "SEA1"
+          status__name: "Active"
+          "!ref": "sea1"
+
+{% macro device(device_name, site) -%}
+    - "!create_or_update:name": "{{ device_name }}.{{ site }}"
+      site: "!ref:{{ site }}"
+      device_type__slug: "ptx10016"
+      device_role__slug: "core_router"
+      status__name: "Planned"
+{% endmacro %}
+
+devices:
+    # IAD5 Core Router Pair
+    {{ device("core01", "iad5") }}
+    {{ device("core02", "iad5") }}
+
+    # LGA1 Core Router Pair
+    {{ device("core01", "lga1") }}
+    {{ device("core02", "lga1") }}
+
+    # LAX11 Core Router Pair
+    {{ device("core01", "lax11") }}
+    {{ device("core02", "lax11") }}
+
+    # SEA1 Core Router Pair
+    {{ device("core01", "sea1") }}
+    {{ device("core02", "sea1") }}
