@@ -31,9 +31,9 @@ Full documentation for this App can be found over on the [Nautobot Docs](https:/
 
 - [User Guide](user/app_overview.md) - Overview, Using the App, Getting Started.
 - [Administrator Guide](admin/install.md) - How to Install, Configure, Upgrade, or Uninstall the App.
-- [Developer Guide](docs/dev/contributing.md) - Extending the App, Code Reference, Contribution Guide.
-- [Release Notes / Changelog](docs/admin/release_notes.md).
-- [Frequently Asked Questions](docs/user/faq.md).
+- [Developer Guide](dev/contributing.md) - Extending the App, Code Reference, Contribution Guide.
+- [Release Notes / Changelog](admin/release_notes/).
+- [Frequently Asked Questions](user/faq.md).
 
 ### Contributing to the Documentation
 

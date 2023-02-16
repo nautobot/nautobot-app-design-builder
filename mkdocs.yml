@@ -21,6 +21,7 @@ theme:
     - "search.highlight"
     - "search.share"
     - "navigation.indexes"
+    - "content.tooltips"
   favicon: "assets/favicon.ico"
   logo: "assets/nautobot_logo.svg"
   palette:
@@ -68,6 +69,7 @@ extra:
       link: "https://twitter.com/networktocode"
       name: "Network to Code Twitter"
 markdown_extensions:
+  - "abbr"
   - "admonition"
   - "toc":
       permalink: true
@@ -76,7 +78,9 @@ markdown_extensions:
   - "pymdownx.highlight":
       anchor_linenums: true
   - "pymdownx.inlinehilite"
-  - "pymdownx.snippets"
+  - "pymdownx.snippets":
+      auto_append:
+        - "docs/assets/abbreviations.md"
   - "pymdownx.superfences"
   - "footnotes"
 plugins:
@@ -115,5 +119,8 @@ nav:
       - Architecture Decision Records: "dev/arch_decision.md"
       - Code Reference:
           - "dev/code_reference/index.md"
-          - Package: "dev/code_reference/package.md"
+          - Design Builder: "dev/code_reference/design.md"
+          - Jinja Rendering: "dev/code_reference/jinja2.md"
+          - Template Extensions: "dev/code_reference/ext.md"
+          - Util: "dev/code_reference/util.md"
   - Nautobot Docs Home ↗︎: "https://docs.nautobot.com"
