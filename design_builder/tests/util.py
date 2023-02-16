@@ -30,7 +30,7 @@ def populate_sample_data():
     """Populate the database with some sample data."""
     git_slug = getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG")
     ensure_git_repo(
-        "Config ContextS",
+        "Config Contexts",
         git_slug,
         getenv("DESIGN_BUILDER_GIT_SERVER") + "/" + getenv("DESIGN_BUILDER_CONTEXT_REPO"),
         "extras.configcontext",
