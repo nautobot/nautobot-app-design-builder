@@ -52,5 +52,5 @@ racks:
 {% endmacro %}
 
 devices:
-  {{ device("core01", "rack1", (site_prefix | network_offset(core_2_loopback_offset))) }}
+  {{ device("core01", "rack1", (site_prefix | network_offset(core_1_loopback_offset))) }}
   {{ device("core02", "rack2", (site_prefix | network_offset(core_2_loopback_offset))) }}
