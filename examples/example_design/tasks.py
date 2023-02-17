@@ -14,10 +14,12 @@ limitations under the License.
 
 import os
 import sys
+from io import StringIO
 
 from invoke import Collection
 from invoke import task as invoke_task
 
+from django.utils.text import slugify
 
 # Use pyinvoke configuration for default values, see http://docs.pyinvoke.org/en/stable/concepts/configuration.html
 # Variables may be overwritten in invoke.yml or by the environment variables INVOKE_DESIGN_BUILDER_xxx
@@ -68,6 +70,33 @@ def createsuperuser(context, user="admin"):
     command = f"nautobot-server createsuperuser --username {user}"
     context.run(command)
 
+@task
+def create_local_repo(context, name):
+    """Create a local git repo and add it to Nautobot"""
+
+    script = """
+gr = GitRepository(name="{name}", slug="{slug}", remote_url="{path}")
+gr.save(trigger_resync=False)
+    """
+    slug=slugify(name)
+    git_path = f"file:///workspace/.repos/{slug}.git"
+
+    context.run(f"mkdir -p .repos/{slug}.git repos")
+    with context.cd(f".repos/{slug}.git"):
+        context.run(f"git config --global init.defaultBranch main")
+        context.run(f"git init --bare")
+    
+    context.run(f"git clone {git_path} repos/{slug}")
+    
+    with context.cd(f"repos/{slug}"):
+        context.run("touch README.md")
+        context.run("git add README.md")
+        context.run("git commit -m 'Initial Commit'")
+        context.run("git push origin main")
+
+    runnable_script = script.format(name=name, slug=slug, path=git_path)
+    command = "nautobot-server shell_plus --quiet-load"
+    context.run(command, in_stream=StringIO(runnable_script))
 
 # ------------------------------------------------------------------------------
 # TESTS
@@ -174,5 +203,4 @@ def restart(context):
     compose_file = os.path.join(os.path.dirname(__file__), ".devcontainer", "docker-compose.yml")
     project_name = f"{os.path.basename(os.environ.get('LOCAL_WORKSPACE_FOLDER'))}_devcontainer"
     command = f"docker-compose -p {project_name} -f {compose_file} restart {' '.join(services)}"
-    print(command)
     context.run(command)
