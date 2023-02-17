@@ -14,6 +14,7 @@ limitations under the License.
 
 from distutils.util import strtobool
 from invoke import Collection, task as invoke_task
+from io import StringIO
 import os
 
 
@@ -112,7 +113,7 @@ def run_command(context, command, **kwargs):
         else:
             compose_command = f"run --entrypoint '{command}' nautobot"
 
-        docker_compose(context, compose_command, pty=True)
+        docker_compose(context, compose_command, pty=kwargs.pop("pty", True), **kwargs)
 
 
 # ------------------------------------------------------------------------------
@@ -306,8 +307,13 @@ def docs(context):
 def sample_data(context):
     """Populate the database with some sample data for testing and demonstration."""
     migrate(context)
-    command = "nautobot-server populate_sample_data"
-    run_command(context, command)
+    script = """
+from design_builder.tests.util import populate_sample_data
+print("Attempting to populate sample data.")
+populate_sample_data()
+"""
+    command = "nautobot-server shell_plus --quiet-load"
+    run_command(context, command, in_stream=StringIO(script), pty=False)
 
 
 # ------------------------------------------------------------------------------
