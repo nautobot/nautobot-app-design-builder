@@ -8,7 +8,7 @@ To install the App, please follow the instructions detailed in the [Installation
 
 ## First steps with the App
 
-The easiest way to experience Design Builder is to run it in a local environment. To start a local environment, clone the design builder git repository and start the application stack. The only requirements for starting a local environment are `docker`, `docker-compose` and [invoke](https://www.pyinvoke.org/installing.html). Once the dependent tools have been installed, simply open a shell in the repository directory and run the command `invoke start`. This will start the entire application stack using docker compose. Once the application stack is up and running, navigate to <http://127.0.0.1:8080/> and login.
+The easiest way to experience Design Builder is to run it in a local environment. To start a local environment, clone the design builder git repository and start the application stack. The only requirements for starting a local environment are `docker`, `docker-compose` and [invoke](https://www.pyinvoke.org/installing.html). Once the dependent tools have been installed you'll need to build the docker image by running `invoke build`. At that point, simply run the command `invoke start`. This will start the entire application stack using docker compose. Once the application stack is up and running, navigate to <http://127.0.0.1:8080/> and login.
 
 ## What are the next steps?
 
