@@ -70,24 +70,24 @@ def createsuperuser(context, user="admin"):
     command = f"nautobot-server createsuperuser --username {user}"
     context.run(command)
 
+
 @task
 def create_local_repo(context, name):
-    """Create a local git repo and add it to Nautobot"""
-
+    """Create a local git repo and add it to Nautobot."""
     script = """
 gr = GitRepository(name="{name}", slug="{slug}", remote_url="{path}")
 gr.save(trigger_resync=False)
     """
-    slug=slugify(name)
+    slug = slugify(name)
     git_path = f"file:///workspace/.repos/{slug}.git"
 
     context.run(f"mkdir -p .repos/{slug}.git repos")
     with context.cd(f".repos/{slug}.git"):
-        context.run(f"git config --global init.defaultBranch main")
-        context.run(f"git init --bare")
-    
+        context.run("git config --global init.defaultBranch main")
+        context.run("git init --bare")
+
     context.run(f"git clone {git_path} repos/{slug}")
-    
+
     with context.cd(f"repos/{slug}"):
         context.run("touch README.md")
         context.run("git add README.md")
@@ -97,6 +97,7 @@ gr.save(trigger_resync=False)
     runnable_script = script.format(name=name, slug=slug, path=git_path)
     command = "nautobot-server shell_plus --quiet-load"
     context.run(command, in_stream=StringIO(runnable_script))
+
 
 # ------------------------------------------------------------------------------
 # TESTS
