@@ -2,8 +2,6 @@
 version: "3"
 
 x-nautobot-base: &nautobot-base
-  image: "nautobot-design-builder"
-  tty: true
   volumes:
     - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
     - "/var/run/docker.sock:/var/run/docker-host.sock"
@@ -17,9 +15,13 @@ services:
     build:
       context: "."
       dockerfile: "Dockerfile"
+    healthcheck:
+      disable: true
     <<: *nautobot-base
 
   nautobot:
+    image: "nautobot-design-builder"
+    tty: true
     command: "/docker-entrypoint.sh nautobot-server runserver 0.0.0.0:8080"
     ports:
       - "8080"
@@ -36,6 +38,8 @@ services:
     <<: *nautobot-base
 
   worker:
+    image: "nautobot-design-builder"
+    tty: true
     entrypoint: ["sh", "-c", "nautobot-server celery worker -l $$NAUTOBOT_LOG_LEVEL"]
     depends_on:
       - "nautobot"
@@ -66,16 +70,6 @@ services:
     env_file:
       - "development.env"
       - "creds.env"
-  git:
-    build:
-      context: "./"
-      dockerfile: "Dockerfile.git-server"
-    volumes:
-      - "../repos:/home/git"
-    networks:
-      default:
-        aliases:
-          - "git.local"
 
 volumes:
   postgres_data: {}

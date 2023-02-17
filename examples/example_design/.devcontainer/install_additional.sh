@@ -7,5 +7,5 @@ if [ -z "$(ls $WHEEL_DIR)" ]; then
     pip3 install -r /tmp/requirements.txt
 else
     echo "Installing wheels from local files"
-    pip3 install --no-index --find-links="${WHEEL_DIR}/" -r /tmp/requirements.txt
+    pip3 install --find-links="${WHEEL_DIR}/" -r /tmp/requirements.txt
 fi
