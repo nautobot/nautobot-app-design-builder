@@ -50,14 +50,14 @@ def task(function=None, *args, **kwargs):
 def nbshell(context):
     """Launch an interactive nbshell session."""
     command = "nautobot-server nbshell"
-    context.run(command)
+    context.run(command, pty=True)
 
 
 @task
 def shell_plus(context):
     """Launch an interactive shell_plus session."""
     command = "nautobot-server shell_plus"
-    context.run(command)
+    context.run(command, pty=True)
 
 
 @task(
@@ -98,6 +98,11 @@ gr.save(trigger_resync=False)
     command = "nautobot-server shell_plus --quiet-load"
     context.run(command, in_stream=StringIO(runnable_script))
 
+@task
+def build_design(context, design_file):
+    """Build a design from a file."""
+    command = f"nautobot-server build_design {design_file}"
+    context.run(command)
 
 # ------------------------------------------------------------------------------
 # TESTS
