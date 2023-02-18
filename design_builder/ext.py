@@ -11,7 +11,7 @@ from design_builder.errors import DesignImplementationError
 from design_builder.git import GitRepo
 
 if TYPE_CHECKING:
-    from object_creator import ModelInstance, Builder
+    from design import ModelInstance, Builder
 
 
 class Extension(ABC):
