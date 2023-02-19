@@ -39,7 +39,7 @@ Much of the time, designs will need some data to exist in Nautobot before they c
 
 ## Testing Designs
 
-Unit tests for designs can be easily developed. The example design includes a single unit test that can be used as a starting point. 
+Unit tests for designs can be easily developed. The example design includes a single unit test that can be used as a starting point.
 
 ```python
 --8<-- "examples/example_design/designs/tests/__init__.py"
