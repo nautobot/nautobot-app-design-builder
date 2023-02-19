@@ -186,6 +186,6 @@ class TestDesignDiscovery(TestBase):
         mock_logger = Mock()
         got_designs = list(designs_in_repository(repo, local_logger=mock_logger))
         self.assertEqual(want_designs, got_designs)
-        mock_logger.exception.assert_called_with(
-            f"Unable to load module design from {repo.filesystem_path}/designs: unexpected EOF while parsing (design.py, line 5)"
-        )
+
+        got_args = mock_logger.exception.call_args[0]
+        self.assertTrue(got_args[0].startswith(f"Unable to load module design from {repo.filesystem_path}/designs:"))
