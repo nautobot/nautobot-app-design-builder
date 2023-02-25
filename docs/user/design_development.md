@@ -88,7 +88,7 @@ Design file specifies the Jinja template that should be used to produce the inpu
 
 Context class should be assigned the actual Python class that represents the rendering context for the design file. This is also a required field.
 
-Note: Clean up above
+TODO: Clean up above, was not clear to KC
 
 ### `report`
 
@@ -147,7 +147,7 @@ regions:
 
 This design template will create a region with two sites. The Design Builder automatically takes care of the underlying relationships so that `IAD5` and `LGA1` are correctly associated with the `US-East-1` region. All relationships that are defined on the underlying database models are supported as nested objects within design templates.
 
-> Note: The end object must adhere to and is controlled by the format that Django's [`loaddata`](https://docs.djangoproject.com/en/4.1/ref/django-admin/#django-admin-loaddata), to help determine what that is, it is often helpful to generate sample data and use Django's [`dumpdata`](https://docs.djangoproject.com/en/4.1/ref/django-admin/#dumpdata) command to see.
+> Note: Each end list element object (with the exception of accomodations made for nesting) must adhere to and is controlled by the format that Django's [`loaddata`](https://docs.djangoproject.com/en/4.1/ref/django-admin/#django-admin-loaddata), to help determine what that is, it is often helpful to generate sample data and use Django's [`dumpdata`](https://docs.djangoproject.com/en/4.1/ref/django-admin/#dumpdata) command to see.
 
 ### Special Syntax - Action Tag
 
@@ -157,7 +157,7 @@ In addition to the object mapping described above, some additional syntax, in wh
 
 #### Action Tag - Update
 
-Syntax: `!update:field`
+Syntax: `!update:<field>`
 
 This syntax is used when you know an object already exists and indicates to design builder that the object should be updated, rather than created. An example of this is updating the description on an interface.
 
@@ -170,7 +170,7 @@ This template will find the interface with the name `Ethernet1/1` and then set t
 
 #### Action Tag - Update or Create
 
-Syntax: `!create_or_update:field`
+Syntax: `!create_or_update:<field>`
 
 Similar to `!update` this is used before a field name but will also create the object if it does not already exist. For example:
 
@@ -186,7 +186,7 @@ This template will cause design builder to attempt to first lookup the device by
 
 #### Action Tag - Find Related Field
 
-Syntax: `field__relatedfield`
+Syntax: `field__<relatedfield>`
 
 Double underscores between a `field` and a `relatedfield` cause design builder to attempt to get a related object using the `relatedfield` as a query parameter. This query must return only one object. The returned object is then assigned to the `field` of the object being created or updated. For instance:
 
