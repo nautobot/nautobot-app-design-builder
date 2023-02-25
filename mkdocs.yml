@@ -102,6 +102,7 @@ nav:
       - App Overview: "user/app_overview.md"
       - Getting Started: "user/app_getting_started.md"
       - Design Quick Start: "user/design_quickstart.md"
+      - Design Development: "user/design_development.md"
       - Using the App: "user/app_use_cases.md"
       - Frequently Asked Questions: "user/faq.md"
   - Administrator Guide:
