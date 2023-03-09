@@ -12,7 +12,7 @@ from nautobot.core.models import BaseModel
 from nautobot.extras.models import JobResult, Relationship
 
 from design_builder.errors import DesignImplementationError, DesignValidationError
-from design_builder.ext import GitContextExtension, ReferenceExtension
+from design_builder.ext import GitContextExtension, NextPrefixExtension, ReferenceExtension
 from design_builder.logging import LoggingMixin
 from design_builder.fields import field_factory, OneToOneField, ManyToOneField
 
@@ -299,7 +299,7 @@ class Builder(LoggingMixin):
             "value": {},
         }
 
-        for extn_cls in [ReferenceExtension, GitContextExtension]:
+        for extn_cls in [ReferenceExtension, GitContextExtension, NextPrefixExtension]:
             extn = {
                 "class": extn_cls,
                 "object": None,

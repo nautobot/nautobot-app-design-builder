@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from nautobot.ipam.models import Prefix
+
 from design_builder import DesignBuilderConfig
 from design_builder.errors import DesignImplementationError
 from design_builder.git import GitRepo
@@ -224,3 +226,25 @@ class GitContextExtension(Extension):
 
         for dirpath in self._env["directories"]:
             os.rmdir(dirpath)
+
+class NextPrefixExtension(Extension):
+    value_tag = "next_prefix"
+
+    def value(self, prefixes, length) -> str:
+        """Return the next available prefix from a parent prefix.
+
+        Args:
+            prefixes (str): Comma separated list of prefixes to search for available subnets
+            length (int): 
+        Returns:
+            str: The next available prefix
+        """
+        length = int(length)
+        prefixes = prefixes.split(",")
+        for prefix_str in prefixes:
+            prefix_str = prefix_str.strip()
+            requested_prefix = Prefix.objects.get(prefix=prefix_str)
+            for available_prefix in requested_prefix.get_available_prefixes().iter_cidrs():
+                if available_prefix.prefixlen <= length:
+                    return f"{available_prefix.network}/{length}"
+        raise DesignImplementationError(f"No available prefixes could be found from {prefixes}")
