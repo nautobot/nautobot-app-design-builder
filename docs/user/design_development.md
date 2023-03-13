@@ -88,7 +88,6 @@ Design file specifies the Jinja template that should be used to produce the inpu
 
 The value of the `context_class` metadata attribute should be any Python class that inherits from the `design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
 
-TODO: Clean up above, was not clear to KC
 
 ### `report`
 
