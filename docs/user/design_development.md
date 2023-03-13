@@ -1,6 +1,6 @@
 # Getting Started with Designs
 
-If you've ever watched an episode of ["How it's made"](https://en.wikipedia.org/wiki/How_It%27s_Made), you probably already have a good idea how Design Builder works. Take the analogy of building a car assembly line in a plant, to support building many cars. There are various car parts made by a press, such as the hood, doors, bumper, etc. For a given car, you can only have a 40 inch hood but **not** the 50 inch hood that would go on the truck. The assembly line is created so that many of the things needed for the car are fixed, such as a specific kind of steering wheel, but the worker building the car can substitute variable components requested by the customer. This could include the car's color, sound system, and choice of sun roof. This ensures that the worker can only assemble the car with valid components and the outcome is guaranteed to be a proper car.```
+If you've ever watched an episode of ["How it's made"](https://en.wikipedia.org/wiki/How_It%27s_Made), you probably already have a good idea how Design Builder works. Take the analogy of building a car assembly line in a plant, to support building many cars. There are various car parts made by a press, such as the hood, doors, bumper, etc. For a given car, you can only have a 40 inch hood but **not** the 50 inch hood that would go on the truck. The assembly line is created so that many of the things needed for the car are fixed, such as a specific kind of steering wheel, but the worker building the car can substitute variable components requested by the customer. This could include the car's color, sound system, and choice of sun roof. This ensures that the worker can only assemble the car with valid components and the outcome is guaranteed to be a proper car.
 
 In the same way, the Design Builder app works to combine standardized design templates (the assembly line in this analogy) with a design context (the user supplied and computed information) to produce a design that can be used to create or update data within Nautobot, essentially creating the ability to expand the data massively from a few simple inputs. The combination of template, context and the job to build the objects are all collectively referred to as a design.
 
@@ -147,7 +147,6 @@ regions:
 
 This design template will create a region with two sites. The Design Builder automatically takes care of the underlying relationships so that `IAD5` and `LGA1` are correctly associated with the `US-East-1` region. All relationships that are defined on the underlying database models are supported as nested objects within design templates.
 
-> Note: Each end list element object (with the exception of accomodations made for nesting) must adhere to and is controlled by the format that Django's [`loaddata`](https://docs.djangoproject.com/en/4.1/ref/django-admin/#django-admin-loaddata), to help determine what that is, it is often helpful to generate sample data and use Django's [`dumpdata`](https://docs.djangoproject.com/en/4.1/ref/django-admin/#dumpdata) command to see.
 
 ### Special Syntax - Action Tag
 
