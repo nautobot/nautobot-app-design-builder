@@ -22,17 +22,13 @@ class TestDesignJob(DesignTestCase):
         object_creator.return_value.roll_back.assert_not_called()
 
     @patch("design_builder.base.Builder")
-    def test_simple_design_roll_back(self, object_creator: mock.Mock):
-        job = self.get_mocked_job(SimpleDesign)
-        job.run({}, False)
-        object_creator.return_value.roll_back.assert_called()
-
-    @patch("design_builder.base.Builder")
     def test_simple_design_implementation_error(self, object_creator: mock.Mock):
         object_creator.return_value.implement_design.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(SimpleDesign)
-        self.assertRaises(DesignImplementationError, job.run, {}, True)
-        object_creator.return_value.roll_back.assert_called()
+        job.run({}, True)
+        self.assertTrue(job.failed)
+        job.job_result.log.assert_called()
+        self.assertEqual("Failed to implement design: Broken", job.job_result.log.call_args.args[0])
 
     def test_simple_design_report(self):
         job = self.get_mocked_job(SimpleDesignReport)
