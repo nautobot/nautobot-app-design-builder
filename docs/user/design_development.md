@@ -1,10 +1,10 @@
 # Getting Started with Designs
 
-A nice analogy to the Design Builder is the idea of building a house. Often, an architect will draw a blueprint for a house and will include many optional features. There may be bay window options or walls could be bumped out. There might be optional bathrooms or even whole optional additions. The blueprint probably doesn't specify finishing touches like paint color or flooring. Once someone decides to build a house based on this blueprint a designer will take the person's input and provide all the implementation details needed to build the house. Paint colors and flooring will be selected, which optional features are desired and so forth. Any computed requirements based on the additions (additional support structure, for instance) will also be calculated by the designer. All of this input information, collected by the designer, is then handed of to a builder who combines the blueprint with the information from the designer and proceeds to construct the actual house.
+If you've ever watched an episode of ["How it's made"](https://en.wikipedia.org/wiki/How_It%27s_Made), you probably already have a good idea how Design Builder works. Take the analogy of building a car assembly line in a plant, to support building many cars. There are various car parts made by a press, such as the hood, doors, bumper, etc. For a given car, you can only have a 40 inch hood but **not** the 50 inch hood that would go on the truck. The assembly line is created so that many of the things needed for the car are fixed, such as a specific kind of steering wheel, but the worker building the car can substitute variable components requested by the customer. This could include the car's color, sound system, and choice of sun roof. This ensures that the worker can only assemble the car with valid components and the outcome is guaranteed to be a proper car.
 
-In the same way, the Design Builder app works to combine standardized design templates (the blueprints in this analogy) with a design context (the user supplied and computed information) to produce a design that can be used to create or update data within Nautobot. The combination of template, context and the job to build the objects are all collectively referred to as a design.
+In the same way, the Design Builder app works to combine standardized design templates (the assembly line in this analogy) with a design context (the user supplied and computed information) to produce a design that can be used to create or update data within Nautobot, essentially creating the ability to expand the data massively from a few simple inputs. The combination of template, context and the job to build the objects are all collectively referred to as a design.
 
-A special form of Nautobot Job, known as a Design Job, is the main entrypoint into a design's implementation. The design job is responsible for defining the inputs required from a user and any input validation that must take place prior to a job's implementation. Once a user has provided the necessary inputs, a design context is created from those inputs. The design context is what provides access to any variables and values needed in the design templates for rendering. The design context can provide computed values, perform database lookups within Nautobot, or perform provisioning tasks. Once the design context has been created, the design builder will render the design template using the design context as a Jinja render context.
+A special form of Nautobot Job, known as a Design Job, is the main entrypoint into a design's implementation. The design job is responsible for defining the inputs required from a user and any input validation that must take place prior to a job's implementation. Once a user has provided the necessary inputs, a design context is created from those inputs. The design context provides any variables and values needed in the design templates for rendering. The design context can provide computed values, perform database lookups within Nautobot, or perform provisioning tasks. Once the design context has been created, the design builder will render the design template using the design context as a Jinja render context.
 
 The general flow of data through the design builder system can be visualized with the following picture:
 
@@ -38,9 +38,9 @@ The `designs` directory contains everything that is needed for implementing a de
 - Initial Design
 - Core Site
 
-The naming of modules and files within the `designs` directory is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there is are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
+Within the `designs` directory, the naming of modules and files is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there is are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
 
-Since the entrypoint for designs is a specialized Nautobot job, we must configure our designs in such a way that Nautobot can find the design jobs. Nautobot jobs are always loaded from a `jobs` module, therefore Design Jobs must also be in the `jobs` module. However, a limitation of Nautobot does not allow jobs to import Python modules that are not installed into the system. Since design jobs are not full Python packages, they are not really installed into the underlying Nautobot Python environment. Therefore, the Design Builder app provides some helper functions to overcome this limitation. To load any design that is defined in the `designs` top level module, simply load the designs in any module located within the `jobs` package. In this case, the `designs.py` is used to load the designs:
+Since the entrypoint for designs is a specialized Nautobot job, we must configure our designs in such a way that the job can be imported into Nautobot. Nautobot jobs are always loaded from a `jobs` module, therefore Design Jobs must also be in the `jobs` module. However, Nautobot does not allow jobs to import Python modules that are not installed into the system. Since design jobs are not full Python packages, they are not installed into the underlying Nautobot Python environment. Therefore, the Design Builder app provides some helper functions to overcome this. To load any design that is defined in the `designs` top level module, simply load the designs in any module located within the `jobs` package. In this case, the `designs.py` is used to load the designs:
 
 ```python
 """Module for design jobs"""
@@ -50,11 +50,17 @@ from design_builder.util import load_jobs
 load_jobs()
 ```
 
-This is a critical step, and without it Nautobot will not be able to find any designs that are located in the `designs` directory. The remainder of this tutorial will look at each of the three design components (Design Job, Design Context and Design Template) in detail.
+This is a critical step, and without it Nautobot will not be able to find any designs that are located in the `designs` directory. The remainder of this tutorial will look at each of the three design components (Design Job, Design Context, and Design Template) in detail.
 
 ## DesignJob
 
-As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. All design jobs are configured the same as Nautobot jobs with the addition of several metadata attributes. Here is the initial data job from our sample design:
+Primary Purpose:
+
+- Define the Job
+- Provide the user inputs
+- Define the Design Context and Design Templates
+
+As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
 --8<-- "development/git-repos/designs/designs/initial_design.py"
@@ -72,7 +78,7 @@ In this case, we have a design that will create a site, populate it with two rac
 
 ### Class Metadata Attributes
 
-The design jobs above include some standard metadata (`name` and `commit_default` for instance) attributes needed by Nautobot. Additionally, there are attributes specific to the design job. The `design_file`, `context_class` are required attributes specifying the design template and design context. A more detailed description of these attributes follows in the next section.
+The design jobs above include standard metadata (`name` and `commit_default` for instance) attributes needed by Nautobot. Additionally, there are attributes specific to the design job. The `design_file`, `context_class` are required attributes specifying the design template and design context. A more detailed description of these attributes follows in the next section.
 
 ### `design_file`
 
@@ -80,15 +86,23 @@ Design file specifies the Jinja template that should be used to produce the inpu
 
 ### `context_class`
 
-Context class should be assigned the actual Python class that represents the rendering context for the design file. This is also a required field.
+The value of the `context_class` metadata attribute should be any Python class that inherits from the `design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
+
 
 ### `report`
 
-This attribute is optional. A report is a Jinja template that is rendered once the design has been implemented. Like `design_file` the design builder will look for this template relative to the filename that defines the design job.
+This attribute is optional. A report is a Jinja template that is rendered once the design has been implemented. Like `design_file` the design builder will look for this template relative to the filename that defines the design job. This is helpful to generate a custom view of the data that was built during the design build.
 
 ## Design Context
 
+Primary Purpose:
+
+- Organize data from multiple places
+- Validate data
+
 As previously stated, the design context is a combination of user supplied input and computed values. The design context should include any details needed to produce a design that can be built. Fundamentally, the design context is a Python class that extends the `design_builder.Context` class. However, this context can be supplemented with YAML. Once Design Builder has created and populated the design context it passes this context off to a Jinja rendering environment to be used for variable lookups.
+
+That's a lot to digest, so let's break it down to the net effect of the design context.
 
 A context is essentially a mapping (similar to a dictionary) where the context's instance properties can be retrieved using the index operator (`[]`). YAML files that are included in the context will have their values added to the context as instance attributes. When design builder is rendering the design template it will use the context to resolve any unknown variables. One feature of the design context is that values in YAML contexts can include Jinja templates. For instance, consider the core site context from the design above:
 
@@ -108,9 +122,13 @@ This context YAML creates two variables that will be added to the design context
 
 ### Context Validations
 
-Sometimes design data needs to be validated before a design can be built. The Design Builder provides a means for a design context to determine if it is valid can the implementation can proceed. After a design job creates and populates a design context, the job will call any methods on the context where the method name begins with `validate_`. These methods should not accept any arguments other than `self` and should either return `None` when valid or should raise `design_builder.DesignValidationError`. In the above example, the design context checks to see if a site with the same name already exists, and if so it raises an error. Any number of validation methods can exist in a design context. Each will be called in the order it is defined in the class.
+Sometimes design data needs to be validated before a design can be built. The Design Builder provides a means for a design context to determine if it is valid and can/should the implementation proceed. After a design job creates and populates a design context, the job will call any methods on the context where the method name begins with `validate_`. These methods should not accept any arguments other than `self` and should either return `None` when valid or should raise `design_builder.DesignValidationError`. In the above Context example, the design context checks to see if a site with the same name already exists, and if so it raises an error. Any number of validation methods can exist in a design context. Each will be called in the order it is defined in the class.
 
 ## Design Templates
+
+Primary Purpose:
+
+- Generate YAML files that confirm to the django `loaddata` format
 
 Design templates are Jinja templates that render to YAML. The YAML file represents a dictionary of objects that the design builder will create or update. The design builder supports all data models that exist within Nautobot, including any data models that are defined by applications installed within Nautobot. Top level keys in a design file map to the verbose plural name of the model. For instance, the `dcim.Device` model maps to the top level `devices` key within a design. Similarly, `dcim.Site` maps to `sites`.
 
@@ -128,11 +146,16 @@ regions:
 
 This design template will create a region with two sites. The Design Builder automatically takes care of the underlying relationships so that `IAD5` and `LGA1` are correctly associated with the `US-East-1` region. All relationships that are defined on the underlying database models are supported as nested objects within design templates.
 
-### Special Syntax
 
-In addition to the object mapping described above, some additional syntax is available in YAML design templates. This additional syntax has special meaning to the design builder. Sometimes additional information is needed before the Design Builder can determine how to update the database or how to map a relationship. These special cases are handled with action tags within the YAML design templates. Any mapping key that begins with an exclamation point (`!`) is considered an action tag and carries special meaning in the design template. Please note that any YAML key that begins with an exclamation point (`!`) must be quoted or a YAML syntax error will be raised. An example of a situation where an action tag is required is when updating, rather than creating, an object in the database. If Nautobot already has an instance of a data model and a design only requires updating that model then the `update:` action tag can be used. This instructs the builder to update the object, rather than try to create it. The available action tags are documented below.
+### Special Syntax - Action Tag
 
-#### `!update:field`
+In addition to the object mapping described above, some additional syntax, in what are called `Action Tags` are available in YAML design templates. These actions tags have special meaning to the design builder. Sometimes additional information is needed before the Design Builder can determine how to update the database or how to map a relationship. These special cases are handled with action tags within the YAML design templates. Any mapping key that begins with an exclamation point (`!`) is considered an action tag and carries special meaning in the design template. An example of a situation where an action tag is required is when updating, rather than creating, an object in the database. If Nautobot already has an instance of a data model and a design only requires updating that model then the `update:` action tag can be used. This instructs the builder to update the object, rather than try to create it. The available action tags are documented below.
+
+> Note: Any YAML key that begins with an exclamation point (`!`) must be quoted or a YAML syntax error will be raised. 
+
+#### Action Tag - Update
+
+Syntax: `!update:<field>`
 
 This syntax is used when you know an object already exists and indicates to design builder that the object should be updated, rather than created. An example of this is updating the description on an interface.
 
@@ -143,7 +166,9 @@ This syntax is used when you know an object already exists and indicates to desi
 
 This template will find the interface with the name `Ethernet1/1` and then set the `description` field.
 
-#### `!create_or_update:field`
+#### Action Tag - Update or Create
+
+Syntax: `!create_or_update:<field>`
 
 Similar to `!update` this is used before a field name but will also create the object if it does not already exist. For example:
 
@@ -157,7 +182,9 @@ devices:
 
 This template will cause design builder to attempt to first lookup the device by the name `bb-rtr-1`, if not found it will be created. Subsequently, the device interface named `Ethernet1/1` will also be either created or updated. Note that when being created all required fields must be specified. The above example would fail during creation since both the device and the interface are missing required fields. Design Builder performs model validation prior to saving any model to the database.
 
-#### `field__relatedfield`
+#### Action Tag - Find Related Field
+
+Syntax: `field__<relatedfield>`
 
 Double underscores between a `field` and a `relatedfield` cause design builder to attempt to get a related object using the `relatedfield` as a query parameter. This query must return only one object. The returned object is then assigned to the `field` of the object being created or updated. For instance:
 
@@ -169,7 +196,10 @@ devices:
 
 This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`.
 
-#### `!git_context`
+
+#### Action Tag - Git Context
+
+Syntax: `!git_context`
 
 Nautobot supports assigning config contexts from a git repository. Therefore the design builder supports generating config context data for an associated git repository. Using the `!git_context` key will indicate that design builder should store the rendered config context in a git repository. This functionality requires that a `destination` and `data` key are nested within the `!git_context` key, such as the below example:
 
@@ -182,7 +212,9 @@ Nautobot supports assigning config contexts from a git repository. Therefore the
 
 In this example, the included template will be rendered and a new file will be created named `config_context/devices/{{ device_name }}.yml`, and the content of the rendered data template will be written to the file. Note that the `context_repository` configuration key must be set in the `nautobot_config.py` in order for this feature to work. More information can be found in the [Git-Based Config Context documentation](git_config_context.md)
 
-#### `!ref`
+#### Action Tag - Reference
+
+Syntax: `!ref`
 
 When used as a YAML mapping key, `!ref` will store a reference to the current Nautobot object for use later in the design template. The value of the `!ref` key is used as the reference name within design builder. This feature is useful when you need to set a relationship field to the value of a previously created or updated object. One use-case where this can come up is when uplinks on a device are dynamically assigned based on the next available ports. The exact interfaces used may not be known but references to them can be created and then reused later to create cable terminations.
 
@@ -197,11 +229,13 @@ When used as a YAML mapping key, `!ref` will store a reference to the current Na
     "!ref": "{{ spine.name }}:{{ interface }}"
 ```
 
-### Special YAML values
+### Special YAML Values
 
 In addition to the special syntax provided for mapping keys, there are also some action tags provided for values. The following document the available value tags within the Design Builder.
 
-#### `!ref`
+#### Action Tag Value - Reference
+
+Syntax: `!ref`
 
 When used as the value for a key `!ref:<reference_name>` will return the the previously stored object. In our example of cabling the reference lookup will look something like this:
 
