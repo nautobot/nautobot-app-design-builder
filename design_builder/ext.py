@@ -1,10 +1,14 @@
 """Extensions API for the object creator."""
+import operator
 import os
 from abc import ABC
 from functools import reduce
 from typing import TYPE_CHECKING, Any
+import netaddr
 
 import yaml
+
+from django.db.models import Q
 
 from nautobot.ipam.models import Prefix
 
@@ -228,9 +232,38 @@ class GitContextExtension(Extension):
             os.rmdir(dirpath)
 
 class NextPrefixExtension(Extension):
-    value_tag = "next_prefix"
+    attribute_tag = "next_prefix"
 
-    def value(self, prefixes, length) -> str:
+    def attribute(self, value: Any, creator_object: "ModelInstance") -> None:
+        if not isinstance(value, dict):
+            raise DesignImplementationError("the next_prefix tag requires a dictionary of arguments")
+
+        length = value.pop("length", None)
+        if length is None:
+            raise DesignImplementationError("the next_prefix tag requires a prefix length")
+
+        if len(value) == 0:
+            raise DesignImplementationError("no search criteria specified for prefixes")
+
+        q = Q(**value)
+        if "prefix" in value:
+            prefixes_str = value.pop("prefix")
+            prefix_q = []
+            for prefix_str in prefixes_str.split(","):
+                prefix_str = prefix_str.strip()
+                prefix = netaddr.IPNetwork(prefix_str)
+                prefix_q.append(Q(
+                    prefix_length=prefix.prefixlen, 
+                    network=prefix.network, 
+                    broadcast=prefix.broadcast,
+                ))
+            q = Q(**value) & reduce(operator.or_, prefix_q)
+
+
+        prefixes = Prefix.objects.filter(q)
+        return "prefix", self._get_next(prefixes, length)
+    
+    def _get_next(self, prefixes, length) -> str:
         """Return the next available prefix from a parent prefix.
 
         Args:
@@ -240,11 +273,8 @@ class NextPrefixExtension(Extension):
             str: The next available prefix
         """
         length = int(length)
-        prefixes = prefixes.split(",")
-        for prefix_str in prefixes:
-            prefix_str = prefix_str.strip()
-            requested_prefix = Prefix.objects.get(prefix=prefix_str)
+        for requested_prefix in prefixes:
             for available_prefix in requested_prefix.get_available_prefixes().iter_cidrs():
                 if available_prefix.prefixlen <= length:
                     return f"{available_prefix.network}/{length}"
-        raise DesignImplementationError(f"No available prefixes could be found from {prefixes}")
+        raise DesignImplementationError(f"No available prefixes could be found from {list(map(str, prefixes))}")
