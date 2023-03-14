@@ -197,8 +197,6 @@ def __yaml_context_dumper(*args, **kwargs):
 def to_yaml(obj, *args, **kwargs):
     """Convert an object to YAML."""
     default_flow_style = kwargs.pop("default_flow_style", False)
-    if hasattr(obj, "__getstate__"):
-        obj = obj.__getstate__()
     return yaml.dump(
         obj, allow_unicode=True, default_flow_style=default_flow_style, Dumper=__yaml_context_dumper, **kwargs
     )
