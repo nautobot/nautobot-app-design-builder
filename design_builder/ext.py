@@ -231,6 +231,7 @@ class GitContextExtension(Extension):
         for dirpath in self._env["directories"]:
             os.rmdir(dirpath)
 
+
 class NextPrefixExtension(Extension):
     attribute_tag = "next_prefix"
 
@@ -252,23 +253,24 @@ class NextPrefixExtension(Extension):
             for prefix_str in prefixes_str.split(","):
                 prefix_str = prefix_str.strip()
                 prefix = netaddr.IPNetwork(prefix_str)
-                prefix_q.append(Q(
-                    prefix_length=prefix.prefixlen, 
-                    network=prefix.network, 
-                    broadcast=prefix.broadcast,
-                ))
+                prefix_q.append(
+                    Q(
+                        prefix_length=prefix.prefixlen,
+                        network=prefix.network,
+                        broadcast=prefix.broadcast,
+                    )
+                )
             q = Q(**value) & reduce(operator.or_, prefix_q)
-
 
         prefixes = Prefix.objects.filter(q)
         return "prefix", self._get_next(prefixes, length)
-    
+
     def _get_next(self, prefixes, length) -> str:
         """Return the next available prefix from a parent prefix.
 
         Args:
             prefixes (str): Comma separated list of prefixes to search for available subnets
-            length (int): 
+            length (int):
         Returns:
             str: The next available prefix
         """

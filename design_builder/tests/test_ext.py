@@ -14,10 +14,7 @@ from design_builder.jinja2 import new_template_environment
 class TestNextPrefixExtension(TestCase):
     def test_next_prefix_lookup(self):
         prefix, _ = Prefix.objects.get_or_create(
-            prefix="10.0.0.0/8", 
-            defaults={
-                "status": Status.objects.get(name="Active")
-            }
+            prefix="10.0.0.0/8", defaults={"status": Status.objects.get(name="Active")}
         )
         ext = NextPrefixExtension(None)
         want = "10.0.0.0/24"
@@ -27,13 +24,12 @@ class TestNextPrefixExtension(TestCase):
     def test_next_prefix_lookup_from_full_prefix(self):
         for prefix in ["10.0.0.0/23", "10.0.0.0/24", "10.0.1.0/24", "10.0.2.0/23"]:
             prefix, _ = Prefix.objects.get_or_create(
-                prefix=prefix,
-                defaults={
-                    "status": Status.objects.get(name="Active")
-                }
+                prefix=prefix, defaults={"status": Status.objects.get(name="Active")}
             )
-        prefixes = Prefix.objects.filter(Q(network="10.0.0.0", prefix_length=23) | Q(network="10.0.2.0", prefix_length=23))
-        
+        prefixes = Prefix.objects.filter(
+            Q(network="10.0.0.0", prefix_length=23) | Q(network="10.0.2.0", prefix_length=23)
+        )
+
         ext = NextPrefixExtension(None)
         want = "10.0.2.0/24"
         got = ext._get_next(prefixes, "24")
@@ -70,4 +66,3 @@ class TestNextPrefixExtension(TestCase):
         self.assertTrue(Prefix.objects.filter(prefix="10.0.1.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.2.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.3.0/24").exists())
-    
