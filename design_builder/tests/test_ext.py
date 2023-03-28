@@ -8,7 +8,6 @@ import yaml
 
 from design_builder.design import Builder
 from design_builder.ext import NextPrefixExtension
-from design_builder.jinja2 import new_template_environment
 
 
 class TestNextPrefixExtension(TestCase):

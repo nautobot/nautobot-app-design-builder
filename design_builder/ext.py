@@ -233,9 +233,38 @@ class GitContextExtension(Extension):
 
 
 class NextPrefixExtension(Extension):
+    """Provision the next prefix for a given set of parent prefixes."""
+
     attribute_tag = "next_prefix"
 
-    def attribute(self, value: Any, creator_object: "ModelInstance") -> None:
+    def attribute(self, value: dict, **_) -> None:
+        """Provides the `!next_prefix` attribute that will calculate the next available prefix.
+
+        Args:
+            value: A filter describing the parent prefix to provision from. If `prefix`
+                is one of the query keys then the network and prefix length will be
+                split and used as query arguments for the underlying Prefix object. The
+                requested prefix length must be specified using the `length` dictionary
+                key. All other keys are passed on to the query filter directly.
+
+
+        Raises:
+            DesignImplementationError: if value is not a dictionary, the prefix is improperly formatted
+                or no query arguments were given. This error is also raised if the supplied parent
+                prefixes are all full.
+
+        Returns:
+            The next available prefix of the requested size represented as a string.
+
+        Example:
+            ```yaml
+            prefixes:
+            - "!next_prefix":
+                    prefix: "10.0.0.0/23,10.0.2.0/23"
+                    length: 24
+                status__name: "Active"
+            ```
+        """
         if not isinstance(value, dict):
             raise DesignImplementationError("the next_prefix tag requires a dictionary of arguments")
 
@@ -269,8 +298,9 @@ class NextPrefixExtension(Extension):
         """Return the next available prefix from a parent prefix.
 
         Args:
-            prefixes (str): Comma separated list of prefixes to search for available subnets
-            length (int):
+            prefixes (str): Comma separated list of prefixes to search for available subnets.
+            length (int): The requested prefix length.
+
         Returns:
             str: The next available prefix
         """
