@@ -1,4 +1,5 @@
 """Test object creator methods."""
+from unittest.mock import Mock, patch
 import yaml
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -276,8 +277,15 @@ devices:
 
 
 class TestProvisioner(TestCase):
+    builder = None
+
+    def implement_design(self, design_input, commit=True):
+        """Convenience function for implementing a design."""
+        self.builder = Builder()
+        self.builder.implement_design(design=yaml.safe_load(design_input), commit=commit)
+
     def test_create(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_CREATE_OBJECTS))
+        self.implement_design(INPUT_CREATE_OBJECTS)
 
         for want in ["manufacturer1", "manufacturer2"]:
             got = Manufacturer.objects.get(name=want).name
@@ -288,20 +296,20 @@ class TestProvisioner(TestCase):
         self.assertEqual(want, got)
 
     def test_update(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_CREATE_OBJECTS))
-        Builder().implement_design(design=yaml.safe_load(INPUT_UPDATE_OBJECT))
+        self.implement_design(INPUT_CREATE_OBJECTS)
+        self.implement_design(INPUT_UPDATE_OBJECT)
         got = DeviceType.objects.first().manufacturer
         want = Manufacturer.objects.get(name="manufacturer2")
         self.assertEqual(want, got)
 
     def test_update_with_ref(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_UPDATE_OBJECT_1))
+        self.implement_design(INPUT_UPDATE_OBJECT_1)
         want = "new model name"
         got = DeviceType.objects.first().model
         self.assertEqual(want, got)
 
     def test_nested_create(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_CREATE_NESTED_OBJECTS))
+        self.implement_design(INPUT_CREATE_NESTED_OBJECTS)
 
         site = Site.objects.get(name="site_1")
         device = Device.objects.get(name="device_1")
@@ -311,17 +319,17 @@ class TestProvisioner(TestCase):
         self.assertEqual(list(device.interfaces.all()), [interface])
 
     def test_nested_update(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_CREATE_NESTED_OBJECTS))
+        self.implement_design(INPUT_CREATE_NESTED_OBJECTS)
         interface = Interface.objects.get(name="Ethernet1/1")
         self.assertEqual("description for Ethernet1/1", interface.description)
 
-        Builder().implement_design(design=yaml.safe_load(INPUT_UPDATE_NESTED_OBJECTS))
+        self.implement_design(INPUT_UPDATE_NESTED_OBJECTS)
 
         interface.refresh_from_db()
         self.assertEqual("new description for Ethernet1/1", interface.description)
 
     def test_many_to_many(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_MANY_TO_MANY_OBJECTS))
+        self.implement_design(INPUT_MANY_TO_MANY_OBJECTS)
         region = Region.objects.first()
         context = ConfigContext.objects.first()
 
@@ -332,7 +340,7 @@ class TestProvisioner(TestCase):
             self.fail("Failed to find newly created region")
 
     def test_one_to_one(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_ONE_TO_ONE_OBJECTS))
+        self.implement_design(INPUT_ONE_TO_ONE_OBJECTS)
         device = Device.objects.all()[0]
         want = Device.objects.all()[1]
         self.assertEqual(1, len(device.devicebays.all()))
@@ -341,7 +349,7 @@ class TestProvisioner(TestCase):
         self.assertEqual(want, got)
 
     def test_prefixes(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_PREFIXES))
+        self.implement_design(INPUT_PREFIXES)
         want = "192.168.0.0/24"
         got = str(Prefix.objects.all()[0])
         self.assertEqual(want, got)
@@ -351,7 +359,7 @@ class TestProvisioner(TestCase):
         self.assertEqual(want, got)
 
     def test_interface_addresses(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_INTERFACE_ADDRESSES))
+        self.implement_design(INPUT_INTERFACE_ADDRESSES)
         want = "192.168.56.1/24"
         address = IPAddress.objects.get(address="192.168.56.1/24")
         got = str(address)
@@ -362,26 +370,26 @@ class TestProvisioner(TestCase):
         self.assertEqual(want, got)
 
     def test_create_tags(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_CREATE_TAGS))
+        self.implement_design(INPUT_CREATE_TAGS)
         want = "Some Description"
         tag = Tag.objects.get(name="Test Tag")
         got = tag.description
         self.assertEqual(want, got)
 
     def test_assign_tags(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_ASSIGN_TAGS))
+        self.implement_design(INPUT_ASSIGN_TAGS)
         tag = Tag.objects.get(name="Test Tag")
         site = Site.objects.first()
         self.assertIn(tag, list(site.tags.all()))
 
     def test_assign_tags_by_name(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_ASSIGN_TAGS_1))
+        self.implement_design(INPUT_ASSIGN_TAGS_1)
         tag = Tag.objects.get(name="Test Tag")
         site = Site.objects.first()
         self.assertIn(tag, list(site.tags.all()))
 
     def test_create_mlag(self):
-        Builder().implement_design(design=yaml.safe_load(INPUT_CREATE_MLAG))
+        self.implement_design(INPUT_CREATE_MLAG)
         device = Device.objects.get(name="device_1")
         lag = device.interfaces.get(name="Port-Channel1")
         self.assertEqual(4, lag.member_interfaces.count())
@@ -400,8 +408,8 @@ class TestProvisioner(TestCase):
                 "destination_type": ContentType.objects.get_for_model(VLAN),
             },
         )
-        Builder().implement_design(design=yaml.safe_load(INPUT_CREATE_NESTED_OBJECTS))
-        Builder().implement_design(design=yaml.safe_load(INPUT_CUSTOM_RELATION))
+        self.implement_design(INPUT_CREATE_NESTED_OBJECTS)
+        self.implement_design(INPUT_CUSTOM_RELATION)
         vlan42 = VLAN.objects.get(vid=42)
         vlan43 = VLAN.objects.get(vid=43)
 
@@ -410,3 +418,8 @@ class TestProvisioner(TestCase):
         vlans = [obj.destination for obj in RelationshipAssociation.objects.filter(**query_params)]
         self.assertIn(vlan42, vlans)
         self.assertIn(vlan43, vlans)
+
+    @patch("design_builder.design.Builder.roll_back")
+    def test_simple_design_roll_back(self, roll_back: Mock):
+        self.implement_design(INPUT_CREATE_OBJECTS, False)
+        roll_back.assert_called()

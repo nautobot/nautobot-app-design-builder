@@ -149,14 +149,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             getattr(self.Meta, "report"),
         )
 
-    def implement_design(self, context, design_file):
+    def implement_design(self, context, design_file, commit):
         """Render the design_file template using the provided render context."""
         design = self.render_design(context, design_file)
-        try:
-            self.creator.implement_design(design)
-        except Exception as ex:
-            self.creator.roll_back()
-            raise ex
+        self.creator.implement_design(design, commit)
 
     def run(self, data, commit):
         """Render the design and implement it with ObjectCreator."""
@@ -176,20 +172,24 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         elif hasattr(self.Meta, "design_files"):
             design_files = self.Meta.design_files
         else:
-            raise DesignImplementationError("No design template specified for design.")
+            self.log_failure(message="No design template specified for design.")
+            self.failed = True
+            return
 
-        for design_file in design_files:
-            self.implement_design(context, design_file)
+        try:
+            for design_file in design_files:
+                self.implement_design(context, design_file, commit)
+            if commit:
+                self.creator.commit()
+                self.post_implementation(context, self.creator)
 
-        if commit:
-            self.creator.commit()
-            self.post_implementation(context, self.creator)
-
-            if hasattr(self.Meta, "report"):
-                self.results["report"] = self.render_report(context, self.creator.journal)
-                self.log_success(message=self.results["report"])
-        else:
-            self.creator.roll_back()
-            self.log_info(
-                message=f"{self.name} can be imported successfully - No database changes made",
-            )
+                if hasattr(self.Meta, "report"):
+                    self.results["report"] = self.render_report(context, self.creator.journal)
+                    self.log_success(message=self.results["report"])
+            else:
+                self.log_info(
+                    message=f"{self.name} can be imported successfully - No database changes made",
+                )
+        except DesignImplementationError as ex:
+            self.log_failure(message=f"Failed to implement design: {ex}")
+            self.failed = True

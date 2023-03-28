@@ -22,6 +22,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         """Adds the design_file argument to the required command arguments."""
+        parser.add_argument("--commit", action="store_true", help="Commit the design to the database.")
         parser.add_argument("design_file", nargs="+", type=str)
 
     def handle(self, *args, **options):
@@ -30,4 +31,4 @@ class Command(BaseCommand):
         for filename in options["design_file"]:
             self.stdout.write(f"Building design from {filename}")
             design = _load_file(filename)
-            builder.implement_design(design)
+            builder.implement_design(design, commit=options["commit"])

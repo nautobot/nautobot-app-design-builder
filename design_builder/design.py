@@ -5,6 +5,8 @@ from django.apps import apps
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, ValidationError
+from django.db import transaction
+
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.core.models import BaseModel
 from nautobot.extras.choices import RelationshipTypeChoices
@@ -417,17 +419,35 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    def implement_design(self, design):
+    @transaction.atomic
+    def implement_design(self, design, commit=False):
         """Iterates through items in the design and creates them.
+
+        This process is wrapped in a transaction. If either commit=False (default) or
+        an exception is raised, then the transaction is rolled back and no database
+        changes will be present. If commit=True and no exceptions are raised then the
+        database state should represent the changes provided in the design.
+
+        Args:
+            design: An iterable mapping of design changes.
+            commit: Whether or not to commit the transaction. Defaults to False.
 
         Raises:
             DesignImplementationError: if the model is not in the model map
         """
-        for key, value in design.items():
-            if key in self.model_map and value:
-                self._create_objects(self.model_map[key], value)
-            else:
-                raise DesignImplementationError(f"Unknown model key {key} in design")
+        sid = transaction.savepoint()
+        try:
+            for key, value in design.items():
+                if key in self.model_map and value:
+                    self._create_objects(self.model_map[key], value)
+                else:
+                    raise DesignImplementationError(f"Unknown model key {key} in design")
+            if not commit:
+                transaction.savepoint_rollback(sid)
+                self.roll_back()
+        except Exception as ex:
+            self.roll_back()
+            raise ex
 
     @overload
     def map_values(self, mapping_or_str: Mapping) -> Mapping:
