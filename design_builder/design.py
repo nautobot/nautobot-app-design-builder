@@ -1,20 +1,20 @@
 """Provides ORM interaction for design builder."""
-from typing import Dict, List, Mapping, Type, Union, overload
+from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
-from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, ValidationError
+from django.db.models.fields import Field as DjangoField
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import transaction
+
 
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.core.models import BaseModel
-from nautobot.extras.choices import RelationshipTypeChoices
-from nautobot.extras.models import JobResult, Relationship, RelationshipAssociation
+from nautobot.extras.models import JobResult, Relationship
 
 from design_builder.errors import DesignImplementationError, DesignValidationError
 from design_builder.ext import GitContextExtension, ReferenceExtension
 from design_builder.logging import LoggingMixin
+from design_builder.fields import Field, GenericRelationField, OneToOneField, RelationshipField, ManyToOneField, CustomRelationshipField
 
 
 class Journal:
@@ -84,49 +84,16 @@ class Journal:
         return results
 
 
-class CustomRelationshipField:  # pylint: disable=too-few-public-methods
-    """This class models a Nautobot custom relationship."""
-
-    def __init__(self, relationship: Relationship, model_class: BaseModel, creator_object: "ModelInstance"):
-        """Create a new custom relationship field.
-
-        Args:
-            relationship (Relationship): The Nautobot custom relationship backing this field.
-            model_class (BaseModel): Model class for the remote end of this relationship.
-            creator_object (CreatorObject): Object being updated to include this field.
-        """
-        self.relationship = relationship
-        self.creator_object = creator_object
-        self.one_to_one = relationship.type == RelationshipTypeChoices.TYPE_ONE_TO_ONE
-        self.many_to_one = relationship.type == RelationshipTypeChoices.TYPE_ONE_TO_MANY
-        self.one_to_many = self.many_to_one
-        self.many_to_many = relationship.type == RelationshipTypeChoices.TYPE_MANY_TO_MANY
-        if self.relationship.source_type == ContentType.objects.get_for_model(model_class):
-            self.related_model = relationship.destination_type.model_class()
+def _map_query_values(query: Mapping) -> Mapping:
+    retval = {}
+    for key, value in query.items():
+        if isinstance(value, ModelInstance):
+            retval[key] = value.instance
+        elif isinstance(value, Mapping):
+            retval[key] = _map_query_values(value)
         else:
-            self.related_model = relationship.source_type.model_class()
-
-    def add(self, value: BaseModel):
-        """Add an association between the created object and the given value.
-
-        Args:
-            value (BaseModel): The related object to add.
-        """
-        source = self.creator_object.instance
-        destination = value
-        if self.relationship.source_type == ContentType.objects.get_for_model(value):
-            source = value
-            destination = self.creator_object.instance
-
-        source_type = ContentType.objects.get_for_model(source)
-        destination_type = ContentType.objects.get_for_model(destination)
-        RelationshipAssociation.objects.update_or_create(
-            relationship=self.relationship,
-            source_id=source.id,
-            source_type=source_type,
-            destination_id=destination.id,
-            destination_type=destination_type,
-        )
+            retval[key] = value
+    return retval
 
 
 class ModelInstance:  # pylint: disable=too-many-instance-attributes
@@ -147,13 +114,15 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # Make a copy of the attributes so the original
         # design attributes are not overwritten
         self.attributes = {**attributes}
+        self.deferred = []
+        self.deferred_attributes = {}
 
         self.filter = {}
         self.action = None
         self.instance_fields = {}
         for direction in Relationship.objects.get_for_model(model_class):
             for relationship in direction:
-                self.instance_fields[relationship.slug] = CustomRelationshipField(relationship, self.model_class, self)
+                self.instance_fields[relationship.slug] = Field(self, relationship)
 
         self._parse_attributes()
 
@@ -162,8 +131,9 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self._load_instance()
 
         self.model_fields = {field.name: field for field in model_class._meta.get_fields()}
+        field: DjangoField
         for field in self.instance._meta.get_fields():
-            self.instance_fields[field.name] = field
+            self.instance_fields[field.name] = Field(self, field)
 
         self._update_fields()
 
@@ -171,17 +141,19 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.custom_fields = self.attributes.pop("custom_fields", {})
         self.custom_relationships = self.attributes.pop("custom_relationships", {})
         for key in list(self.attributes.keys()):
+            self.attributes[key] = self.creator.resolve_values(self.attributes[key])
             if key.startswith("!"):
+                value = self.attributes.pop(key)
                 args = key.lstrip("!").split(":", 1)
 
                 extn = self.creator.get_extension("attribute", args[0])
                 if extn:
-                    result = extn.attribute(*args[1:], value=self.attributes.pop(key), creator_object=self)
+                    result = extn.attribute(*args[1:], value=value, creator_object=self)
                     if result:
                         self.attributes[result[0]] = result[1]
                 elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
                     self.action = args[0]
-                    self.filter[args[1]] = self.attributes.pop(key)
+                    self.filter[args[1]] = value
                     if self.action is None:
                         self.action = args[0]
                     elif self.action != args[0]:
@@ -201,13 +173,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
         if self.action is None:
             self.action = self.CREATE
-
         if self.action not in self.ACTION_CHOICES:
             raise DesignImplementationError(f"Unknown action {self.action}", self.model_class)
 
     def _load_instance(self):
-        query_filter = self.creator.map_values(self.filter)
+        query_filter = _map_query_values(self.filter)
         if self.action == self.GET:
+            print("Getting", query_filter, "from", self.model_class)
             self.instance = self.model_class.objects.get(**query_filter)
             return
 
@@ -227,116 +199,66 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.attributes.update(query_filter)
         elif self.action != "create":
             raise DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
-
         self.instance = self.model_class()
 
     def _update_fields(self):  # pylint: disable=too-many-branches
         if self.action == self.GET and self.attributes:
             raise ValueError("Cannot update fields when using the GET action")
 
-        deferred = []
-        deferred_attributes = {}
-
         for field_name, field in self.instance_fields.items():
-            if isinstance(field, CustomRelationshipField) and field_name in self.attributes:
-                deferred.append(field_name)
-                deferred_attributes[field_name] = self.attributes.pop(field_name)
-            elif field.many_to_one and field_name in self.attributes:
-                kwargs = self.attributes.pop(field_name)
-                if isinstance(kwargs, Mapping):
-                    self.attributes[field_name] = self.creator._get(  # pylint: disable=protected-access
-                        self.instance_fields[field_name].related_model, kwargs
-                    )
-                elif isinstance(kwargs, str) and kwargs.startswith("!"):
-                    (action, arg) = kwargs.lstrip("!").split(":", 1)
-                    extn = self.creator.get_extension("value", action)
-                    if extn:
-                        self.attributes[field_name] = extn.value(arg).instance
-                    else:
-                        raise DesignImplementationError(f"Unknown value extension {action}")
+            if field_name in self.attributes:
+                value = self.attributes.pop(field_name)
+                if isinstance(field, ManyToOneField):
+                    field.set_value(self.creator.resolve_values(value))
+                elif isinstance(field, RelationshipField) or isinstance(field, CustomRelationshipField):
+                    self.deferred.append(field_name)
+                    self.deferred_attributes[field_name] = value
                 else:
-                    raise DesignImplementationError(
-                        f"Expecting input field '{field} to be a mapping or reference, got {type(kwargs)}: {kwargs}"
-                    )
+                    self.attributes[field_name] = value
             elif (
-                (self.relationship_manager and hasattr(self.relationship_manager, "field"))
-                and (field.one_to_one or field.many_to_one)
+                hasattr(self.relationship_manager, "field")
+                and (isinstance(field, OneToOneField) or isinstance(field, ManyToOneField))
                 and self.model_fields[field_name] == self.relationship_manager.field
             ):
-                setattr(self.instance, field_name, self.relationship_manager.instance)
-            elif field.one_to_one or field.one_to_many or field.many_to_many:
-                if field_name in self.attributes:
-                    deferred.append(field_name)
-                    deferred_attributes[field_name] = self.attributes.pop(field_name)
+                field.set_value(self.relationship_manager.instance)
 
         for key, value in self.attributes.items():
-            self.set_field(key, value)
+            try:
+                self.instance_fields[key].set_value(value)
+            except KeyError:
+                # This needs some explaining. Sometimes things can
+                # be set that aren't fields (like prefix on a Prefix object).
+                # These are helper properties that aren't actual fields. So,
+                # if there isn't a field with the attribute name, we look
+                # for a property to set
+                if hasattr(self.instance, key):
+                    setattr(self.instance, key, value)
 
         for key, value in self.custom_fields.items():
             self.set_custom_field(key, value)
 
-        self.creator.save_model(self)
+    def save(self):
+        print("Saving", self.instance)
+        self.instance.full_clean()
+        self.instance.save()
+        self.instance.refresh_from_db()
 
-        for field in deferred:
-            items = deferred_attributes[field]
+        for field_name in self.deferred:
+            items = self.deferred_attributes[field_name]
             if isinstance(items, dict):
                 items = [items]
 
             for item in items:
-                if isinstance(item, str) and item.startswith("!"):
-                    action, arg = item.lstrip("!").split(":", 1)
-                    extn = self.creator.get_extension("value", action)
-                    if extn:
-                        self.create_or_update_related(field, item, related_object=extn.value(arg))
-                    else:
-                        raise DesignImplementationError(f"Unknown value extension {action}")
+                field = self.instance_fields[field_name]
+                if isinstance(item, ModelInstance):
+                    related_object = item
                 else:
-                    self.create_or_update_related(field, item)
-
-    def create_or_update_related(self, field_name, attributes, related_object=None):
-        """Creates or updates a relationship between ORM objects.
-
-        Args:
-            field_name (str): The field name of the object to update, i.e. 'platform'
-            attributes: the attribute of the related object to update, i.e. 'name', 'model'
-
-        Raises:
-            DesignImplementationError: If the relationship type is not valid
-        """
-        field = self.instance_fields[field_name]
-        relationship_manager = None
-        if hasattr(self.instance, field_name):
-            relationship_manager = getattr(self.instance, field_name)
-
-        if related_object is None:
-            related_object = ModelInstance(self.creator, field.related_model, attributes, relationship_manager)
-            if isinstance(field, GenericRelation):
-                setattr(related_object, "content_object", self.instance)
-            elif not isinstance(field, CustomRelationshipField):
-                setattr(related_object, field.remote_field.name, self.instance)
-
-        related_instance = related_object
-        if isinstance(related_instance, ModelInstance):
-            related_instance = related_instance.instance
-
-        if isinstance(field, CustomRelationshipField):
-            field.add(related_instance)
-        elif field.one_to_one:
-            self.set_field(field_name, related_instance)
-            self.instance.validated_save()
-        elif field.one_to_many:
-            getattr(self.instance, field_name).add(related_instance, bulk=False)
-        elif field.many_to_many:
-            getattr(self.instance, field_name).add(related_instance)
-        else:
-            raise DesignImplementationError("Can't handle relationship type", self.instance)
-
-    def set_field(self, field, value):
-        """Sets a value for a field."""
-        if isinstance(self.instance_fields.get(field, None), CustomRelationshipField):
-            self.instance_fields[field].set(value)
-        else:
-            setattr(self.instance, field, value)
+                    relationship_manager = None
+                    if hasattr(self.instance, field_name):
+                        relationship_manager = getattr(self.instance, field_name)
+                    related_object = ModelInstance(self.creator, field.model, item, relationship_manager)
+                    related_object.save()
+                field.set_value(related_object.instance)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
@@ -449,63 +371,35 @@ class Builder(LoggingMixin):
             self.roll_back()
             raise ex
 
-    @overload
-    def map_values(self, mapping_or_str: Mapping) -> Mapping:
-        ...
-
-    @overload
-    def map_values(self, mapping_or_str: str) -> str:
-        ...
-
-    def map_values(self, mapping_or_primitive: Union[Mapping, str]) -> Union[Mapping, str]:
-        """Map a set of values to their actual values.
-
-        This method will look for any values that can be resolved
-        using extensions and will perform the extension lookup. The returned
-        value will be either a Mapping or a string, depending on the input.
-
-        Args:
-            mapping_or_str (Union[Mapping,str]): Input to map with extensions
-
-        Raises:
-            DesignImplementationError: If the input type is not a string or mapping or if
-                an extension cannot be resolved.
-
-        Returns:
-            Union[Mapping,str]: The resolved value(s)
-        """
-        retval = mapping_or_primitive
-        if isinstance(mapping_or_primitive, Mapping):
-            retval = {}
-            for key, value in mapping_or_primitive.items():
-                retval[key] = self.map_values(value)
-        elif isinstance(mapping_or_primitive, str) and mapping_or_primitive.startswith("!"):
-            (action, arg) = mapping_or_primitive.lstrip("!").split(":", 1)
+    def resolve_value(self, value):
+        if isinstance(value, str) and value.startswith("!"):
+            (action, arg) = value.lstrip("!").split(":", 1)
             extn = self.get_extension("value", action)
             if extn:
-                retval = extn.value(arg)
+                value = extn.value(arg)
             else:
-                raise DesignImplementationError(f"Unknown value extension {action}")
-        return retval
+                raise DesignImplementationError(f"Unknown attribute extension {value}")
+        return value
+
+    def resolve_values(self, value):
+        if isinstance(value, str):
+            value = self.resolve_value(value)
+        elif isinstance(value, list):
+            for i, v in enumerate(value):
+                value[i] = self.resolve_value(v)
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                value[k] = self.resolve_value(v)
+        return value
 
     def _create_objects(self, model_cls, objects):
         if isinstance(objects, dict):
-            ModelInstance(self, model_cls, objects)
+            model = ModelInstance(self, model_cls, objects)
+            self.save_model(model)
         elif isinstance(objects, list):
             for creator_object in objects:
-                ModelInstance(self, model_cls, creator_object)
-
-    def _get(self, model_cls: Type[BaseModel], lookup: dict):
-        objects = model_cls.objects
-        try:
-            return objects.get(**self.map_values(lookup))  # pylint: disable=not-a-mapping
-        except MultipleObjectsReturned:
-            raise DesignImplementationError(
-                "Expected exactly 1 object for {model_cls.__name__}({lookup}) but got more than one"
-            )
-        except ObjectDoesNotExist:
-            query = ",".join([f'{k}="{v}"' for k, v in lookup.items()])
-            raise DesignImplementationError(f"Could not find {model_cls.__name__}: {query}")
+                model = ModelInstance(self, model_cls, creator_object)
+                self.save_model(model)
 
     def save_model(self, model):
         """Performs a validated save on the object and then refreshes that object from the database.
@@ -520,10 +414,8 @@ class Builder(LoggingMixin):
         msg = "Created" if model.instance._state.adding else "Updated"  # pylint: disable=protected-access
         fail_msg = "create" if model.instance._state.adding else "update"  # pylint: disable=protected-access
         try:
-            model.instance.full_clean()
-            model.instance.save()
+            model.save()
             self.log_success(message=f"{msg} {model.name} {model.instance}", obj=model.instance)
-            model.instance.refresh_from_db()
             self.journal.log(model, created)
         except ValidationError as validation_error:
             self.log_failure(message=f"Failed to {fail_msg} {model.name} {model.instance}")

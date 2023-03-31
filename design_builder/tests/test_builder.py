@@ -6,7 +6,15 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.test import TestCase
 from nautobot.dcim.models import Device, DeviceType, Interface, Manufacturer, Region, Site
 from nautobot.extras.choices import RelationshipTypeChoices
-from nautobot.extras.models import ConfigContext, Relationship, RelationshipAssociation, Tag
+from nautobot.extras.models import (
+    ConfigContext,
+    Relationship,
+    RelationshipAssociation,
+    Tag,
+    Secret,
+    SecretsGroup,
+    SecretsGroupAssociation,
+)
 from nautobot.ipam.models import VLAN, IPAddress, Prefix
 
 from design_builder.design import Builder
@@ -275,6 +283,55 @@ devices:
         status__name: "Active"
 """
 
+INPUT_REF_FOR_CREATE_OR_UPDATE = """
+# Secrets & Secrets Groups
+secrets:
+- "!create_or_update:name": "Device username"
+  "description": "Username for network devices"
+  "provider": "environment-variable"
+  "parameters": {"variable": "NAUTOBOT_NAPALM_USERNAME"}
+  "!ref": "device_username"
+- "!create_or_update:name": "Device password"
+  "description": "Password for network devices"
+  "provider": "environment-variable"
+  "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
+  "!ref": "device_password"
+
+secrets_groups:
+- "!create_or_update:name": "Device credentials"
+  "!ref": "device_credentials"
+
+secrets_group_associations:
+- "!create_or_update:group": "!ref:device_credentials"
+  "!create_or_update:secret": "!ref:device_username"
+  "access_type": "Generic"
+  "secret_type": "username"
+- "!create_or_update:group": "!ref:device_credentials"
+  "!create_or_update:secret": "!ref:device_password"
+  "access_type": "Generic"
+  "secret_type": "password"
+"""
+
+INPUT_REF_FOR_CREATE_OR_UPDATE1 = """
+secrets_groups:
+- "!create_or_update:name": "Device credentials"
+  secrets:
+    - access_type: "Generic"
+      secret_type: "username"
+      secret:
+        "name": "Device username"
+        "description": "Username for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_USERNAME"}
+    - access_type: "Generic"
+      secret_type: "password"
+      secret:
+        "name": "Device password"
+        "description": "Password for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
+"""
+
 
 class TestProvisioner(TestCase):
     builder = None
@@ -423,3 +480,11 @@ class TestProvisioner(TestCase):
     def test_simple_design_roll_back(self, roll_back: Mock):
         self.implement_design(INPUT_CREATE_OBJECTS, False)
         roll_back.assert_called()
+
+    def test_create_or_update_with_ref(self):
+        # run it twice to make sure it is idempotent
+        for _ in range(2):
+            self.implement_design(INPUT_REF_FOR_CREATE_OR_UPDATE)
+            self.assertEqual(2, len(Secret.objects.all()))
+            self.assertEqual(1, len(SecretsGroup.objects.all()))
+            self.assertEqual(2, len(SecretsGroupAssociation.objects.all()))
