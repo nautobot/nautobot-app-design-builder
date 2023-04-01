@@ -14,7 +14,7 @@ from nautobot.extras.models import JobResult, Relationship
 from design_builder.errors import DesignImplementationError, DesignValidationError
 from design_builder.ext import GitContextExtension, ReferenceExtension
 from design_builder.logging import LoggingMixin
-from design_builder.fields import Field, GenericRelationField, OneToOneField, RelationshipField, ManyToOneField, CustomRelationshipField
+from design_builder.fields import Field, OneToOneField, RelationshipField, ManyToOneField, CustomRelationshipField
 
 
 class Journal:
