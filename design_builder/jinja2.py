@@ -184,9 +184,22 @@ def network_offset(prefix: str, offset: str) -> IPNetwork:
     return new_prefix
 
 
-def to_yaml(obj, *args, **kwargs):  # noqa: D103 pylint: disable=missing-function-docstring
-    default_flow_style = kwargs.pop("default_flow_style", None)
-    return yaml.dump(obj, allow_unicode=True, default_flow_style=default_flow_style, **kwargs)
+def __yaml_context_dumper(*args, **kwargs):
+    from .context import Context
+
+    dumper = yaml.Dumper(*args, **kwargs)
+    dumper.add_representer(Context, Context.representer)
+    for klass, representer in Context.representers.items():
+        dumper.add_representer(klass, representer)
+    return dumper
+
+
+def to_yaml(obj, *args, **kwargs):
+    """Convert an object to YAML."""
+    default_flow_style = kwargs.pop("default_flow_style", False)
+    return yaml.dump(
+        obj, allow_unicode=True, default_flow_style=default_flow_style, Dumper=__yaml_context_dumper, **kwargs
+    )
 
 
 def new_template_environment(root_context, base_dir=None, native_environment=False):
