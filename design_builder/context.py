@@ -1,8 +1,8 @@
 """Module that contains classes and functions for use with Design Builder context available when using Jinja templating."""
 import inspect
 from typing import Iterable
-
 import yaml
+
 from nautobot.extras.models import JobResult
 
 from design_builder.errors import DesignValidationError
@@ -120,11 +120,6 @@ class _TemplateNode(_Node):
     def __str__(self) -> str:
         return str(self.render())
 
-    @classmethod
-    def representer(cls, dumper: yaml.SafeDumper, tpl: "_TemplateNode"):
-        value = tpl.render()
-        return dumper.yaml_representers[type(value)](dumper, value)
-
 
 class _ListNode(_Node):
     """A _ListNode is a level in the context tree backed by a list store.
@@ -159,10 +154,6 @@ class _ListNode(_Node):
         if len(self._store) != len(other):
             return False
         return self._compare(range(len(self._store)), other)
-
-    @classmethod
-    def representer(cls, dumper: yaml.SafeDumper, list_node: "_ListNode"):
-        return dumper.represent_list(list_node._store)
 
 
 class _DictNode(_Node):
@@ -220,10 +211,6 @@ class _DictNode(_Node):
             return False
         return self._compare(self._store.keys(), other)
 
-    @classmethod
-    def representer(cls, dumper: yaml.SafeDumper, dict_node: "_DictNode"):
-        return dumper.represent_dict(dict_node._store.items())
-
 
 def context_file(*ctx_files):
     """Add a context file to a class.
@@ -264,12 +251,6 @@ class Context(_Node, LoggingMixin):
               or their native type.
     """
 
-    representers = {
-        _DictNode: _DictNode.representer,
-        _ListNode: _ListNode.representer,
-        _TemplateNode: _TemplateNode.representer,
-    }
-
     def __init__(self, data: dict = None, job_result: JobResult = None):
         """Constructor for Context class that creates data nodes from input data."""
         super().__init__(self)
@@ -283,8 +264,8 @@ class Context(_Node, LoggingMixin):
         bases.reverse()
 
         for base in bases:
-            for context_file in base.__dict__.get("__base_contexts", {}):
-                context = load_design_yaml(self.__class__, context_file)
+            for filename in base.__dict__.get("__base_contexts", {}):
+                context = load_design_yaml(self.__class__, filename)
                 # don't add anything if the file was empty
                 if context:
                     self.update(context)
@@ -369,8 +350,19 @@ class Context(_Node, LoggingMixin):
         # raise Exception(f"Setting {key} to {item}")
         setattr(self, key, self._create_node(item))
 
-    @classmethod
-    def representer(
-        cls, dumper: yaml.SafeDumper, context: "Context"
-    ):  # noqa: D102 pylint:disable=missing-function-docstring
-        return dumper.represent_dict([(key, getattr(context, key)) for key in context._keys])
+
+def _represent_context(dumper: yaml.SafeDumper, context: "Context"):
+    return dumper.represent_dict([(key, getattr(context, key)) for key in context.keys()])
+
+
+def _represent_template(dumper, tpl):
+    value = tpl.render()
+    return dumper.yaml_representers[type(value)](dumper, value)
+
+
+representers = {
+    _DictNode: yaml.representer.Representer.represent_dict,
+    _ListNode: yaml.representer.Representer.represent_dict,
+    _TemplateNode: _represent_template,
+    Context: _represent_context,
+}

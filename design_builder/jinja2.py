@@ -190,11 +190,10 @@ def network_offset(prefix: str, offset: str) -> IPNetwork:
 
 
 def __yaml_context_dumper(*args, **kwargs):
-    from .context import Context
+    from . import context  # pylint:disable=import-outside-toplevel,cyclic-import
 
     dumper = yaml.Dumper(*args, **kwargs)
-    dumper.add_representer(Context, Context.representer)
-    for klass, representer in Context.representers.items():
+    for klass, representer in context.representers.items():
         dumper.add_representer(klass, representer)
     return dumper
 
