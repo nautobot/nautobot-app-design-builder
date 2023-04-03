@@ -236,16 +236,11 @@ def context_file(*ctx_files):
 
     def wrapper(context_cls):
         if "__base_contexts" not in context_cls.__dict__:
-            setattr(context_cls, "__base_contexts", {})
+            setattr(context_cls, "__base_contexts", set())
 
         for ctx_file in ctx_files:
             base_context = getattr(context_cls, "__base_contexts")
-            # only load each context file once
-            if ctx_file not in base_context:
-                data = load_design_yaml(context_cls, ctx_file)
-                # don't add anything if the file was empty
-                if data:
-                    base_context[ctx_file] = data
+            base_context.add(ctx_file)
 
         return context_cls
 
@@ -288,8 +283,11 @@ class Context(_Node, LoggingMixin):
         bases.reverse()
 
         for base in bases:
-            for context in base.__dict__.get("__base_contexts", {}).values():
-                self.update(context)
+            for context_file in base.__dict__.get("__base_contexts", {}):
+                context = load_design_yaml(self.__class__, context_file)
+                # don't add anything if the file was empty
+                if context:
+                    self.update(context)
 
         if data is not None:
             for key, value in data.items():
