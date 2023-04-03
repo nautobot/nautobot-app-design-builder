@@ -1,11 +1,14 @@
 """Jinja2 related filters and environment methods."""
+import re
 import yaml
+
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, nodes
 from jinja2.environment import Context as JinjaContext
 from jinja2.ext import Extension
 from jinja2.lexer import TOKEN_DATA, TokenStream
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.utils import missing
+
 from netaddr import AddrFormatError, IPNetwork
 from netutils.utils import jinja2_convenience_function
 
@@ -20,7 +23,7 @@ class TrackingTokenStream:
             parent (jinja2.TokenStream): The token stream to watch.
         """
         self._parent = parent
-        self.whitespace = ""
+        self.prefix = ""
 
     def __iter__(self):
         """Makes class iterable, returns instance of self."""
@@ -32,9 +35,9 @@ class TrackingTokenStream:
         if current.type == TOKEN_DATA:
             index = current.value.rfind("\n")
             if index >= 0:
-                self.whitespace = current.value[index + 1 :]  # noqa: E203
+                self.prefix = current.value[index + 1 :]  # noqa: E203
             else:
-                self.whitespace = ""
+                self.prefix = ""
         return self._parent.__next__()
 
 
@@ -82,8 +85,10 @@ class IndentationExtension(Extension):
         """
         token = next(parser.stream)
         lineno = token.lineno
+        whitespace = re.sub("[^\s]", " ", self.stream.prefix)
+
         body = parser.parse_statements(["name:endindent"], drop_needle=True)
-        args = [nodes.TemplateData(self.stream.whitespace)]
+        args = [nodes.TemplateData(whitespace)]
         return nodes.CallBlock(self.call_method("_indent_support", args), [], [], body).set_lineno(lineno)
 
     def _indent_support(self, indentation, caller):  # pylint: disable=no-self-use

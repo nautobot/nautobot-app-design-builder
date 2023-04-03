@@ -122,7 +122,8 @@ class _TemplateNode(_Node):
 
     @classmethod
     def representer(cls, dumper: yaml.SafeDumper, tpl: "_TemplateNode"):
-        return dumper.represent_str(tpl.render())
+        value = tpl.render()
+        return dumper.yaml_representers[type(value)](dumper, value)
 
 
 class _ListNode(_Node):
