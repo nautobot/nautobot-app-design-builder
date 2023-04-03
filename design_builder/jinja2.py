@@ -85,7 +85,7 @@ class IndentationExtension(Extension):
         """
         token = next(parser.stream)
         lineno = token.lineno
-        whitespace = re.sub("[^\s]", " ", self.stream.prefix)
+        whitespace = re.sub(r"[^\s]", " ", self.stream.prefix)
 
         body = parser.parse_statements(["name:endindent"], drop_needle=True)
         args = [nodes.TemplateData(whitespace)]
