@@ -37,7 +37,7 @@ class TrackingTokenStream:
             if index >= 0:
                 self.prefix = current.value[index + 1 :]  # noqa: E203
             else:
-                self.prefix = ""
+                self.prefix = current.value
         return self._parent.__next__()
 
 
@@ -102,11 +102,11 @@ class IndentationExtension(Extension):
             str: Processed block where each line has been prepended with whitespace.
         """
         body = caller()
-        lines = []
-        for line in body.split("\n"):
-            lines.append(line)
-        value = f"\n{indentation}".join(lines)
-        return value + "\n"
+        lines = body.split("\n")
+        for i in range(1, len(lines)):
+            if lines[i]:
+                lines[i] = indentation + lines[i]
+        return "\n".join(lines)
 
 
 def network_string(network: IPNetwork, attr="") -> str:
