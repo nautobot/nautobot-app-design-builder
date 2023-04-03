@@ -1,11 +1,14 @@
 """Jinja2 related filters and environment methods."""
+import re
 import yaml
+
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, nodes
 from jinja2.environment import Context as JinjaContext
 from jinja2.ext import Extension
 from jinja2.lexer import TOKEN_DATA, TokenStream
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.utils import missing
+
 from netaddr import AddrFormatError, IPNetwork
 from netutils.utils import jinja2_convenience_function
 
@@ -20,7 +23,7 @@ class TrackingTokenStream:
             parent (jinja2.TokenStream): The token stream to watch.
         """
         self._parent = parent
-        self.whitespace = ""
+        self.prefix = ""
 
     def __iter__(self):
         """Makes class iterable, returns instance of self."""
@@ -32,9 +35,9 @@ class TrackingTokenStream:
         if current.type == TOKEN_DATA:
             index = current.value.rfind("\n")
             if index >= 0:
-                self.whitespace = current.value[index + 1 :]  # noqa: E203
+                self.prefix = current.value[index + 1 :]  # noqa: E203
             else:
-                self.whitespace = ""
+                self.prefix = current.value
         return self._parent.__next__()
 
 
@@ -82,8 +85,10 @@ class IndentationExtension(Extension):
         """
         token = next(parser.stream)
         lineno = token.lineno
+        whitespace = re.sub(r"[^\s]", " ", self.stream.prefix)
+
         body = parser.parse_statements(["name:endindent"], drop_needle=True)
-        args = [nodes.TemplateData(self.stream.whitespace)]
+        args = [nodes.TemplateData(whitespace)]
         return nodes.CallBlock(self.call_method("_indent_support", args), [], [], body).set_lineno(lineno)
 
     def _indent_support(self, indentation, caller):  # pylint: disable=no-self-use
@@ -97,11 +102,11 @@ class IndentationExtension(Extension):
             str: Processed block where each line has been prepended with whitespace.
         """
         body = caller()
-        lines = []
-        for line in body.split("\n"):
-            lines.append(line)
-        value = f"\n{indentation}".join(lines)
-        return value + "\n"
+        lines = body.split("\n")
+        for i in range(1, len(lines)):
+            if lines[i]:
+                lines[i] = indentation + lines[i]
+        return "\n".join(lines)
 
 
 def network_string(network: IPNetwork, attr="") -> str:
@@ -185,11 +190,10 @@ def network_offset(prefix: str, offset: str) -> IPNetwork:
 
 
 def __yaml_context_dumper(*args, **kwargs):
-    from .context import Context
+    from . import context  # pylint:disable=import-outside-toplevel,cyclic-import
 
     dumper = yaml.Dumper(*args, **kwargs)
-    dumper.add_representer(Context, Context.representer)
-    for klass, representer in Context.representers.items():
+    for klass, representer in context.representers.items():
         dumper.add_representer(klass, representer)
     return dumper
 
