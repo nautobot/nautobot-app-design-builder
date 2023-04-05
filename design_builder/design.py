@@ -179,7 +179,6 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
         if self.action == self.GET:
-            print("Getting", query_filter, "from", self.model_class)
             self.instance = self.model_class.objects.get(**query_filter)
             return
 
@@ -238,7 +237,6 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             self.set_custom_field(key, value)
 
     def save(self):
-        print("Saving", self.instance)
         self.instance.full_clean()
         self.instance.save()
         self.instance.refresh_from_db()
