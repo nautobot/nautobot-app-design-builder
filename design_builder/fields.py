@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Mapping
+from typing import Mapping, Type
 
 from django.db.models.base import Model
 from django.db.models.fields import Field as DjangoField
@@ -41,7 +41,7 @@ class SimpleField(ModelField):
 
 class RelationshipField(SimpleField):
     field: DjangoField
-    model: type[object]
+    model: Type[object]
 
     def __init__(self, model_instance, field: DjangoField):
         self.instance = model_instance
