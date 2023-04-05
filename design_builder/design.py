@@ -111,6 +111,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.creator = creator
         self.model_class = model_class
         self.name = model_class.__name__
+        self.instance: BaseModel = None
         # Make a copy of the attributes so the original
         # design attributes are not overwritten
         self.attributes = {**attributes}
@@ -127,7 +128,6 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self._parse_attributes()
 
         self.relationship_manager = relationship_manager
-        self.instance: BaseModel = None
         self._load_instance()
 
         self.model_fields = {field.name: field for field in model_class._meta.get_fields()}
@@ -148,7 +148,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
                 extn = self.creator.get_extension("attribute", args[0])
                 if extn:
-                    result = extn.attribute(*args[1:], value=value, creator_object=self)
+                    result = extn.attribute(*args[1:], value=value, model_instance=self)
                     if result:
                         self.attributes[result[0]] = result[1]
                 elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
@@ -395,8 +395,8 @@ class Builder(LoggingMixin):
             model = ModelInstance(self, model_cls, objects)
             self.save_model(model)
         elif isinstance(objects, list):
-            for creator_object in objects:
-                model = ModelInstance(self, model_cls, creator_object)
+            for model_instance in objects:
+                model = ModelInstance(self, model_cls, model_instance)
                 self.save_model(model)
 
     def save_model(self, model):

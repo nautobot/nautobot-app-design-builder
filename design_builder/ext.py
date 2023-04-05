@@ -42,12 +42,12 @@ class Extension(ABC):
     def __init__(self, object_creator: "Builder"):  # noqa: D107
         self.object_creator = object_creator
 
-    def attribute(self, value: Any, creator_object: "ModelInstance") -> None:
+    def attribute(self, value: Any, model_instance: "ModelInstance") -> None:
         """This method is called when the `attribute_tag` is encountered.
 
         Args:
             value (Any): The value of the data structure at this key's point in the design YAML. This could be a scalar, a dict or a list.
-            creator_object (CreatorObject): Object is the CreatorObject that would ultimately contain the values.
+            model_instance (CreatorObject): Object is the CreatorObject that would ultimately contain the values.
         """
 
     def value(self, key: str) -> "ModelInstance":
@@ -97,12 +97,12 @@ class ReferenceExtension(Extension):
         super().__init__(object_creator)
         self._env = {}
 
-    def attribute(self, value, creator_object):
+    def attribute(self, value, model_instance):
         """This method is called when the `!ref` tag is encountered.
 
         Args:
             value (Any): Value should be a string name (the reference) to refer to the object
-            creator_object (CreatorObject): The object that will be later referenced
+            model_instance (CreatorObject): The object that will be later referenced
 
         Example:
             ```yaml
@@ -119,9 +119,9 @@ class ReferenceExtension(Extension):
         """
         if isinstance(value, list):
             for item in value:
-                self._env[item] = creator_object
+                self._env[item] = model_instance
         else:
-            self._env[value] = creator_object
+            self._env[value] = model_instance
 
     def value(self, key) -> "ModelInstance":
         """Return the CreatorObject that is stored at `key`.
@@ -136,11 +136,12 @@ class ReferenceExtension(Extension):
         attribute = None
         if len(keys) == 2:
             key, attribute = keys
-        creator_object = self._env[key]
-        creator_object.instance.refresh_from_db()
+        model_instance = self._env[key]
+        if model_instance.instance:
+            model_instance.instance.refresh_from_db()
         if attribute:
-            return reduce(getattr, [creator_object.instance, *attribute.split(".")])
-        return creator_object
+            return reduce(getattr, [model_instance.instance, *attribute.split(".")])
+        return model_instance
 
 
 class GitContextExtension(Extension):
@@ -177,7 +178,7 @@ class GitContextExtension(Extension):
         slug = DesignBuilderConfig.context_repository
         self.context_repo = GitRepo(slug, object_creator.job_result)
 
-    def attribute(self, value, creator_object):
+    def attribute(self, value, model_instance):
         """Provide the attribute tag functionality for git_context.
 
         Args:
@@ -185,7 +186,7 @@ class GitContextExtension(Extension):
                 `data`. The `destination` field of the dictionary indicates the relative path to
                 store information in the git repo. The `data` field contains the information that
                 should be written to the git repository.
-            creator_object (CreatorObject): The object containing the data.
+            model_instance (CreatorObject): The object containing the data.
 
         Raises:
             DesignImplementationError: raised if a required field is missing from the attribute's dictionary.
