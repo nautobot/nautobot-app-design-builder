@@ -1,5 +1,3 @@
-
-
 from design_builder.context import context_file
 from design_builder.tests.designs.context import BaseContext
 

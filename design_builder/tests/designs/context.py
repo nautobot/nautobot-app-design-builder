@@ -1,5 +1,3 @@
-
-
 from design_builder.context import Context, context_file
 
 
