@@ -90,6 +90,10 @@ class TagField(ManyToManyField):
 
 
 class ManyToOneField(RelationshipField):
+    @property
+    def deferrable(self):
+        return False
+
     def set_value(self, value):
         if isinstance(value, Mapping):
             try:

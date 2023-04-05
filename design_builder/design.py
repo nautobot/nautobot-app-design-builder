@@ -14,7 +14,7 @@ from nautobot.extras.models import JobResult, Relationship
 from design_builder.errors import DesignImplementationError, DesignValidationError
 from design_builder.ext import GitContextExtension, ReferenceExtension
 from design_builder.logging import LoggingMixin
-from design_builder.fields import Field, OneToOneField, RelationshipField, ManyToOneField, CustomRelationshipField
+from design_builder.fields import Field, OneToOneField, ManyToOneField
 
 
 class Journal:
@@ -207,13 +207,11 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         for field_name, field in self.instance_fields.items():
             if field_name in self.attributes:
                 value = self.attributes.pop(field_name)
-                if isinstance(field, ManyToOneField):
-                    field.set_value(self.creator.resolve_values(value))
-                elif isinstance(field, RelationshipField) or isinstance(field, CustomRelationshipField):
+                if field.deferrable:
                     self.deferred.append(field_name)
-                    self.deferred_attributes[field_name] = value
+                    self.deferred_attributes[field_name] = self.creator.resolve_values(value)
                 else:
-                    self.attributes[field_name] = value
+                    field.set_value(value)
             elif (
                 hasattr(self.relationship_manager, "field")
                 and (isinstance(field, OneToOneField) or isinstance(field, ManyToOneField))
@@ -222,16 +220,8 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 field.set_value(self.relationship_manager.instance)
 
         for key, value in self.attributes.items():
-            try:
-                self.instance_fields[key].set_value(value)
-            except KeyError:
-                # This needs some explaining. Sometimes things can
-                # be set that aren't fields (like prefix on a Prefix object).
-                # These are helper properties that aren't actual fields. So,
-                # if there isn't a field with the attribute name, we look
-                # for a property to set
-                if hasattr(self.instance, key):
-                    setattr(self.instance, key, value)
+            if hasattr(self.instance, key):
+                setattr(self.instance, key, value)
 
         for key, value in self.custom_fields.items():
             self.set_custom_field(key, value)
