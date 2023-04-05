@@ -4,7 +4,7 @@ import yaml
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.test import TestCase
-from nautobot.dcim.models import Device, DeviceType, Interface, Manufacturer, Region, Site
+from nautobot.dcim.models import Device, DeviceType, Interface, Manufacturer, Region, Site, Cable
 from nautobot.extras.choices import RelationshipTypeChoices
 from nautobot.extras.models import (
     ConfigContext,
@@ -332,7 +332,7 @@ secrets_groups:
         "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
 """
 
-INPUT_COMPLEX_DESIGN = """
+INPUT_COMPLEX_DESIGN1 = """
 manufacturers:
   - "name": "manufacturer"
 
@@ -461,6 +461,51 @@ cables:
       "termination_a": "!ref:spine3_to_leaf2"
       "termination_b": "!ref:leaf2_to_spine3"
       "status__name": "Planned"
+"""
+
+INPUT_COMPLEX_DESIGN2 = """
+manufacturers:
+  - "name": "manufacturer"
+
+device_types:
+  - "manufacturer__name": "manufacturer"
+    "model": "model name"
+    "u_height": 1
+
+device_roles:
+  - "name": "EVPN Leaf"
+
+sites:
+  - "name": "site"
+    "status__name": "Active"
+
+devices:
+  - "!create_or_update:name": leaf1
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Leaf"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet33/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": "lag1"
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet34/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": "lag2"
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet35/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": "lag3"
+        "status__name": "Active"
+      - name: "PortChannel1"
+        type: lag
+        status__name: "Active"
+        description: "MLAG"
+        mtu: 9214
+        member_interfaces:
+          - "!ref:lag1"
+          - "!ref:lag2"
 """
 
 
@@ -620,5 +665,35 @@ class TestProvisioner(TestCase):
             self.assertEqual(1, len(SecretsGroup.objects.all()))
             self.assertEqual(2, len(SecretsGroupAssociation.objects.all()))
 
-    def test_complex_design(self):
-        self.implement_design(INPUT_COMPLEX_DESIGN)
+    def test_complex_design1(self):
+        self.implement_design(INPUT_COMPLEX_DESIGN1)
+        devices = {}
+        for role in ["leaf", "spine"]:
+            for id in [1, 2, 3]:
+                if role == "leaf" and id == 3:
+                    continue
+                device = Device.objects.get(name=f"{role}{id}")
+                devices[device.name] = device
+
+        cables = Cable.objects.all().order_by("_termination_a_device__name")
+        self.assertEqual(6, len(cables))
+        self.assertEqual(cables[0].termination_a.device, devices["spine1"])
+        self.assertEqual(cables[0].termination_b.device, devices["leaf1"])
+        self.assertEqual(cables[1].termination_a.device, devices["spine1"])
+        self.assertEqual(cables[1].termination_b.device, devices["leaf2"])
+        self.assertEqual(cables[2].termination_a.device, devices["spine2"])
+        self.assertEqual(cables[2].termination_b.device, devices["leaf1"])
+        self.assertEqual(cables[3].termination_a.device, devices["spine2"])
+        self.assertEqual(cables[3].termination_b.device, devices["leaf2"])
+        self.assertEqual(cables[4].termination_a.device, devices["spine3"])
+        self.assertEqual(cables[4].termination_b.device, devices["leaf1"])
+        self.assertEqual(cables[5].termination_a.device, devices["spine3"])
+        self.assertEqual(cables[5].termination_b.device, devices["leaf2"])
+
+    def test_complex_design2(self):
+        self.implement_design(INPUT_COMPLEX_DESIGN2)
+        device = Device.objects.first()
+        interfaces = device.interfaces.filter(name__startswith="Ethernet")
+        mlag = device.interfaces.get(name="PortChannel1")
+        self.assertEqual(mlag.member_interfaces.all()[0], interfaces[0])
+        self.assertEqual(mlag.member_interfaces.all()[1], interfaces[1])
