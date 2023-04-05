@@ -675,7 +675,7 @@ class TestProvisioner(TestCase):
                 device = Device.objects.get(name=f"{role}{i}")
                 devices[device.name] = device
 
-        cables = Cable.objects.all().order_by("_termination_a_device__name")
+        cables = Cable.objects.all().order_by("_termination_a_device__name", "_termination_b_device__name")
         self.assertEqual(6, len(cables))
         self.assertEqual(cables[0].termination_a.device, devices["spine1"])
         self.assertEqual(cables[0].termination_b.device, devices["leaf1"])
