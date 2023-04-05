@@ -143,16 +143,18 @@ def designs_in_directory(
     def is_design(obj):
         try:
             return issubclass(obj, DesignJob) and obj is not DesignJob and not inspect.isabstract(obj)
-        except TypeError:
+        except TypeError as ex:
+            print(f"{obj} is not a design: {ex}")
             return False
 
     if reload_modules:
         for key in list(sys.modules.keys()):
             if key.startswith(package_name):
                 del sys.modules[key]
-
+    print("Attempting to discover modules in", path)
     for _, discovered_module_name, _ in pkgutil.iter_modules([path]):
         if module_name and discovered_module_name != module_name:
+            print(f"Skipping {discovered_module_name}, it doesn't match {module_name}")
             continue
         try:
             module = load_design_module(path, package_name, discovered_module_name)
