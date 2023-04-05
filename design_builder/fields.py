@@ -1,4 +1,5 @@
-from abc import ABC, abstractmethod, abstractproperty
+"""Model fields."""
+from abc import ABC, abstractmethod
 from typing import Mapping, Type
 
 from django.db.models.base import Model
@@ -17,84 +18,112 @@ from design_builder.errors import DesignImplementationError
 
 
 class ModelField(ABC):
+    """This represents any type of field (attribute or relationship) on a Nautobot model."""
+
     @abstractmethod
     def set_value(self, value):
-        pass
+        """Method used to set the value of the field.
 
-    @abstractproperty
-    def deferrable(self):
-        pass
-
-
-class SimpleField(ModelField):
-    def __init__(self, model_instance, field: DjangoField):
-        self.instance = model_instance
-        self.field = field
-
-    def set_value(self, value):
-        setattr(self.instance.instance, self.field.name, value)
+        Args:
+            value (Any): Value that should be set on the model field.
+        """
 
     @property
+    @abstractmethod
     def deferrable(self):
-        return False
+        """Determine whether the saving of this field should be deferred."""
 
 
-class RelationshipField(SimpleField):
+class BaseModelField(ModelField):
+    """BaseModelFields are backed by django.db.models.fields.Field."""
+
     field: DjangoField
     model: Type[object]
 
     def __init__(self, model_instance, field: DjangoField):
+        """Create a base model field.
+
+        Args:
+            model_instance (ModelInstance): Model instance which this field belongs to.
+            field (DjangoField): Database field to be managed.
+        """
         self.instance = model_instance
         self.field = field
-
         self.model = field.related_model
 
     @property
-    def deferrable(self):
+    def deferrable(self):  # noqa:D102
+        return False
+
+
+class SimpleField(BaseModelField):
+    """A field that accepts a scalar value."""
+
+    def set_value(self, value):  # noqa:D102
+        setattr(self.instance.instance, self.field.name, value)
+
+
+class RelationshipField(BaseModelField):
+    """Field that represents a relationship to another model."""
+
+    @property
+    def deferrable(self):  # noqa:D102
         return True
 
 
 class OneToOneField(RelationshipField):
-    def set_value(self, value):
+    """One to one relationship field."""
+
+    def set_value(self, value):  # noqa:D102
         setattr(self.instance.instance, self.field.name, value)
 
 
 class OneToManyField(RelationshipField):
-    def set_value(self, value):
+    """One to many relationship field."""
+
+    def set_value(self, value):  # noqa:D102
         getattr(self.instance.instance, self.field.name).add(value, bulk=False)
         self.instance.instance.validated_save()
         value.validated_save()
 
 
 class ManyToManyField(RelationshipField):
-    def __init__(self, model_instance, field: DjangoField):
+    """Many to many relationship field."""
+
+    def __init__(self, model_instance, field: DjangoField):  # noqa:D102
         super().__init__(model_instance, field)
         if hasattr(field.remote_field, "through"):
             through = field.remote_field.through
             if not through._meta.auto_created:
                 self.model = through
 
-    def set_value(self, value):
+    def set_value(self, value):  # noqa:D102
         getattr(self.instance.instance, self.field.name).add(value)
 
 
 class GenericRelationField(RelationshipField):
-    def set_value(self, value):
+    """Generic relationship field."""
+
+    def set_value(self, value):  # noqa:D102
         getattr(self.instance.instance, self.field.name).add(value)
 
 
 class TagField(ManyToManyField):
-    def __init__(self, model_instance, field: DjangoField):
+    """Taggit field."""
+
+    def __init__(self, model_instance, field: DjangoField):  # noqa:D102
         super().__init__(model_instance, field)
         self.model = field.remote_field.model
 
 
 class ManyToOneField(RelationshipField):
+    """Many to one relationship field."""
+
     @property
-    def deferrable(self):
+    def deferrable(self):  # noqa:D102
         return False
 
-    def set_value(self, value):
+    def set_value(self, value):  # noqa:D102
         if isinstance(value, Mapping):
             try:
                 value = self.model.objects.get(**value)  # pylint: disable=not-a-mapping
@@ -139,10 +168,10 @@ class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-met
             self.model = relationship.source_type.model_class()
 
     @property
-    def deferrable(self):
+    def deferrable(self):  # noqa:D102
         return True
 
-    def set_value(self, value: BaseModel):
+    def set_value(self, value: BaseModel):  # noqa:D102
         """Add an association between the created object and the given value.
 
         Args:
@@ -165,22 +194,26 @@ class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-met
         )
 
 
-def Field(arg1, arg2) -> ModelField:
+def field_factory(arg1, arg2) -> ModelField:
+    """Factory function to create a ModelField."""
     if isinstance(arg2, Relationship):
         return CustomRelationshipField(arg1, arg2)
 
+    field = None
     if not arg2.is_relation:
-        return SimpleField(arg1, arg2)
-    if isinstance(arg2, GenericRelation):
-        return GenericRelationField(arg1, arg2)
-    if isinstance(arg2, TaggableManager):
-        return TagField(arg1, arg2)
-    if arg2.one_to_one:
-        return OneToOneField(arg1, arg2)
-    if arg2.one_to_many:
-        return OneToManyField(arg1, arg2)
-    if arg2.many_to_many:
-        return ManyToManyField(arg1, arg2)
-    if arg2.many_to_one:
-        return ManyToOneField(arg1, arg2)
-    raise DesignImplementationError(f"Cannot manufacture field for {type(arg2)}, {arg2} {arg2.is_relation}")
+        field = SimpleField(arg1, arg2)
+    elif isinstance(arg2, GenericRelation):
+        field = GenericRelationField(arg1, arg2)
+    elif isinstance(arg2, TaggableManager):
+        field = TagField(arg1, arg2)
+    elif arg2.one_to_one:
+        field = OneToOneField(arg1, arg2)
+    elif arg2.one_to_many:
+        field = OneToManyField(arg1, arg2)
+    elif arg2.many_to_many:
+        field = ManyToManyField(arg1, arg2)
+    elif arg2.many_to_one:
+        field = ManyToOneField(arg1, arg2)
+    else:
+        raise DesignImplementationError(f"Cannot manufacture field for {type(arg2)}, {arg2} {arg2.is_relation}")
+    return field

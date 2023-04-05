@@ -270,6 +270,7 @@ class Context(_Node, LoggingMixin):
 
     @classmethod
     def base_context_files(cls):
+        """Calculate the complete list of context files for the class."""
         bases = list(inspect.getmro(cls))
         bases.reverse()
 

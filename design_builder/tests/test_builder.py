@@ -669,10 +669,10 @@ class TestProvisioner(TestCase):
         self.implement_design(INPUT_COMPLEX_DESIGN1)
         devices = {}
         for role in ["leaf", "spine"]:
-            for id in [1, 2, 3]:
-                if role == "leaf" and id == 3:
+            for i in [1, 2, 3]:
+                if role == "leaf" and i == 3:
                     continue
-                device = Device.objects.get(name=f"{role}{id}")
+                device = Device.objects.get(name=f"{role}{i}")
                 devices[device.name] = device
 
         cables = Cable.objects.all().order_by("_termination_a_device__name")

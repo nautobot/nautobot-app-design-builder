@@ -14,7 +14,7 @@ from nautobot.extras.models import JobResult, Relationship
 from design_builder.errors import DesignImplementationError, DesignValidationError
 from design_builder.ext import GitContextExtension, ReferenceExtension
 from design_builder.logging import LoggingMixin
-from design_builder.fields import Field, OneToOneField, ManyToOneField
+from design_builder.fields import field_factory, OneToOneField, ManyToOneField
 
 
 class Journal:
@@ -123,7 +123,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.instance_fields = {}
         for direction in Relationship.objects.get_for_model(model_class):
             for relationship in direction:
-                self.instance_fields[relationship.slug] = Field(self, relationship)
+                self.instance_fields[relationship.slug] = field_factory(self, relationship)
 
         self._parse_attributes()
 
@@ -133,7 +133,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.model_fields = {field.name: field for field in model_class._meta.get_fields()}
         field: DjangoField
         for field in self.instance._meta.get_fields():
-            self.instance_fields[field.name] = Field(self, field)
+            self.instance_fields[field.name] = field_factory(self, field)
 
         self._update_fields()
 
@@ -214,7 +214,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     field.set_value(value)
             elif (
                 hasattr(self.relationship_manager, "field")
-                and (isinstance(field, OneToOneField) or isinstance(field, ManyToOneField))
+                and (isinstance(field, (OneToOneField, ManyToOneField)))
                 and self.model_fields[field_name] == self.relationship_manager.field
             ):
                 field.set_value(self.relationship_manager.instance)
@@ -227,6 +227,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             self.set_custom_field(key, value)
 
     def save(self):
+        """Save the model instance to the database."""
         self.instance.full_clean()
         self.instance.save()
         self.instance.refresh_from_db()
@@ -360,6 +361,7 @@ class Builder(LoggingMixin):
             raise ex
 
     def resolve_value(self, value):
+        """Resolve a value using extensions, if needed."""
         if isinstance(value, str) and value.startswith("!"):
             (action, arg) = value.lstrip("!").split(":", 1)
             extn = self.get_extension("value", action)
@@ -370,14 +372,22 @@ class Builder(LoggingMixin):
         return value
 
     def resolve_values(self, value):
+        """Resolve a value, or values, using extensions.
+
+        Args:
+            value (Union[list,dict,str]): The value to attempt to resolve.
+
+        Returns:
+            Any: The resolved value.
+        """
         if isinstance(value, str):
             value = self.resolve_value(value)
         elif isinstance(value, list):
-            for i, v in enumerate(value):
-                value[i] = self.resolve_value(v)
+            for i, item in enumerate(value):
+                value[i] = self.resolve_value(item)
         elif isinstance(value, dict):
-            for k, v in value.items():
-                value[k] = self.resolve_value(v)
+            for k, item in value.items():
+                value[k] = self.resolve_value(item)
         return value
 
     def _create_objects(self, model_cls, objects):
