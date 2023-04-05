@@ -153,12 +153,14 @@ def designs_in_directory(
                 del sys.modules[key]
     print("Attempting to discover modules in", path)
     for _, discovered_module_name, _ in pkgutil.iter_modules([path]):
+        print(f"Discovered module name: {discovered_module_name}")
         if module_name and discovered_module_name != module_name:
             print(f"Skipping {discovered_module_name}, it doesn't match {module_name}")
             continue
         try:
             module = load_design_module(path, package_name, discovered_module_name)
         except Exception as ex:  # pylint:disable=broad-except
+            print(f"Unable to load module {discovered_module_name} from {path}: {ex}")
             local_logger.exception(f"Unable to load module {discovered_module_name} from {path}: {ex}")
             continue
         # Get all members of the module that are DesignJob subclasses
