@@ -102,7 +102,9 @@ class ManyToOneField(RelationshipField):
             except ObjectDoesNotExist:
                 query = ",".join([f'{k}="{v}"' for k, v in value.items()])
                 raise DesignImplementationError(f"Could not find {self.model.__name__}: {query}")
-        elif hasattr(value, "instance") or isinstance(value, Model):
+        elif hasattr(value, "instance"):
+            setattr(self.instance.instance, self.field.name, value.instance)
+        elif isinstance(value, Model):
             setattr(self.instance.instance, self.field.name, value)
         else:
             raise DesignImplementationError(

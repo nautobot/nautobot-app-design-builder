@@ -332,6 +332,137 @@ secrets_groups:
         "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
 """
 
+INPUT_COMPLEX_DESIGN = """
+manufacturers:
+  - "name": "manufacturer"
+
+device_types:
+  - "manufacturer__name": "manufacturer"
+    "model": "model name"
+    "u_height": 1
+
+device_roles:
+  - "name": "EVPN Leaf"
+  - "name": "EVPN Spine"
+
+sites:
+  - "name": "site"
+    "status__name": "Active"
+
+devices:
+  # Create Spine Switches
+  - "!create_or_update:name": "spine1"
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Spine"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet9/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine1_to_leaf1"
+      - "!create_or_update:name": "Ethernet25/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine1_to_leaf2"
+  - "!create_or_update:name": "spine2"
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Spine"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet9/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine2_to_leaf1"
+      - "!create_or_update:name": "Ethernet25/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine2_to_leaf2"
+  - "!create_or_update:name": "spine3"
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Spine"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet9/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine3_to_leaf1"
+      - "!create_or_update:name": "Ethernet25/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine3_to_leaf2"
+  - "!create_or_update:name": leaf1
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Leaf"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet33/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf1_to_spine1
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet34/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf1_to_spine2
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet35/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf1_to_spine3
+        "status__name": "Active"
+  - "!create_or_update:name": leaf2
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Leaf"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet33/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf2_to_spine1
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet34/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf2_to_spine2
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet35/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf2_to_spine3
+        "status__name": "Active"
+
+cables:
+    - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf1.id"
+      "!create_or_update:termination_b_id": "!ref:leaf1_to_spine1.id"
+      "termination_a": "!ref:spine1_to_leaf1"
+      "termination_b": "!ref:leaf1_to_spine1"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf1.id"
+      "!create_or_update:termination_b_id": "!ref:leaf1_to_spine2.id"
+      "termination_a": "!ref:spine2_to_leaf1"
+      "termination_b": "!ref:leaf1_to_spine2"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf1.id"
+      "!create_or_update:termination_b_id": "!ref:leaf1_to_spine3.id"
+      "termination_a": "!ref:spine3_to_leaf1"
+      "termination_b": "!ref:leaf1_to_spine3"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf2.id"
+      "!create_or_update:termination_b_id": "!ref:leaf2_to_spine1.id"
+      "termination_a": "!ref:spine1_to_leaf2"
+      "termination_b": "!ref:leaf2_to_spine1"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf2.id"
+      "!create_or_update:termination_b_id": "!ref:leaf2_to_spine2.id"
+      "termination_a": "!ref:spine2_to_leaf2"
+      "termination_b": "!ref:leaf2_to_spine2"
+      status__name: "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf2.id"
+      "!create_or_update:termination_b_id": "!ref:leaf2_to_spine3.id"
+      "termination_a": "!ref:spine3_to_leaf2"
+      "termination_b": "!ref:leaf2_to_spine3"
+      "status__name": "Planned"
+"""
+
 
 class TestProvisioner(TestCase):
     builder = None
@@ -488,3 +619,6 @@ class TestProvisioner(TestCase):
             self.assertEqual(2, len(Secret.objects.all()))
             self.assertEqual(1, len(SecretsGroup.objects.all()))
             self.assertEqual(2, len(SecretsGroupAssociation.objects.all()))
+
+    def test_complex_design(self):
+        self.implement_design(INPUT_COMPLEX_DESIGN)
