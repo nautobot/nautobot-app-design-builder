@@ -97,8 +97,8 @@ class TestBase(TestCase):
 
 class TestModuleLoading(TestBase):
     def test_load_design_package(self):
-        package_name = "design_builder_designs.sample_repo"
-        repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
+        package_name = "design_builder_designs.module_loading"
+        repo = self.get_repo(DATASOURCE_IDENTIFIER, "module-loading")
         package1 = load_design_package(os.path.join(repo.filesystem_path, "designs"), package_name)
         self.assertEqual(package_name, package1.__name__)
         self.assertIs(sys.modules[package_name], package1)
@@ -119,25 +119,25 @@ class TestModuleLoading(TestBase):
         self.assertRaises(ModuleNotFoundError, load_design_package, "/no/repo/here", package_name)
 
     def test_load_design_module(self):
-        package_name = "design_builder_designs.sample_repo"
-        repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
-        _create_file(os.path.join(repo.filesystem_path, "designs", "design.py"), DESIGN_FILE_1)
-        module1 = load_design_module(os.path.join(repo.filesystem_path, "designs"), package_name, "design")
+        package_name = "design_builder_designs.load_design_module"
+        repo = self.get_repo(DATASOURCE_IDENTIFIER, "load-design-module")
+        _create_file(os.path.join(repo.filesystem_path, "designs", "load_design_module.py"), DESIGN_FILE_1)
+        module1 = load_design_module(os.path.join(repo.filesystem_path, "designs"), package_name, "load_design_module")
         self.assertTrue(hasattr(module1, "Design1"), f"{package_name}.design.py should have a Design1 class")
         self.assertTrue(inspect.isclass(module1.Design1), "Design1 should be a class")
-        self.assertIn(f"{package_name}.design", sys.modules)
-        self.assertIs(sys.modules[f"{package_name}.design"], module1)
+        self.assertIn(f"{package_name}.load_design_module", sys.modules)
+        self.assertIs(sys.modules[f"{package_name}.load_design_module"], module1)
 
         # load_design_module should always return a new/reloaded module
-        module2 = load_design_module(os.path.join(repo.filesystem_path, "designs"), package_name, "design")
+        module2 = load_design_module(os.path.join(repo.filesystem_path, "designs"), package_name, "load_design_module")
         self.assertIsNot(module1, module2)
         self.assertIs(sys.modules[f"{package_name}.design"], module2)
 
         del sys.modules[package_name]
 
     def test_module_not_found(self):
-        package_name = "design_builder_designs.sample_repo"
-        repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
+        package_name = "design_builder_designs.module_not_found"
+        repo = self.get_repo(DATASOURCE_IDENTIFIER, "module-not-found")
         self.assertRaises(
             ModuleNotFoundError,
             load_design_module,
@@ -151,43 +151,67 @@ class TestModuleLoading(TestBase):
 
 class TestDesignDiscovery(TestBase):
     def test_single_design_in_one_file(self):
-        repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
-        _create_file(os.path.join(repo.filesystem_path, "designs", "design.py"), DESIGN_FILE_1)
+        repo = self.get_repo(DATASOURCE_IDENTIFIER, "single-design-one-file")
+        _create_file(os.path.join(repo.filesystem_path, "designs", "single_design_one_file.py"), DESIGN_FILE_1)
         want_designs = [
-            ("design_builder_designs.sample_repo.design", "Design1", os.path.join(repo.filesystem_path, "designs"))
+            (
+                "design_builder_designs.single_design_one_file.single_design_one_file",
+                "Design1",
+                os.path.join(repo.filesystem_path, "designs"),
+            )
         ]
         got_designs = list(designs_in_repository(repo))
         self.assertEqual(want_designs, got_designs)
 
     def test_multiple_designs_in_one_file(self):
-        repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
-        _create_file(os.path.join(repo.filesystem_path, "designs", "design.py"), DESIGN_FILE_2_3)
+        repo = self.get_repo(DATASOURCE_IDENTIFIER, "multiple-designs-one-file")
+        _create_file(os.path.join(repo.filesystem_path, "designs", "multiple_designs_one_file.py"), DESIGN_FILE_2_3)
         print("Files in directory:", os.listdir(os.path.join(repo.filesystem_path, "designs")))
         want_designs = [
-            ("design_builder_designs.sample_repo.design", "Design2", os.path.join(repo.filesystem_path, "designs")),
-            ("design_builder_designs.sample_repo.design", "Design3", os.path.join(repo.filesystem_path, "designs")),
+            (
+                "design_builder_designs.multiple_designs_one_file.multiple_designs_one_file",
+                "Design2",
+                os.path.join(repo.filesystem_path, "designs"),
+            ),
+            (
+                "design_builder_designs.multiple_designs_one_file.multiple_designs_one_file",
+                "Design3",
+                os.path.join(repo.filesystem_path, "designs"),
+            ),
         ]
         got_designs = list(designs_in_repository(repo))
         self.assertEqual(want_designs, got_designs)
 
     def test_multiple_designs_in_multiple_files(self):
-        repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
-        _create_file(os.path.join(repo.filesystem_path, "designs", "design1.py"), DESIGN_FILE_1)
-        _create_file(os.path.join(repo.filesystem_path, "designs", "design3.py"), DESIGN_FILE_3)
+        repo = self.get_repo(DATASOURCE_IDENTIFIER, "multiple-designs-multiple-files")
+        _create_file(
+            os.path.join(repo.filesystem_path, "designs", "multiple_designs_multiple_files1.py"), DESIGN_FILE_1
+        )
+        _create_file(
+            os.path.join(repo.filesystem_path, "designs", "multiple_designs_multiple_files2.py"), DESIGN_FILE_3
+        )
         want_designs = [
-            ("design_builder_designs.sample_repo.design1", "Design1", os.path.join(repo.filesystem_path, "designs")),
-            ("design_builder_designs.sample_repo.design3", "Design3", os.path.join(repo.filesystem_path, "designs")),
+            (
+                "design_builder_designs.multiple_designs_multiple_files.multiple_designs_multiple_files1",
+                "Design1",
+                os.path.join(repo.filesystem_path, "designs"),
+            ),
+            (
+                "design_builder_designs.multiple_designs_multiple_files.multiple_designs_multiple_files2",
+                "Design3",
+                os.path.join(repo.filesystem_path, "designs"),
+            ),
         ]
         got_designs = list(designs_in_repository(repo))
         self.assertEqual(want_designs, got_designs)
 
     def test_single_errored_design_in_one_file(self):
-        repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
-        _create_file(os.path.join(repo.filesystem_path, "designs", "design.py"), DESIGN_FILE_4)
+        repo = self.get_repo(DATASOURCE_IDENTIFIER, "single-errored-design")
+        _create_file(os.path.join(repo.filesystem_path, "designs", "single_errored_design.py"), DESIGN_FILE_4)
         want_designs = []
         mock_logger = Mock()
         got_designs = list(designs_in_repository(repo, local_logger=mock_logger))
         self.assertEqual(want_designs, got_designs)
 
         got_args = mock_logger.exception.call_args[0]
-        self.assertTrue(got_args[0].startswith(f"Unable to load module design from {repo.filesystem_path}/designs:"))
+        self.assertIn(f"Unable to load module single_errored_design from {repo.filesystem_path}/designs:", got_args[0])
