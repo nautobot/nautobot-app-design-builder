@@ -131,7 +131,7 @@ class TestModuleLoading(TestBase):
         # load_design_module should always return a new/reloaded module
         module2 = load_design_module(os.path.join(repo.filesystem_path, "designs"), package_name, "load_design_module")
         self.assertIsNot(module1, module2)
-        self.assertIs(sys.modules[f"{package_name}.design"], module2)
+        self.assertIs(sys.modules[f"{package_name}.load_design_module"], module2)
 
         del sys.modules[package_name]
 
