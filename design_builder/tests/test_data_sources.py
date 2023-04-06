@@ -51,6 +51,7 @@ DATASOURCE_IDENTIFIER = "extras.jobs"
 
 def _create_file(path, content):
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    print("Creating file", path)
     with open(path, "w", encoding="utf8") as file:
         file.write(content)
 
@@ -161,6 +162,7 @@ class TestDesignDiscovery(TestBase):
     def test_multiple_designs_in_one_file(self):
         repo = self.get_repo(DATASOURCE_IDENTIFIER, "sample-repo")
         _create_file(os.path.join(repo.filesystem_path, "designs", "design.py"), DESIGN_FILE_2_3)
+        print("Files in directory:", os.listdir(os.path.join(repo.filesystem_path, "designs")))
         want_designs = [
             ("design_builder_designs.sample_repo.design", "Design2", os.path.join(repo.filesystem_path, "designs")),
             ("design_builder_designs.sample_repo.design", "Design3", os.path.join(repo.filesystem_path, "designs")),
