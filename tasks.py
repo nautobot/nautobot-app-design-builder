@@ -41,7 +41,7 @@ namespace.configure(
         "design_builder": {
             "nautobot_ver": "latest",
             "project_name": "design_builder",
-            "python_ver": "3.7",
+            "python_ver": "3.8",
             "local": False,
             "compose_dir": os.path.join(os.path.dirname(__file__), "development"),
             "compose_files": [
