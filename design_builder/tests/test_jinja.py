@@ -28,7 +28,6 @@ class TestJinja(unittest.TestCase):
         want = "    - foo1: 1\n      foo2: 2\n      foo3: 3\n"
         template = "{% for item in items %}\n    - {%+ indent%}{{ item | to_yaml }}{%endindent%}\n{%endfor%}"
         got = env.from_string(template).render({"items": [items]})
-        print(f"start{got}end")
         self.assertEqual(want, got)
 
     def test_simple_render(self):
