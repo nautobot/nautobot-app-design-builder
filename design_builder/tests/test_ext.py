@@ -11,7 +11,7 @@ from design_builder.design import Builder
 from design_builder.ext import NextPrefixExtension
 
 
-def create_prefix(prefix, **kwargs):
+def create_prefix(prefix, **kwargs):  # pylint:disable=missing-function-docstring
     prefix, _ = Prefix.objects.get_or_create(
         prefix=prefix,
         defaults={
@@ -35,7 +35,7 @@ class TestNextPrefixExtension(TestCase):
     def test_next_prefix_lookup(self):
         ext = NextPrefixExtension(None)
         want = "10.0.4.0/24"
-        got = ext._get_next([self.prefixes[0]], "24")
+        got = ext._get_next([self.prefixes[0]], "24")  # pylint:disable=protected-access
         self.assertEqual(want, got)
 
     def test_next_prefix_lookup_from_full_prefix(self):
@@ -48,7 +48,7 @@ class TestNextPrefixExtension(TestCase):
 
         ext = NextPrefixExtension(None)
         want = "10.0.2.0/24"
-        got = ext._get_next(prefixes, "24")
+        got = ext._get_next(prefixes, "24")  # pylint:disable=protected-access
         self.assertEqual(want, got)
 
     def test_creation(self):
@@ -73,7 +73,7 @@ class TestNextPrefixExtension(TestCase):
         """
         design = yaml.safe_load(design_template)
         object_creator = Builder()
-        object_creator.implement_design(design)
+        object_creator.implement_design(design, commit=True)
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.1.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.2.0/24").exists())
@@ -91,5 +91,5 @@ class TestNextPrefixExtension(TestCase):
         self.assertFalse(Prefix.objects.filter(prefix="10.0.2.0/24").exists())
         design = yaml.safe_load(design_template)
         object_creator = Builder()
-        object_creator.implement_design(design)
+        object_creator.implement_design(design, commit=True)
         self.assertTrue(Prefix.objects.filter(prefix="10.0.2.0/24").exists())
