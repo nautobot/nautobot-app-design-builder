@@ -237,7 +237,7 @@ class NextPrefixExtension(Extension):
 
     attribute_tag = "next_prefix"
 
-    def attribute(self, value: dict, **_) -> None:
+    def attribute(self, value: dict, creator_object) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
 
         Args:
@@ -275,7 +275,7 @@ class NextPrefixExtension(Extension):
         if len(value) == 0:
             raise DesignImplementationError("no search criteria specified for prefixes")
 
-        q = Q(**value)
+        query = Q(**value)
         if "prefix" in value:
             prefixes_str = value.pop("prefix")
             prefix_q = []
@@ -289,12 +289,12 @@ class NextPrefixExtension(Extension):
                         broadcast=prefix.broadcast,
                     )
                 )
-            q = Q(**value) & reduce(operator.or_, prefix_q)
+            query = Q(**value) & reduce(operator.or_, prefix_q)
 
-        prefixes = Prefix.objects.filter(q)
+        prefixes = Prefix.objects.filter(query)
         return "prefix", self._get_next(prefixes, length)
 
-    def _get_next(self, prefixes, length) -> str:
+    def _get_next(self, prefixes, length) -> str:  # pylint:disable=no-self-use
         """Return the next available prefix from a parent prefix.
 
         Args:
