@@ -362,7 +362,7 @@ def _represent_template(dumper, tpl):
 
 representers = {
     _DictNode: yaml.representer.Representer.represent_dict,
-    _ListNode: yaml.representer.Representer.represent_dict,
+    _ListNode: yaml.representer.Representer.represent_list,
     _TemplateNode: _represent_template,
     Context: _represent_context,
 }

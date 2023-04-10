@@ -77,6 +77,17 @@ tenant__slug: small-sites
                     }
                 ),
             },
+            {
+                "name": "Lists",
+                "input": Context.load(
+                    {"device_type": {"interfacetemplates": [{"name": "Network", "type": "100base-t"}]}}
+                ),
+                "template": "{{ context.device_type | to_yaml }}",
+                "want": """interfacetemplates:
+- name: Network
+  type: 100base-t
+""",
+            },
         ]
 
         for test_case in test_cases:
