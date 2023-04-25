@@ -2,6 +2,8 @@
 import unittest
 
 from design_builder.context import Context, _DictNode
+from design_builder.tests.designs.context import BaseContext
+from design_builder.tests.designs.sub_designs import SubDesignContext
 
 
 class TestContext(unittest.TestCase):
@@ -213,3 +215,17 @@ class TestRootNode(unittest.TestCase):
 
         got = _DictNode(None, data)
         self.assertEqual(want, got)
+
+
+class TestContextDecorator(unittest.TestCase):
+    def test_context_file(self):
+        base_files = [
+            (BaseContext, "base_context_file"),
+        ]
+
+        sub_design_files = [
+            (BaseContext, "base_context_file"),
+            (SubDesignContext, "sub_design_context_file"),
+        ]
+        self.assertEqual(base_files, BaseContext.base_context_files())
+        self.assertEqual(sub_design_files, SubDesignContext.base_context_files())

@@ -4,9 +4,17 @@ import yaml
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.test import TestCase
-from nautobot.dcim.models import Device, DeviceType, Interface, Manufacturer, Region, Site
+from nautobot.dcim.models import Device, DeviceType, Interface, Manufacturer, Region, Site, Cable
 from nautobot.extras.choices import RelationshipTypeChoices
-from nautobot.extras.models import ConfigContext, Relationship, RelationshipAssociation, Tag
+from nautobot.extras.models import (
+    ConfigContext,
+    Relationship,
+    RelationshipAssociation,
+    Tag,
+    Secret,
+    SecretsGroup,
+    SecretsGroupAssociation,
+)
 from nautobot.ipam.models import VLAN, IPAddress, Prefix
 
 from design_builder.design import Builder
@@ -275,6 +283,231 @@ devices:
         status__name: "Active"
 """
 
+INPUT_REF_FOR_CREATE_OR_UPDATE = """
+# Secrets & Secrets Groups
+secrets:
+- "!create_or_update:name": "Device username"
+  "description": "Username for network devices"
+  "provider": "environment-variable"
+  "parameters": {"variable": "NAUTOBOT_NAPALM_USERNAME"}
+  "!ref": "device_username"
+- "!create_or_update:name": "Device password"
+  "description": "Password for network devices"
+  "provider": "environment-variable"
+  "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
+  "!ref": "device_password"
+
+secrets_groups:
+- "!create_or_update:name": "Device credentials"
+  "!ref": "device_credentials"
+
+secrets_group_associations:
+- "!create_or_update:group": "!ref:device_credentials"
+  "!create_or_update:secret": "!ref:device_username"
+  "access_type": "Generic"
+  "secret_type": "username"
+- "!create_or_update:group": "!ref:device_credentials"
+  "!create_or_update:secret": "!ref:device_password"
+  "access_type": "Generic"
+  "secret_type": "password"
+"""
+
+INPUT_REF_FOR_CREATE_OR_UPDATE1 = """
+secrets_groups:
+- "!create_or_update:name": "Device credentials"
+  secrets:
+    - access_type: "Generic"
+      secret_type: "username"
+      secret:
+        "name": "Device username"
+        "description": "Username for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_USERNAME"}
+    - access_type: "Generic"
+      secret_type: "password"
+      secret:
+        "name": "Device password"
+        "description": "Password for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
+"""
+
+INPUT_COMPLEX_DESIGN1 = """
+manufacturers:
+  - "name": "manufacturer"
+
+device_types:
+  - "manufacturer__name": "manufacturer"
+    "model": "model name"
+    "u_height": 1
+
+device_roles:
+  - "name": "EVPN Leaf"
+  - "name": "EVPN Spine"
+
+sites:
+  - "name": "site"
+    "status__name": "Active"
+
+devices:
+  # Create Spine Switches
+  - "!create_or_update:name": "spine1"
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Spine"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet9/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine1_to_leaf1"
+      - "!create_or_update:name": "Ethernet25/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine1_to_leaf2"
+  - "!create_or_update:name": "spine2"
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Spine"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet9/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine2_to_leaf1"
+      - "!create_or_update:name": "Ethernet25/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine2_to_leaf2"
+  - "!create_or_update:name": "spine3"
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Spine"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet9/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine3_to_leaf1"
+      - "!create_or_update:name": "Ethernet25/3"
+        "type": "100gbase-x-qsfp28"
+        "status__name": "Active"
+        "!ref": "spine3_to_leaf2"
+  - "!create_or_update:name": leaf1
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Leaf"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet33/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf1_to_spine1
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet34/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf1_to_spine2
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet35/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf1_to_spine3
+        "status__name": "Active"
+  - "!create_or_update:name": leaf2
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Leaf"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet33/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf2_to_spine1
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet34/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf2_to_spine2
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet35/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": leaf2_to_spine3
+        "status__name": "Active"
+
+cables:
+    - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf1.id"
+      "!create_or_update:termination_b_id": "!ref:leaf1_to_spine1.id"
+      "termination_a": "!ref:spine1_to_leaf1"
+      "termination_b": "!ref:leaf1_to_spine1"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf1.id"
+      "!create_or_update:termination_b_id": "!ref:leaf1_to_spine2.id"
+      "termination_a": "!ref:spine2_to_leaf1"
+      "termination_b": "!ref:leaf1_to_spine2"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf1.id"
+      "!create_or_update:termination_b_id": "!ref:leaf1_to_spine3.id"
+      "termination_a": "!ref:spine3_to_leaf1"
+      "termination_b": "!ref:leaf1_to_spine3"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf2.id"
+      "!create_or_update:termination_b_id": "!ref:leaf2_to_spine1.id"
+      "termination_a": "!ref:spine1_to_leaf2"
+      "termination_b": "!ref:leaf2_to_spine1"
+      "status__name": "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf2.id"
+      "!create_or_update:termination_b_id": "!ref:leaf2_to_spine2.id"
+      "termination_a": "!ref:spine2_to_leaf2"
+      "termination_b": "!ref:leaf2_to_spine2"
+      status__name: "Planned"
+    - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf2.id"
+      "!create_or_update:termination_b_id": "!ref:leaf2_to_spine3.id"
+      "termination_a": "!ref:spine3_to_leaf2"
+      "termination_b": "!ref:leaf2_to_spine3"
+      "status__name": "Planned"
+"""
+
+INPUT_COMPLEX_DESIGN2 = """
+manufacturers:
+  - "name": "manufacturer"
+
+device_types:
+  - "manufacturer__name": "manufacturer"
+    "model": "model name"
+    "u_height": 1
+
+device_roles:
+  - "name": "EVPN Leaf"
+
+sites:
+  - "name": "site"
+    "status__name": "Active"
+
+devices:
+  - "!create_or_update:name": leaf1
+    "status__name": "Active"
+    "site__name": "site"
+    "device_role__name": "EVPN Leaf"
+    "device_type__model": "model name"
+    "interfaces":
+      - "!create_or_update:name": "Ethernet33/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": "lag1"
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet34/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": "lag2"
+        "status__name": "Active"
+      - "!create_or_update:name": "Ethernet35/1"
+        "type": "100gbase-x-qsfp28"
+        "!ref": "lag3"
+        "status__name": "Active"
+      - name: "PortChannel1"
+        type: lag
+        status__name: "Active"
+        description: "MLAG"
+        mtu: 9214
+        member_interfaces:
+          - "!ref:lag1"
+          - "!ref:lag2"
+"""
+
 
 class TestProvisioner(TestCase):
     builder = None
@@ -423,3 +656,44 @@ class TestProvisioner(TestCase):
     def test_simple_design_roll_back(self, roll_back: Mock):
         self.implement_design(INPUT_CREATE_OBJECTS, False)
         roll_back.assert_called()
+
+    def test_create_or_update_with_ref(self):
+        # run it twice to make sure it is idempotent
+        for _ in range(2):
+            self.implement_design(INPUT_REF_FOR_CREATE_OR_UPDATE)
+            self.assertEqual(2, len(Secret.objects.all()))
+            self.assertEqual(1, len(SecretsGroup.objects.all()))
+            self.assertEqual(2, len(SecretsGroupAssociation.objects.all()))
+
+    def test_complex_design1(self):
+        self.implement_design(INPUT_COMPLEX_DESIGN1)
+        devices = {}
+        for role in ["leaf", "spine"]:
+            for i in [1, 2, 3]:
+                if role == "leaf" and i == 3:
+                    continue
+                device = Device.objects.get(name=f"{role}{i}")
+                devices[device.name] = device
+
+        cables = Cable.objects.all().order_by("_termination_a_device__name", "_termination_b_device__name")
+        self.assertEqual(6, len(cables))
+        self.assertEqual(cables[0].termination_a.device, devices["spine1"])
+        self.assertEqual(cables[0].termination_b.device, devices["leaf1"])
+        self.assertEqual(cables[1].termination_a.device, devices["spine1"])
+        self.assertEqual(cables[1].termination_b.device, devices["leaf2"])
+        self.assertEqual(cables[2].termination_a.device, devices["spine2"])
+        self.assertEqual(cables[2].termination_b.device, devices["leaf1"])
+        self.assertEqual(cables[3].termination_a.device, devices["spine2"])
+        self.assertEqual(cables[3].termination_b.device, devices["leaf2"])
+        self.assertEqual(cables[4].termination_a.device, devices["spine3"])
+        self.assertEqual(cables[4].termination_b.device, devices["leaf1"])
+        self.assertEqual(cables[5].termination_a.device, devices["spine3"])
+        self.assertEqual(cables[5].termination_b.device, devices["leaf2"])
+
+    def test_complex_design2(self):
+        self.implement_design(INPUT_COMPLEX_DESIGN2)
+        device = Device.objects.first()
+        interfaces = device.interfaces.filter(name__startswith="Ethernet")
+        mlag = device.interfaces.get(name="PortChannel1")
+        self.assertEqual(mlag.member_interfaces.all()[0], interfaces[0])
+        self.assertEqual(mlag.member_interfaces.all()[1], interfaces[1])

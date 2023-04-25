@@ -257,23 +257,28 @@ class Context(_Node, LoggingMixin):
         self._keys = []
         self.job_result = job_result
 
-        # Copy the base contexts right into the
-        # context instance to make it easier to
-        # reference in the downstream design
-        bases = list(inspect.getmro(type(self)))
-        bases.reverse()
-
-        for base in bases:
-            for filename in base.__dict__.get("__base_contexts", {}):
-                context = load_design_yaml(self.__class__, filename)
-                # don't add anything if the file was empty
-                if context:
-                    self.update(context)
+        for base, filename in self.base_context_files():
+            context = load_design_yaml(base, filename)
+            # don't add anything if the file was empty
+            if context:
+                self.update(context)
 
         if data is not None:
             for key, value in data.items():
                 self._keys.append(key)
                 setattr(self, key, self._create_node(value))
+
+    @classmethod
+    def base_context_files(cls):
+        """Calculate the complete list of context files for the class."""
+        bases = list(inspect.getmro(cls))
+        bases.reverse()
+
+        files = []
+        for base in bases:
+            for filename in base.__dict__.get("__base_contexts", {}):
+                files.append((base, filename))
+        return files
 
     @classmethod
     def base_context(cls):

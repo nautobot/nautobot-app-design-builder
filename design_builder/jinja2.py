@@ -106,7 +106,9 @@ class IndentationExtension(Extension):
         for i in range(1, len(lines)):
             if lines[i]:
                 lines[i] = indentation + lines[i]
-        return "\n".join(lines)
+        # TODO: remove the trailing newline. This *might* be a breaking
+        # change for older designs
+        return "\n".join(lines) + "\n"
 
 
 def network_string(network: IPNetwork, attr="") -> str:
