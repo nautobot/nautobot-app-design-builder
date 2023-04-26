@@ -2,8 +2,11 @@
 from unittest import mock
 from unittest.mock import patch
 
-from design_builder.errors import DesignImplementationError
+from nautobot.dcim.models import Site
+
+from design_builder.errors import DesignImplementationError, DesignValidationError
 from design_builder.tests import DesignTestCase
+from design_builder.tests.designs.multi_design_job_with_error import MultiDesignJobWithError
 from design_builder.tests.designs.multi_design_job import MultiDesignJob
 from design_builder.tests.designs.simple_design import SimpleDesign
 from design_builder.tests.designs.simple_design_report import SimpleDesignReport
@@ -45,3 +48,9 @@ class TestDesignJob(DesignTestCase):
             {"sites": {"name": "Test Site 1", "status__name": "Active"}},
             job.designs[MultiDesignJob.Meta.design_files[1]],
         )
+
+    def test_multiple_design_files_with_roll_back(self):
+        self.assertEqual(0, Site.objects.all().count())
+        job = self.get_mocked_job(MultiDesignJobWithError)
+        self.assertRaises(DesignValidationError, job.run, {}, True)
+        self.assertEqual(0, Site.objects.all().count())

@@ -4,10 +4,13 @@ import sys
 import traceback
 from abc import ABC, abstractmethod
 from os import path
-
 import yaml
+
+from django.db import transaction
 from django.utils.functional import classproperty
+
 from jinja2 import TemplateError
+
 from nautobot.extras.jobs import Job
 
 from design_builder.errors import DesignImplementationError
@@ -154,6 +157,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.creator.implement_design(design, commit)
 
+    @transaction.atomic
     def run(self, data, commit):
         """Render the design and implement it with ObjectCreator."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -176,6 +180,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.failed = True
             return
 
+        sid = transaction.savepoint()
         try:
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
@@ -191,5 +196,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     message=f"{self.name} can be imported successfully - No database changes made",
                 )
         except DesignImplementationError as ex:
+            transaction.savepoint_rollback(sid)
             self.log_failure(message=f"Failed to implement design: {ex}")
             self.failed = True
+        except Exception as ex:
+            transaction.savepoint_rollback(sid)
+            raise ex
