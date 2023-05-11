@@ -161,7 +161,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def run(self, data, commit):
         """Render the design and implement it with ObjectCreator."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
-        self.creator = Builder(self.job_result)
+        extensions = getattr(self.Meta, "extensions", [])
+        self.creator = Builder(job_result=self.job_result, extensions=extensions)
 
         design_files = None
 

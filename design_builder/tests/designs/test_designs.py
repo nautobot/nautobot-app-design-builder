@@ -1,4 +1,5 @@
 from design_builder.base import DesignJob
+from design_builder.ext import Extension
 
 
 class SimpleDesign(DesignJob):
@@ -30,3 +31,14 @@ class MultiDesignJobWithError(DesignJob):
             "templates/simple_design.yaml.j2",
             "templates/simple_design.yaml.j2",
         ]
+
+
+class CustomExtension(Extension):
+    attribute_tag = "custom_extension"
+
+
+class DesignJobWithExtensions(DesignJob):
+    class Meta:
+        name = "Design with Custom Extensions"
+        design_file = "templates/simple_design.yaml.j2"
+        extensions = [CustomExtension]

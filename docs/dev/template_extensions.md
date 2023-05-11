@@ -30,6 +30,6 @@ In this case, when `!device_name` is encountered the object creator will look fo
 
 ## Writing a New Extension
 
-Adding functionality to Object Creator is as simple extending the [Extension](../api/ext.md#design_builder.ext.Extension) class and supplying `attribute_tag` and/or `value_tag` class variables as well as the corresponding `attribute` and `value` instance methods. The ObjectCreator [constructor](../api/object_creator.md#design_builder.object_creator.ObjectCreator.__init__) will also need to be updated to add the new extension class. Only one instance of each extension is created and it is created when the first matching attribute or value tag is encountered.
+Adding functionality to Object Creator is as simple extending the [Extension](../api/ext.md#design_builder.ext.Extension) class and supplying `attribute_tag` and/or `value_tag` class variables as well as the corresponding `attribute` and `value` instance methods. Extensions are singletons within a Builder instance. When an extension's tag is encountered an instance of the extension is created. Subsequent calls to the extension will use the instance created the first time.
 
 Each extension may optionally implement `commit` or `roll_back` methods. The `commit` method is called once all of a design's opjects have been created and updated in the database. Conversely, `roll_back` is called if any error occurs and the database transaction is aborted. These methods provide a means for an extension to perform additional work, or cleanup, based on the outcome of a design's database actions.

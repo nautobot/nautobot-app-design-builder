@@ -1,6 +1,6 @@
 """Test running design jobs."""
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from nautobot.dcim.models import Site
 
@@ -17,7 +17,8 @@ class TestDesignJob(DesignTestCase):
         self.assertIsNotNone(job.job_result)
         object_creator.assert_called()
         self.assertDictEqual(
-            {"sites": {"name": "Test Site", "status__name": "Active"}}, job.designs[test_designs.SimpleDesign.Meta.design_file]
+            {"sites": {"name": "Test Site", "status__name": "Active"}},
+            job.designs[test_designs.SimpleDesign.Meta.design_file],
         )
         object_creator.return_value.roll_back.assert_not_called()
 
@@ -39,7 +40,8 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.MultiDesignJob)
         job.run({}, True)
         self.assertDictEqual(
-            {"sites": {"name": "Test Site", "status__name": "Active"}}, job.designs[test_designs.MultiDesignJob.Meta.design_files[0]]
+            {"sites": {"name": "Test Site", "status__name": "Active"}},
+            job.designs[test_designs.MultiDesignJob.Meta.design_files[0]],
         )
         self.assertDictEqual(
             {"sites": {"name": "Test Site 1", "status__name": "Active"}},
@@ -51,3 +53,12 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.MultiDesignJobWithError)
         self.assertRaises(DesignValidationError, job.run, {}, True)
         self.assertEqual(0, Site.objects.all().count())
+
+    @patch("design_builder.base.Builder")
+    def test_custom_extensions(self, builder_patch: Mock):
+        job = self.get_mocked_job(test_designs.DesignJobWithExtensions)
+        job.run({}, True)
+        builder_patch.assert_called_once_with(
+            job_result=job.job_result,
+            extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
+        )
