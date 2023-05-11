@@ -6,7 +6,15 @@ from typing import TYPE_CHECKING, Any
 
 import inspect
 import sys
+import inspect
+import sys
 import yaml
+
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+
+from nautobot.dcim.models import Cable
+from nautobot.extras.models import Status
 
 from design_builder import DesignBuilderConfig
 from design_builder.errors import DesignImplementationError
@@ -246,3 +254,115 @@ class GitContextExtension(Extension):
 
         for dirpath in self._env["directories"]:
             os.rmdir(dirpath)
+
+
+class LookupMixin:
+    def lookup(self, queryset, query={}):
+        for key, value in query.items():
+            if hasattr(value, "instance"):
+                query[key] = value.instance
+        try:
+            return queryset.get(**query)
+        except (MultipleObjectsReturned, ObjectDoesNotExist) as ex:
+            raise DesignImplementationError(f"no {queryset.model.__name__} matching {query}") from ex
+
+
+class LookupExtension(Extension, LookupMixin):
+    """Lookup a model instance and assign it to an attribute."""
+
+    attribute_tag = "lookup"
+
+    def attribute(self, *args, value=None, model_instance=None) -> None:
+        """Provides the `!lookup` attribute that will lookup an instance.
+
+        This action tag can be used to lookup an object in the database and
+        assign it to an attribute of another object.
+
+        Args:
+            value: A filter describing the object to get. Keys should map to lookup
+            parameters equivalent to Django's `filter()` syntax for the given model.
+            The special `type` parameter will override the relationship's model class
+            and instead lookup the model class using the `ContentType`. The value
+            of the `type` field must match `ContentType` `app_label` and `model` fields.
+        Raises:
+            DesignImplementationError: if no matching object was found.
+        Returns:
+            The attribute name and found object.
+        Example:
+            ```yaml
+            cables:
+            - "!lookup:termination_a":
+                    content-type: "dcim.interface"
+                    device__name: "device1"
+                    name: "Ethernet1/1"
+              "!lookup:termination_b":
+                    content-type: "dcim.interface"
+                    device__name: "device2"
+                    name: "Ethernet1/1"
+            ```
+        """
+        if len(args) < 1:
+            raise DesignImplementationError('No attribute given for the "!lookup" tag.')
+
+        attribute = args[0]
+        query = {}
+        if isinstance(value, str):
+            if len(args) < 2:
+                raise DesignImplementationError("No query attribute was given")
+            query = {args[1]: value}
+        elif isinstance(value, dict):
+            query = value
+        else:
+            raise DesignImplementationError("the lookup requires a query attribute and value or a query dictionary.")
+
+        content_type = query.pop("content-type", None)
+        if content_type is None:
+            getattr(model_instance.model_class, attribute)
+
+        if model_class:
+            try:
+                content_type = ContentType.objects.get_by_natural_key(*model_class.split("."))
+                model_class = content_type.model_class()
+                queryset = model_class.objects
+            except ContentType.DoesNotExist:
+                raise DesignImplementationError(f"Could not find model class for {model_class}")
+        else:
+            descriptor = getattr(model_instance.model_class, attribute)
+            queryset = descriptor.get_queryset()
+
+        return attribute, self.lookup(queryset, query)
+
+
+class CableConnectionExtension(Extension, LookupMixin):
+    """Lookup a model instance and assign it to an attribute."""
+
+    attribute_tag = "connect_cable"
+
+    def attribute(self, *args, value=None, model_instance=None) -> None:
+        query = {**value}
+        status = query.pop("status", None)
+        if status is None:
+            for key in list(query.keys()):
+                if key.startswith("status__"):
+                    status_lookup = key[len("status__"):]
+                    status = Status.objects.get(**{status_lookup: query.pop(key)})
+                    break
+        elif isinstance(status, dict):
+            status = Status.objects.get(**status)
+        elif hasattr(status, "instance"):
+            status = status.instance
+
+        if status is None:
+            raise DesignImplementationError("No status given for cable connection")
+
+        remote_instance = self.lookup(model_instance.model_class.objects, query)
+        model_instance.deferred.append("cable")
+        model_instance.deferred_attributes["cable"] = [model_instance.__class__(
+            self.object_creator,
+            model_class=Cable,
+            attributes={
+                "status": status,
+                "termination_a": model_instance,
+                "termination_b": remote_instance,
+            }
+        )]
