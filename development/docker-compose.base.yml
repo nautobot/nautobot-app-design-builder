@@ -26,8 +26,9 @@ services:
       timeout: "10s"
       start_period: "120s"
       retries: 3
-    <<: *nautobot-build
-    <<: *nautobot-base
+    <<:
+      - *nautobot-build
+      - *nautobot-base
   worker:
     entrypoint:
       - "sh"
