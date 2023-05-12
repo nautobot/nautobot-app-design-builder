@@ -4,6 +4,8 @@ from abc import ABC
 from functools import reduce
 from typing import TYPE_CHECKING, Any
 
+import inspect
+import sys
 import yaml
 
 from design_builder import DesignBuilderConfig
@@ -12,6 +14,26 @@ from design_builder.git import GitRepo
 
 if TYPE_CHECKING:
     from design import ModelInstance, Builder
+
+
+def is_extension(cls):
+    """Determine if a class is an Extension."""
+    return inspect.isclass(cls) and issubclass(cls, Extension) and cls is not Extension
+
+
+def extensions(module=None):
+    """Get all the extensions defined in a module.
+
+    Args:
+        module: Module to search for extensions. If left as `None` then
+        the ext.py module is searched.
+
+    Returns:
+        List[Extension]: List of extensions found in the module.
+    """
+    if module is None:
+        module = sys.modules[__name__]
+    return [extension[1] for extension in inspect.getmembers(module, is_extension)]
 
 
 class Extension(ABC):

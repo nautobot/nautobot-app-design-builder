@@ -12,7 +12,7 @@ from nautobot.core.models import BaseModel
 from nautobot.extras.models import JobResult, Relationship
 
 from design_builder.errors import DesignImplementationError, DesignValidationError
-from design_builder.ext import GitContextExtension, ReferenceExtension
+from design_builder import ext
 from design_builder.logging import LoggingMixin
 from design_builder.fields import field_factory, OneToOneField, ManyToOneField
 
@@ -289,7 +289,7 @@ class Builder(LoggingMixin):
                 cls.model_map[plural_name] = model_class
         return object.__new__(cls)
 
-    def __init__(self, job_result: JobResult = None):
+    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None):
         """Constructor for Builder."""
         self.job_result = job_result
 
@@ -298,8 +298,13 @@ class Builder(LoggingMixin):
             "attribute": {},
             "value": {},
         }
+        if extensions is None:
+            extensions = []
 
-        for extn_cls in [ReferenceExtension, GitContextExtension]:
+        for extn_cls in [*extensions, *ext.extensions()]:
+            if not issubclass(extn_cls, ext.Extension):
+                raise DesignImplementationError("{extn_cls} is not an action tag extension.")
+
             extn = {
                 "class": extn_cls,
                 "object": None,

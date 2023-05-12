@@ -325,4 +325,12 @@ As you can see, the device block for `bb-rtr-1` is correctly indented for the `d
 
 ### Extensions
 
-New action tags can be created using template extensions. More information can be found in the [developer documentation](../dev/template_extensions.md).
+Custom action tags can be created using template extensions. If a design needs custom functionality implemented as an action tag, the design developer can simply create a new tag (see the [extension](../dev/template_extensions.md) documentation). The new tag class can be added to the design using the extensions attribute in the design Meta class:
+
+```python
+class DesignJobWithExtensions(DesignJob):
+    class Meta:
+        name = "Design with Custom Extensions"
+        design_file = "templates/simple_design.yaml.j2"
+        extensions = [CustomExtension]
+```
