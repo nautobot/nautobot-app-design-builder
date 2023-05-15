@@ -202,4 +202,5 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.failed = True
         except Exception as ex:
             transaction.savepoint_rollback(sid)
+            self.failed = True
             raise ex

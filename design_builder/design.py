@@ -226,7 +226,6 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     def save(self):
         """Save the model instance to the database."""
-
         # The reason we call _update_fields at this point is
         # that some attributes passed into the constructor
         # may not have been saved yet (thus have no ID). By
@@ -428,7 +427,7 @@ class Builder(LoggingMixin):
             self.journal.log(model, created)
         except ValidationError as validation_error:
             self.log_failure(message=f"Failed to {fail_msg} {model.name} {model.instance}")
-            raise DesignValidationError(f"{model.instance} failed validation: {validation_error}") from validation_error
+            raise DesignValidationError(f"{model.instance} failed validation: {validation_error}")
 
     def commit(self):
         """Method to commit all changes to the database."""
