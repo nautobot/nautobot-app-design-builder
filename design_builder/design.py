@@ -125,17 +125,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             for relationship in direction:
                 self.instance_fields[relationship.slug] = field_factory(self, relationship)
 
-        self._parse_attributes()
-
-        self.relationship_manager = relationship_manager
-        self._load_instance()
-
-        self.model_fields = {field.name: field for field in model_class._meta.get_fields()}
         field: DjangoField
-        for field in self.instance._meta.get_fields():
+        for field in self.model_class._meta.get_fields():
             self.instance_fields[field.name] = field_factory(self, field)
 
-        self._update_fields()
+        self._parse_attributes()
+        self.relationship_manager = relationship_manager
+        self._load_instance()
 
     def _parse_attributes(self):  # pylint: disable=too-many-branches
         self.custom_fields = self.attributes.pop("custom_fields", {})
@@ -144,7 +140,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             self.attributes[key] = self.creator.resolve_values(self.attributes[key])
             if key.startswith("!"):
                 value = self.attributes.pop(key)
-                args = key.lstrip("!").split(":", 1)
+                args = key.lstrip("!").split(":")
 
                 extn = self.creator.get_extension("attribute", args[0])
                 if extn:
@@ -215,7 +211,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             elif (
                 hasattr(self.relationship_manager, "field")
                 and (isinstance(field, (OneToOneField, ManyToOneField)))
-                and self.model_fields[field_name] == self.relationship_manager.field
+                and self.instance_fields[field_name].field == self.relationship_manager.field
             ):
                 field.set_value(self.relationship_manager.instance)
 
@@ -228,6 +224,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     def save(self):
         """Save the model instance to the database."""
+        # The reason we call _update_fields at this point is
+        # that some attributes passed into the constructor
+        # may not have been saved yet (thus have no ID). By
+        # deferring the update until just before save, we can
+        # ensure that parent instances have been saved and
+        # assigned a primary key
+        self._update_fields()
         self.instance.full_clean()
         self.instance.save()
         self.instance.refresh_from_db()
@@ -246,7 +249,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     if hasattr(self.instance, field_name):
                         relationship_manager = getattr(self.instance, field_name)
                     related_object = ModelInstance(self.creator, field.model, item, relationship_manager)
-                    related_object.save()
+                related_object.save()
                 field.set_value(related_object.instance)
 
     def set_custom_field(self, field, value):
