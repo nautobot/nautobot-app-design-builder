@@ -66,7 +66,7 @@ class TestDesignJobLogging(DesignTestCase):
         self.assertTrue(job.failed)
         job.job_result.log.assert_called()
         self.assertEqual("Broken", self.logged_messages[-1]["message"])
-        
+
     def test_invalid_ref(self):
         job = self.get_mocked_job(test_designs.DesignWithRefError)
         job.run({}, True)
@@ -79,8 +79,10 @@ class TestDesignJobLogging(DesignTestCase):
         message = self.logged_messages[-1]["message"]
 
         want_error = DesignValidationError("Site failed validation")
-        want_error.__cause__ = ValidationError({
-            "name": "This field cannot be blank.",
-            "status": "This field cannot be blank.",
-        })
+        want_error.__cause__ = ValidationError(
+            {
+                "name": "This field cannot be blank.",
+                "status": "This field cannot be blank.",
+            }
+        )
         self.assertEqual(str(want_error), message)

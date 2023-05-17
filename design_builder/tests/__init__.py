@@ -37,13 +37,16 @@ class DesignTestCase(TestCase):
         job.job_result = mock.Mock()
         self.logged_messages = []
 
-        def record_log(message, obj, level_choice, grouping=None, logger=None):
-            self.logged_messages.append({
-                "message": message,
-                "obj": obj,
-                "level_choice": level_choice,
-                "grouping": grouping,
-            })
+        def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument
+            self.logged_messages.append(
+                {
+                    "message": message,
+                    "obj": obj,
+                    "level_choice": level_choice,
+                    "grouping": grouping,
+                }
+            )
+
         job.job_result.log.side_effect = record_log
         return job
 
@@ -52,7 +55,8 @@ class DesignTestCase(TestCase):
         for filename in filenames:
             self.assertTrue(path.exists(path.join(self.git_path, filename)), f"{filename} was not created")
 
-    def assertJobSuccess(self, job):
+    def assertJobSuccess(self, job):  # pylint: disable=invalid-name
+        """Assert that a mocked job has completed successfully."""
         if job.failed:
             self.fail(f"Job failed with {job.logged_messages[-1]}")
 

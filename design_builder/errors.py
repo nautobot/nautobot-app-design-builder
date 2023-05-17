@@ -38,7 +38,6 @@ class DesignValidationError(Exception):
 
         Provides information about what caused the validation to fail.
         """
-
         msg = [f"{super().__str__()}"]
         if isinstance(self.__cause__, ValidationError):
             fields = _error_msg(self.__cause__)
