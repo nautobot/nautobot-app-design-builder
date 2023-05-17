@@ -21,6 +21,7 @@ class DesignTestCase(TestCase):
     def setUp(self):
         """Setup a mock git repo to watch for config context creation."""
         super().setUp()
+        self.logged_messages = []
         self.git_patcher = patch("design_builder.ext.GitRepo")
         self.git_mock = self.git_patcher.start()
 
@@ -34,12 +35,30 @@ class DesignTestCase(TestCase):
         job = design_class()
         job.request = mock.Mock()
         job.job_result = mock.Mock()
+        self.logged_messages = []
+
+        def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument
+            self.logged_messages.append(
+                {
+                    "message": message,
+                    "obj": obj,
+                    "level_choice": level_choice,
+                    "grouping": grouping,
+                }
+            )
+
+        job.job_result.log.side_effect = record_log
         return job
 
     def assert_context_files_created(self, *filenames):
         """Confirm that the list of filenames were created as part of the design implementation."""
         for filename in filenames:
             self.assertTrue(path.exists(path.join(self.git_path, filename)), f"{filename} was not created")
+
+    def assertJobSuccess(self, job):  # pylint: disable=invalid-name
+        """Assert that a mocked job has completed successfully."""
+        if job.failed:
+            self.fail(f"Job failed with {job.logged_messages[-1]}")
 
     def tearDown(self):
         """Remove temporary files."""

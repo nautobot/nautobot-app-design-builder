@@ -42,3 +42,15 @@ class DesignJobWithExtensions(DesignJob):
         name = "Design with Custom Extensions"
         design_file = "templates/simple_design.yaml.j2"
         extensions = [CustomExtension]
+
+
+class DesignWithRefError(DesignJob):
+    class Meta:
+        name = "Design with an invalid ref"
+        design_file = "templates/design_with_ref_error.yaml.j2"
+
+
+class DesignWithValidationError(DesignJob):
+    class Meta:
+        name = "Design with validation errors"
+        design_file = "templates/design_with_validation_error.yaml.j2"

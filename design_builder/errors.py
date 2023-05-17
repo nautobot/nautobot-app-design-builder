@@ -1,30 +1,20 @@
 """Module containing error Exception classes specific to Design Builder."""
+from collections import defaultdict
 from inspect import isclass
 
 from django.core.exceptions import ValidationError
 
 
-def _error_msg(err, messages=None):
-    if messages is None:
-        messages = {}
-    messages.setdefault("__all__", [])
-    if hasattr(err, "error_dict"):
-        for field, errors in err.error_dict.items():
-            messages.setdefault(field, [])
-            for err1 in errors:
-                messages[field].extend(_error_msg(err1)["__all__"])
-    elif hasattr(err, "message"):
-        if isinstance(err.message, ValidationError):
-            _error_msg(err.message, messages)
-        else:
-            messages["__all__"].append(err.message)
-    elif hasattr(err, "error_list"):
-        for err1 in err.error_list:
-            _error_msg(err1, messages)
-    else:
-        messages["__all__"].append(str(err))
+def _error_msg(validation_error):
+    errors = defaultdict(list)
+    try:
+        for attribute, messages in validation_error.message_dict.items():
+            for message in messages:
+                errors[attribute].append(message)
+    except AttributeError:
+        errors["__all__"] = [*validation_error.messages]
 
-    return messages
+    return errors
 
 
 class DesignImplementationError(Exception):
@@ -48,17 +38,18 @@ class DesignValidationError(Exception):
 
         Provides information about what caused the validation to fail.
         """
-        msg = f"{super().__str__()}"
+        msg = [f"{super().__str__()}"]
         if isinstance(self.__cause__, ValidationError):
             fields = _error_msg(self.__cause__)
             keys = list(fields.keys())
             keys.sort()
             for message in fields.pop("__all__", []):
-                msg += f"\n\n{message}"
+                msg.append(f"{message}")
 
             for key in keys:
                 if key == "__all__":
                     continue
-                msg += "\n\n**%s:** %s" % (key, "\n\n".join(fields[key]))
 
-        return msg
+                field_msg = "\n".join(fields[key])
+                msg.append(f"**{key}:** {field_msg}")
+        return "\n\n".join(msg)

@@ -418,14 +418,16 @@ class Builder(LoggingMixin):
         """
         created = model.instance._state.adding  # pylint: disable=protected-access
         msg = "Created" if model.instance._state.adding else "Updated"  # pylint: disable=protected-access
-        fail_msg = "create" if model.instance._state.adding else "update"  # pylint: disable=protected-access
         try:
             model.save()
             self.log_success(message=f"{msg} {model.name} {model.instance}", obj=model.instance)
             self.journal.log(model, created)
         except ValidationError as validation_error:
-            self.log_failure(message=f"Failed to {fail_msg} {model.name} {model.instance}")
-            raise DesignValidationError(f"{model.instance} failed validation: {validation_error}")
+            instance_str = str(model.instance)
+            type_str = model.model_class._meta.verbose_name.capitalize()
+            if instance_str:
+                type_str = f"{type_str} {instance_str}"
+            raise DesignValidationError(f"{type_str} failed validation") from validation_error
 
     def commit(self):
         """Method to commit all changes to the database."""

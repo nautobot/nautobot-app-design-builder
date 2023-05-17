@@ -158,7 +158,10 @@ class ReferenceExtension(Extension):
         attribute = None
         if len(keys) == 2:
             key, attribute = keys
-        model_instance = self._env[key]
+        try:
+            model_instance = self._env[key]
+        except KeyError:
+            raise DesignImplementationError(f"No ref named {key} has been saved in the design.")
         if model_instance.instance:
             model_instance.instance.refresh_from_db()
         if attribute:
@@ -213,10 +216,12 @@ class GitContextExtension(Extension):
         Raises:
             DesignImplementationError: raised if a required field is missing from the attribute's dictionary.
         """
-        required_fields = ["destination", "data"]
-        for field in required_fields:
-            if field not in value:
-                raise DesignImplementationError(f"{field} is required for git_context")
+        required_fields = set("destination", "data")
+        missing_fields = required_fields - set(value.keys())
+        if missing_fields:
+            missing_fields = ", ".join(missing_fields)
+            raise DesignImplementationError(f"git-context is missing {missing_fields}")
+
         base_dir = self.context_repo.path
         output_dir = os.path.join(base_dir, os.path.dirname(value["destination"]))
         try:
