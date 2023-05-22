@@ -230,7 +230,9 @@ class NextPrefixExtension(Extension):
             ```yaml
             prefixes:
             - "!next_prefix":
-                    prefix: "10.0.0.0/23,10.0.2.0/23"
+                    prefix:
+                    - "10.0.0.0/23"
+                    - "10.0.2.0/23"
                     length: 24
                 status__name: "Active"
             ```
@@ -247,9 +249,14 @@ class NextPrefixExtension(Extension):
 
         query = Q(**value)
         if "prefix" in value:
-            prefixes_str = value.pop("prefix")
+            prefixes = value.pop("prefix")
             prefix_q = []
-            for prefix_str in prefixes_str.split(","):
+            if isinstance(prefixes, str):
+                prefixes = [prefixes]
+            elif not isinstance(prefixes, list):
+                raise DesignImplementationError("Prefixes should be a string (single prefix) or a list.")
+
+            for prefix_str in prefixes:
                 prefix_str = prefix_str.strip()
                 prefix = netaddr.IPNetwork(prefix_str)
                 prefix_q.append(

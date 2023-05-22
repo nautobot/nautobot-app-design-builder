@@ -172,19 +172,27 @@ class TestNextPrefixExtension(TestCase):
         design_template = """
         prefixes:
             - "!next_prefix":
-                prefix: "10.0.0.0/23,10.0.2.0/23"
+                prefix:
+                - "10.0.0.0/23"
+                - "10.0.2.0/23"
                 length: 24
               status__name: "Active"
             - "!next_prefix":
-                prefix: "10.0.0.0/23,10.0.2.0/23"
+                prefix:
+                - "10.0.0.0/23"
+                - "10.0.2.0/23"
                 length: 24
               status__name: "Active"
             - "!next_prefix":
-                prefix: "10.0.0.0/23,10.0.2.0/23"
+                prefix:
+                - "10.0.0.0/23"
+                - "10.0.2.0/23"
                 length: 24
               status__name: "Active"
             - "!next_prefix":
-                prefix: "10.0.0.0/23,10.0.2.0/23"
+                prefix:
+                - "10.0.0.0/23"
+                - "10.0.2.0/23"
                 length: 24
               status__name: "Active"
         """
