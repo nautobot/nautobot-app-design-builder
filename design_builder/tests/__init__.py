@@ -58,7 +58,7 @@ class DesignTestCase(TestCase):
     def assertJobSuccess(self, job):  # pylint: disable=invalid-name
         """Assert that a mocked job has completed successfully."""
         if job.failed:
-            self.fail(f"Job failed with {job.logged_messages[-1]}")
+            self.fail(f"Job failed with {self.logged_messages[-1]}")
 
     def tearDown(self):
         """Remove temporary files."""
