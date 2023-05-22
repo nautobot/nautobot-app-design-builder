@@ -125,15 +125,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             for relationship in direction:
                 self.instance_fields[relationship.slug] = field_factory(self, relationship)
 
-        self._parse_attributes()
+        field: DjangoField
+        for field in self.model_class._meta.get_fields():
+            self.instance_fields[field.name] = field_factory(self, field)
 
+        self._parse_attributes()
         self.relationship_manager = relationship_manager
         self._load_instance()
-
-        self.model_fields = {field.name: field for field in model_class._meta.get_fields()}
-        field: DjangoField
-        for field in self.instance._meta.get_fields():
-            self.instance_fields[field.name] = field_factory(self, field)
 
     def _parse_attributes(self):  # pylint: disable=too-many-branches
         self.custom_fields = self.attributes.pop("custom_fields", {})
@@ -213,7 +211,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             elif (
                 hasattr(self.relationship_manager, "field")
                 and (isinstance(field, (OneToOneField, ManyToOneField)))
-                and self.model_fields[field_name] == self.relationship_manager.field
+                and self.instance_fields[field_name].field == self.relationship_manager.field
             ):
                 field.set_value(self.relationship_manager.instance)
 
@@ -420,14 +418,16 @@ class Builder(LoggingMixin):
         """
         created = model.instance._state.adding  # pylint: disable=protected-access
         msg = "Created" if model.instance._state.adding else "Updated"  # pylint: disable=protected-access
-        fail_msg = "create" if model.instance._state.adding else "update"  # pylint: disable=protected-access
         try:
             model.save()
             self.log_success(message=f"{msg} {model.name} {model.instance}", obj=model.instance)
             self.journal.log(model, created)
         except ValidationError as validation_error:
-            self.log_failure(message=f"Failed to {fail_msg} {model.name} {model.instance}")
-            raise DesignValidationError(f"{model.instance} failed validation: {validation_error}")
+            instance_str = str(model.instance)
+            type_str = model.model_class._meta.verbose_name.capitalize()
+            if instance_str:
+                type_str = f"{type_str} {instance_str}"
+            raise DesignValidationError(f"{type_str} failed validation") from validation_error
 
     def commit(self):
         """Method to commit all changes to the database."""
