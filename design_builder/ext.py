@@ -33,7 +33,14 @@ def extensions(module=None):
     """
     if module is None:
         module = sys.modules[__name__]
-    return [extension[1] for extension in inspect.getmembers(module, is_extension)]
+
+    def matches(value):
+        if hasattr(value, "__module__"):
+            if value.__module__ == module.__name__:
+                return is_extension(value)
+        return False
+
+    return [extension[1] for extension in inspect.getmembers(module, matches)]
 
 
 class Extension(ABC):

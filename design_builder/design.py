@@ -144,7 +144,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
                 extn = self.creator.get_extension("attribute", args[0])
                 if extn:
-                    result = extn.attribute(*args[1:], value=value, model_instance=self)
+                    result = extn.attribute(*args[1:], value=self.creator.resolve_values(value), model_instance=self)
                     if result:
                         self.attributes[result[0]] = result[1]
                 elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
