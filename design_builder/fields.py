@@ -130,7 +130,7 @@ class ManyToOneField(RelationshipField):
                 setattr(self.instance.instance, self.field.name, value)
             except MultipleObjectsReturned:
                 raise DesignImplementationError(
-                    "Expected exactly 1 object for {self.model.__name__}({lookup}) but got more than one"
+                    f"Expected exactly 1 object for {self.model.__name__}({value}) but got more than one"
                 )
             except ObjectDoesNotExist:
                 query = ",".join([f'{k}="{v}"' for k, v in value.items()])
