@@ -304,6 +304,8 @@ class _NautobotVersion:
 
     def __init__(self):
         self.version = Version(metadata.version(nautobot.__name__))
+        # This includes alpha/beta as version numbers
+        self.version = Version(self.version.base_version)
 
     def __eq__(self, version_string):
         return self.version == Version(version_string)

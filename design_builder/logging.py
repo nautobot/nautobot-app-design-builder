@@ -14,6 +14,7 @@ if nautobot_version < "2.0.0":
         logging.ERROR: LogLevelChoices.LOG_FAILURE,  # pylint: disable=no-member
         logging.CRITICAL: LogLevelChoices.LOG_FAILURE,  # pylint: disable=no-member
     }
+    LOG_DEFAULT = LogLevelChoices.LOG_DEFAULT
 else:
     # MIN_VERSION: 2.0.0
     _logger_to_level_choices = {
@@ -23,6 +24,7 @@ else:
         logging.ERROR: LogLevelChoices.LOG_ERROR,  # pylint: disable=no-member
         logging.CRITICAL: LogLevelChoices.LOG_CRITICAL,  # pylint: disable=no-member
     }
+    LOG_DEFAULT = LogLevelChoices.LOG_INFO
     # /MIN_VERSION: 2.0.0
 
 
@@ -67,7 +69,7 @@ def get_logger(name, job_result: JobResult):
 class LoggingMixin:
     """Use this class anywhere a job result needs to log to a job result."""
 
-    def _log(self, obj, message, level_choice=LogLevelChoices.LOG_DEFAULT):
+    def _log(self, obj, message, level_choice=LOG_DEFAULT):
         """Log a message. Do not call this method directly; use one of the log_* wrappers below."""
         if hasattr(self, "job_result") and self.job_result:
             self.job_result.log(
