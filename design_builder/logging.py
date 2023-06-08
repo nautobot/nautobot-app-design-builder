@@ -4,13 +4,26 @@ import logging
 from nautobot.extras.choices import LogLevelChoices
 from nautobot.extras.models import JobResult
 
-_logger_to_level_choices = {
-    logging.DEBUG: LogLevelChoices.LOG_INFO,
-    logging.INFO: LogLevelChoices.LOG_INFO,
-    logging.WARNING: LogLevelChoices.LOG_WARNING,
-    logging.ERROR: LogLevelChoices.LOG_FAILURE,
-    logging.CRITICAL: LogLevelChoices.LOG_FAILURE,
-}
+from .util import nautobot_version
+
+if nautobot_version < "2.0.0":
+    _logger_to_level_choices = {
+        logging.DEBUG: LogLevelChoices.LOG_INFO,
+        logging.INFO: LogLevelChoices.LOG_INFO,
+        logging.WARNING: LogLevelChoices.LOG_WARNING,
+        logging.ERROR: LogLevelChoices.LOG_FAILURE,  # pylint: disable=no-member
+        logging.CRITICAL: LogLevelChoices.LOG_FAILURE,  # pylint: disable=no-member
+    }
+else:
+    # MIN_VERSION: 2.0.0
+    _logger_to_level_choices = {
+        logging.DEBUG: LogLevelChoices.LOG_INFO,
+        logging.INFO: LogLevelChoices.LOG_INFO,
+        logging.WARNING: LogLevelChoices.LOG_WARNING,
+        logging.ERROR: LogLevelChoices.LOG_ERROR,  # pylint: disable=no-member
+        logging.CRITICAL: LogLevelChoices.LOG_CRITICAL,  # pylint: disable=no-member
+    }
+    # /MIN_VERSION: 2.0.0
 
 
 class JobResultHandler(logging.Handler):

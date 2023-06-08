@@ -1,4 +1,5 @@
 """Main design builder plugin module, contains DesignJob and base plugin methods and functions."""
+import functools
 import importlib
 import inspect
 import logging
@@ -7,13 +8,19 @@ import pkgutil
 import sys
 from importlib.machinery import ModuleSpec
 from types import ModuleType
-from typing import Iterator, Tuple, Type
+from typing import Iterator, Tuple, Type, TYPE_CHECKING
 
 import yaml
 from django.conf import settings
+import nautobot
 from nautobot.extras.models import GitRepository
 
-from design_builder.base import DesignJob
+from packaging.version import Version
+
+from design_builder import metadata
+
+if TYPE_CHECKING:
+    from design_builder.base import DesignJob
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +146,8 @@ def designs_in_directory(
     Yields:
         ("package_name.module_name", "DesignJobClassName")
     """
+    # this prevents a circular import
+    from design_builder.base import DesignJob  # pylint: disable=import-outside-toplevel
 
     def is_design(obj):
         try:
@@ -287,3 +296,20 @@ def get_design_class(path: str, module_name: str, class_name: str) -> Type["Desi
     path = os.path.join(path)
     module = load_design_module(path, package_name, module_name)
     return getattr(module, class_name)
+
+
+@functools.total_ordering
+class _NautobotVersion:
+    """Utility for comparing Nautobot versions."""
+
+    def __init__(self):
+        self.version = Version(metadata.version(nautobot.__name__))
+
+    def __eq__(self, version_string):
+        return self.version == Version(version_string)
+
+    def __lt__(self, version_string):
+        return self.version < Version(version_string)
+
+
+nautobot_version = _NautobotVersion()
