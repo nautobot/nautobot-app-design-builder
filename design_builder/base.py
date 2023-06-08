@@ -4,6 +4,7 @@ import sys
 import traceback
 from abc import ABC, abstractmethod
 from os import path
+from importlib import metadata
 import yaml
 
 from django.db import transaction
@@ -11,7 +12,10 @@ from django.utils.functional import classproperty
 
 from jinja2 import TemplateError
 
+import nautobot
 from nautobot.extras.jobs import Job
+
+from packaging.version import Version
 
 from design_builder.errors import DesignImplementationError, DesignValidationError
 from design_builder.jinja2 import new_template_environment
@@ -32,17 +36,29 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def Meta(cls) -> Job.Meta:  # pylint: disable=invalid-name
         """Design jobs must provide either a Meta class method or a Meta class."""
 
-    # TODO: This init can be removed once fixes have been made in core nautobot
-    def __init__(self):  # pylint: disable=super-init-not-called
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         """Initialize the design job."""
+        # rendered designs
+        self.designs = {}
+        self.rendered = None
+
+        self.nautobot_version = Version(metadata.version(nautobot.__name__))
+        fixed_source_version = Version("1.4.2")
+        # MIN_VERSION: 1.4.2
+        # Prior to Nautobot 1.4.2, Nautobot attempted to load the job source
+        # in the constructor. This failed for Design Builder since some
+        # of the source is auto-generated. For versions prior to 1.4.2
+        # we need to override the behavior of the constructor. This
+        # can be fully removed once 1.4 has been deprecated.
+        if self.nautobot_version >= fixed_source_version:
+            super().__init__(*args, **kwargs)
+            return
+
         # DO NOT CALL super().__init__(), it will raise an OSError for
         # designs loaded from GIT
         self.logger = logging.getLogger(__name__)
         self.creator: Builder = None
 
-        # rendered designs
-        self.designs = {}
-        self.rendered = None
         self.request = None
         self.active_test = "main"
         self.failed = False
@@ -54,6 +70,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         for method_name in dir(self):
             if method_name.startswith("test_") and callable(getattr(self, method_name)):
                 self.test_methods.append(method_name)
+        # /MIN_VERSION: 1.4.2
 
     @classproperty
     def class_path(cls):  # pylint: disable=no-self-argument
