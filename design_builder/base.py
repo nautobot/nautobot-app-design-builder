@@ -4,7 +4,6 @@ import sys
 import traceback
 from abc import ABC, abstractmethod
 from os import path
-from importlib import metadata
 import yaml
 
 from django.db import transaction
@@ -12,15 +11,14 @@ from django.utils.functional import classproperty
 
 from jinja2 import TemplateError
 
-import nautobot
 from nautobot.extras.jobs import Job
 
-from packaging.version import Version
 
 from design_builder.errors import DesignImplementationError, DesignValidationError
 from design_builder.jinja2 import new_template_environment
 from design_builder.logging import LoggingMixin
 from design_builder.design import Builder
+from .util import nautobot_version
 
 
 class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-attributes
@@ -42,15 +40,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.designs = {}
         self.rendered = None
 
-        self.nautobot_version = Version(metadata.version(nautobot.__name__))
-        fixed_source_version = Version("1.4.2")
         # MIN_VERSION: 1.4.2
         # Prior to Nautobot 1.4.2, Nautobot attempted to load the job source
         # in the constructor. This failed for Design Builder since some
         # of the source is auto-generated. For versions prior to 1.4.2
         # we need to override the behavior of the constructor. This
         # can be fully removed once 1.4 has been deprecated.
-        if self.nautobot_version >= fixed_source_version:
+        if nautobot_version >= "1.4.2":
             super().__init__(*args, **kwargs)
             return
 

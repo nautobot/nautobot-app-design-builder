@@ -24,7 +24,7 @@ class DesignBuilderConfig(PluginConfig):
     base_url = "design-builder"
     required_settings = []
     min_version = "1.2.7"
-    max_version = "1.9999"
+    max_version = "2.9999"
     default_settings = {}
     caching_config = {}
 
