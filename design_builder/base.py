@@ -28,6 +28,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     Any design that is to be included in the list of Jobs in Nautobot *must* include
     a Meta class.
     """
+    if nautobot_version >= "2.0.0":
+        from nautobot.extras.jobs import DryRunVar
+        dryrun = DryRunVar()
 
     @classmethod
     @abstractmethod
@@ -39,6 +42,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # rendered designs
         self.designs = {}
         self.rendered = None
+        self.failed = False
 
         # MIN_VERSION: 1.4.2
         # Prior to Nautobot 1.4.2, Nautobot attempted to load the job source
@@ -57,7 +61,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.request = None
         self.active_test = "main"
-        self.failed = False
         self._job_result = None
 
         # Compile test methods and initialize results skeleton
@@ -93,9 +96,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def post_run(self):
         """Method that will run after the main Nautobot job has executed."""
         if self.rendered:
-            self.results["output"] = self.rendered
+            self.job_result.data["output"] = self.rendered
 
-        self.results["designs"] = self.designs
+        self.job_result.data["designs"] = self.designs
 
     def render(self, context, filename):
         """High level function to render the Jinja design templates into YAML.
@@ -171,13 +174,20 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.creator.implement_design(design, commit)
 
     @transaction.atomic
-    def run(self, data, commit):
+    def run(self, **kwargs):
         """Render the design and implement it with ObjectCreator."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.creator = Builder(job_result=self.job_result, extensions=extensions)
 
         design_files = None
+
+        if nautobot_version < "2.0.0":
+            commit = kwargs["commit"]
+            data = kwargs["data"]
+        else:
+            commit = kwargs.pop("dryrun", False)
+            data = kwargs
 
         if hasattr(self.Meta, "context_class"):
             context = self.Meta.context_class(data=data, job_result=self.job_result)
@@ -195,16 +205,16 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             return
 
         sid = transaction.savepoint()
+
         try:
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
             if commit:
                 self.creator.commit()
                 self.post_implementation(context, self.creator)
-
                 if hasattr(self.Meta, "report"):
-                    self.results["report"] = self.render_report(context, self.creator.journal)
-                    self.log_success(message=self.results["report"])
+                    self.job_result.data["report"] = self.render_report(context, self.creator.journal)
+                    self.log_success(message=self.job_result.data["report"])
             else:
                 self.log_info(
                     message=f"{self.name} can be imported successfully - No database changes made",

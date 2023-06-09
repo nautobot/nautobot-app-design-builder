@@ -11,6 +11,7 @@ from unittest.mock import PropertyMock, patch
 from django.test import TestCase
 
 from design_builder.base import DesignJob
+from design_builder.util import nautobot_version
 
 logging.disable(logging.CRITICAL)
 
@@ -33,8 +34,18 @@ class DesignTestCase(TestCase):
     def get_mocked_job(self, design_class: Type[DesignJob]):  # pylint: disable=no-self-use
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
-        job.request = mock.Mock()
         job.job_result = mock.Mock()
+        if nautobot_version < "2.0.0":
+            job.request = mock.Mock()
+        else:
+            job.job_result.data = {}
+            old_run = job.run
+
+            def new_run(data, commit):
+                kwargs = {**data}
+                kwargs["dryrun"] = commit
+                old_run(**kwargs)
+            job.run = new_run
         self.logged_messages = []
 
         def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument

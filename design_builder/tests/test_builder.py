@@ -4,7 +4,7 @@ import yaml
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.test import TestCase
-from nautobot.dcim.models import Device, DeviceType, Interface, Manufacturer, Region, Site, Cable
+from nautobot.dcim.models import Device, DeviceType, Interface, Manufacturer, Cable
 from nautobot.extras.choices import RelationshipTypeChoices
 from nautobot.extras.models import (
     ConfigContext,
@@ -18,6 +18,10 @@ from nautobot.extras.models import (
 from nautobot.ipam.models import VLAN, IPAddress, Prefix
 
 from design_builder.design import Builder
+from design_builder.util import nautobot_version
+
+if nautobot_version < "2.0.0":
+    from nautobot.dcim.models import Region, Site
 
 INPUT_CREATE_OBJECTS = """
 manufacturers:
@@ -511,6 +515,11 @@ devices:
 
 class TestProvisioner(TestCase):
     builder = None
+
+    def setUp(self):
+        if nautobot_version >= "2.0.0":
+            self.skipTest("These tests are only supported in Nautobot 1.x")
+        super().setUp()
 
     def implement_design(self, design_input, commit=True):
         """Convenience function for implementing a design."""
