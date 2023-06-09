@@ -45,6 +45,7 @@ class DesignTestCase(TestCase):
                 kwargs = {**data}
                 kwargs["dryrun"] = commit
                 old_run(**kwargs)
+
             job.run = new_run
         self.logged_messages = []
 

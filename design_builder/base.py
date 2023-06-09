@@ -28,8 +28,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     Any design that is to be included in the list of Jobs in Nautobot *must* include
     a Meta class.
     """
+
     if nautobot_version >= "2.0.0":
         from nautobot.extras.jobs import DryRunVar
+
         dryrun = DryRunVar()
 
     @classmethod
