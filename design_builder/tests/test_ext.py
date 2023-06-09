@@ -201,9 +201,9 @@ class TestNextPrefixExtension(TestCase):
     def setUp(self) -> None:
         self.tenant = Tenant.objects.create(name="Nautobot Airports")
         if nautobot_version < "2.0.0":
-            from nautobot.ipam.models import Role
+            from nautobot.ipam.models import Role  # pylint: disable=no-name-in-module,import-outside-toplevel
         else:
-            from nautobot.extras.models import Role
+            from nautobot.extras.models import Role  # pylint: disable=import-outside-toplevel
 
         self.server_role = Role.objects.create(name="servers")
         self.video_role = Role.objects.create(name="video")

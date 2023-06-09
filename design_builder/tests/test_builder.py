@@ -21,7 +21,7 @@ from design_builder.design import Builder
 from design_builder.util import nautobot_version
 
 if nautobot_version < "2.0.0":
-    from nautobot.dcim.models import Region, Site
+    from nautobot.dcim.models import Region, Site  # pylint: disable=no-name-in-module,ungrouped-imports
 
 INPUT_CREATE_OBJECTS = """
 manufacturers:

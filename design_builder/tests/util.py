@@ -3,6 +3,8 @@ from os import getenv
 
 from nautobot.extras.models import GitRepository
 
+from design_builder.util import nautobot_version
+
 
 def ensure_git_repo(name, slug, url, provides):
     """Ensure that a git repo is created in Nautobot.
@@ -23,7 +25,10 @@ def ensure_git_repo(name, slug, url, provides):
             branch="main",
             provided_contents=provides,
         )
-        git_repo.save(trigger_resync=False)
+        if nautobot_version < "2.0.0":
+            git_repo.save(trigger_resync=False)  # pylint: disable=unexpected-keyword-arg
+        else:
+            git_repo.save()
 
 
 def populate_sample_data():

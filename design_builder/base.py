@@ -30,7 +30,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     """
 
     if nautobot_version >= "2.0.0":
-        from nautobot.extras.jobs import DryRunVar
+        from nautobot.extras.jobs import DryRunVar  # pylint: disable=import-outside-toplevel
 
         dryrun = DryRunVar()
 
@@ -176,7 +176,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.creator.implement_design(design, commit)
 
     @transaction.atomic
-    def run(self, **kwargs):
+    def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
         """Render the design and implement it with ObjectCreator."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])

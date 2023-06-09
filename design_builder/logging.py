@@ -17,23 +17,23 @@ if nautobot_version < "2.0.0":
     }
     LOG_INFO = LogLevelChoices.LOG_INFO
     LOG_DEBUG = LogLevelChoices.LOG_INFO
-    LOG_SUCCESS = LogLevelChoices.LOG_SUCCESS
+    LOG_SUCCESS = LogLevelChoices.LOG_SUCCESS  # pylint: disable=no-member
     LOG_WARNING = LogLevelChoices.LOG_WARNING
-    LOG_FAILURE = LogLevelChoices.LOG_FAILURE
+    LOG_FAILURE = LogLevelChoices.LOG_FAILURE  # pylint: disable=no-member
     # /MIN_VERSION: 2.0.0
 else:
     _logger_to_level_choices = {
-        logging.DEBUG: LogLevelChoices.LOG_DEBUG,
+        logging.DEBUG: LogLevelChoices.LOG_DEBUG,  # pylint: disable=no-member
         logging.INFO: LogLevelChoices.LOG_INFO,
         logging.WARNING: LogLevelChoices.LOG_WARNING,
         logging.ERROR: LogLevelChoices.LOG_ERROR,  # pylint: disable=no-member
         logging.CRITICAL: LogLevelChoices.LOG_CRITICAL,  # pylint: disable=no-member
     }
     LOG_INFO = LogLevelChoices.LOG_INFO
-    LOG_DEBUG = LogLevelChoices.LOG_DEBUG
+    LOG_DEBUG = LogLevelChoices.LOG_DEBUG  # pylint: disable=no-member
     LOG_SUCCESS = LogLevelChoices.LOG_INFO
     LOG_WARNING = LogLevelChoices.LOG_WARNING
-    LOG_FAILURE = LogLevelChoices.LOG_ERROR
+    LOG_FAILURE = LogLevelChoices.LOG_ERROR  # pylint: disable=no-member
 
 
 class JobResultHandler(logging.Handler):
