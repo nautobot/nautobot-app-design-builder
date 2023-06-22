@@ -30,7 +30,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     """
 
     if nautobot_version >= "2.0.0":
-        from nautobot.extras.jobs import DryRunVar  # pylint: disable=import-outside-toplevel
+        from nautobot.extras.jobs import DryRunVar  # pylint: disable=no-name-in-module,import-outside-toplevel
 
         dryrun = DryRunVar()
 
