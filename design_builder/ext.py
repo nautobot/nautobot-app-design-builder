@@ -161,7 +161,6 @@ class ReferenceExtension(Extension):
         Returns:
             CreatorObject: The object stored at `reference_name`
         """
-        print("LOOKING UP", key)
         keys = key.split(".", 1)
         attribute = None
         if len(keys) == 2:

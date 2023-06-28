@@ -340,7 +340,6 @@ class ChildPrefixExtension(Extension):
             raise DesignImplementationError("the child_prefix tag requires a dictionary of arguments")
 
         parent = value.pop("parent", None)
-        print("PARENT:", parent)
         if parent is None:
             raise DesignImplementationError("the child_prefix tag requires a parent")
         if isinstance(parent, ModelInstance):
