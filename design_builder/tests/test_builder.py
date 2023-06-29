@@ -513,7 +513,7 @@ devices:
 """
 
 
-class TestProvisioner(TestCase):
+class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
     builder = None
 
     def setUp(self):
@@ -706,3 +706,28 @@ class TestProvisioner(TestCase):
         mlag = device.interfaces.get(name="PortChannel1")
         self.assertEqual(mlag.member_interfaces.all()[0], interfaces[0])
         self.assertEqual(mlag.member_interfaces.all()[1], interfaces[1])
+
+    def test_create_or_update_relationship(self):
+        design = """
+        manufacturers:
+        - name: "Vendor"
+        device_types:
+        - "!create_or_update:model": "test model"
+          "!create_or_update:manufacturer__name": "Vendor"
+        device_roles:
+        - "name": "role"
+        sites:
+        - "name": "Site"
+          "status__name": "Active"
+        devices:
+        - "!create_or_update:name": "test device"
+          "!create_or_update:device_type__manufacturer__name": "Vendor"
+          "device_role__name": "role"
+          "site__name": "Site"
+          "status__name": "Active"
+        """
+        self.implement_design(design)
+        device_type = DeviceType.objects.get(model="test model")
+        self.assertEqual("Vendor", device_type.manufacturer.name)
+        device = Device.objects.get(name="test device")
+        self.assertEqual(device_type, device.device_type)

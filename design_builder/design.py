@@ -149,7 +149,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                         self.attributes[result[0]] = result[1]
                 elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
                     self.action = args[0]
-                    self.filter[args[1]] = value
+                    if "__" in args[1]:
+                        attribute, filter_param = args[1].split("__", 1)
+                        self.filter.setdefault(attribute, {})
+                        self.filter[attribute][filter_param] = value
+                    else:
+                        self.filter[args[1]] = value
+
                     if self.action is None:
                         self.action = args[0]
                     elif self.action != args[0]:
@@ -179,6 +185,12 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             return
 
         if self.action in [self.UPDATE, self.CREATE_OR_UPDATE]:
+            # perform nested lookups
+            for query_param, value in query_filter.items():
+                if isinstance(value, Mapping):
+                    rel = getattr(self.model_class, query_param)
+                    query_filter[query_param] = rel.get_queryset().get(**value)
+
             try:
                 if self.relationship_manager is None:
                     self.instance = self.model_class.objects.get(**query_filter)
