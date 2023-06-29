@@ -11,9 +11,11 @@ from nautobot.extras.models import Status
 from nautobot.ipam.models import Prefix
 
 import netaddr
+from design_builder.design import ModelInstance
 
 from design_builder.errors import DesignImplementationError
 from design_builder.ext import Extension
+from design_builder.jinja2 import network_offset
 
 
 class LookupMixin:
@@ -287,3 +289,68 @@ class NextPrefixExtension(Extension):
                 if available_prefix.prefixlen <= length:
                     return f"{available_prefix.network}/{length}"
         raise DesignImplementationError(f"No available prefixes could be found from {list(map(str, prefixes))}")
+
+
+class ChildPrefixExtension(Extension):
+    """Calculates a child Prefix string in CIDR notation."""
+
+    attribute_tag = "child_prefix"
+
+    def attribute(self, value: dict, model_instance) -> None:
+        """Provides the `!child_prefix` attribute.
+
+        !child_prefix calculates a child prefix using a parent prefix
+        and an offset. The parent prefix can either be a string CIDR
+        style prefix or it can refer to a previously created `Prefix`
+        object.
+
+        Args:
+            value: a dictionary containing the `parent` prefix (string or
+            `Prefix` instance) and the `offset` in the form of a CIDR
+            string. The length of the child prefix will match the length
+            provided in the offset string.
+
+        Raises:
+            DesignImplementationError: if value is not a dictionary, or the
+            prefix or offset are improperly formatted
+
+        Returns:
+            The computed prefix string.
+
+        Example:
+            ```yaml
+            prefixes:
+            - "!next_prefix":
+                    prefix:
+                    - "10.0.0.0/23"
+                    length: 24
+                status__name: "Active"
+                "!ref": "parent_prefix"
+            - "!child_prefix":
+                    parent: "!ref:parent_prefix"
+                    offset: "0.0.0.0/25"
+                status__name: "Active"
+            - "!child_prefix":
+                    parent: "!ref:parent_prefix"
+                    offset: "0.0.0.128/25"
+                status__name: "Active"
+            ```
+        """
+        if not isinstance(value, dict):
+            raise DesignImplementationError("the child_prefix tag requires a dictionary of arguments")
+
+        parent = value.pop("parent", None)
+        if parent is None:
+            raise DesignImplementationError("the child_prefix tag requires a parent")
+        if isinstance(parent, ModelInstance):
+            parent = str(parent.instance.prefix)
+        elif not isinstance(parent, str):
+            raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
+
+        offset = value.pop("offset", None)
+        if offset is None:
+            raise DesignImplementationError("the child_prefix tag requires an offset")
+        if not isinstance(offset, str):
+            raise DesignImplementationError("offset must be string")
+
+        return "prefix", network_offset(parent, offset)
