@@ -137,11 +137,11 @@ class ManyToOneField(RelationshipField):
                 raise DesignImplementationError(f"Could not find {self.model.__name__}: {query}")
         elif hasattr(value, "instance"):
             setattr(self.instance.instance, self.field.name, value.instance)
-        elif isinstance(value, Model):
+        elif isinstance(value, Model) or value is None:
             setattr(self.instance.instance, self.field.name, value)
         else:
             raise DesignImplementationError(
-                f"Expecting input field '{value} to be a mapping or reference, got {type(value)}: {value}"
+                f"Expecting input field '{self.field.name}' to be a mapping or reference, got {type(value)}: {value}"
             )
 
 
