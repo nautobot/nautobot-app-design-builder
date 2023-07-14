@@ -42,6 +42,29 @@ class _Node:
             return repr(getattr(self, "_store"))
         return super().__repr__()
 
+    def __setitem__(self, key, item) -> "_Node":
+        """Store a new value within the node.
+
+        Args:
+            index: Index/key/attribute name
+            value: Value of item to store
+
+        Raises:
+            KeyError: if the item cannot be stored.
+
+        Returns:
+            _Node: _description_
+        """
+        if isinstance(item, str):
+            item = _TemplateNode(self._root, item)
+
+        if isinstance(key, str) and hasattr(self, key):
+            setattr(self, key, item)
+        elif hasattr(self, "_store"):
+            self._store[key] = item
+        else:
+            raise KeyError(key)
+
     def __getitem__(self, item) -> "_Node":
         """Walk the context tree and return the value.
 
@@ -52,7 +75,7 @@ class _Node:
         if isinstance(item, str) and hasattr(self, item):
             val = getattr(self, item)
         elif hasattr(self, "_store"):
-            val = getattr(self, "_store")[item]
+            val = self._store[item]
         else:
             raise KeyError(item)
 
