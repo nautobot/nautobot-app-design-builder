@@ -3,7 +3,7 @@ from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
 from django.db.models.fields import Field as DjangoField
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
 from django.db import transaction
 
 
@@ -11,7 +11,7 @@ from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.core.models import BaseModel
 from nautobot.extras.models import JobResult, Relationship
 
-from design_builder.errors import DesignImplementationError, DesignValidationError
+from design_builder import errors
 from design_builder import ext
 from design_builder.logging import LoggingMixin
 from design_builder.fields import field_factory, OneToOneField, ManyToOneField
@@ -106,7 +106,9 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
 
-    def __init__(self, creator: "Builder", model_class: Type[BaseModel], attributes: dict, relationship_manager=None):
+    def __init__(
+        self, creator: "Builder", model_class: Type[BaseModel], attributes: dict, relationship_manager=None, parent=None
+    ):  # pylint:disable=too-many-arguments
         """Constructor for a ModelInstance."""
         self.creator = creator
         self.model_class = model_class
@@ -115,6 +117,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # Make a copy of the attributes so the original
         # design attributes are not overwritten
         self.attributes = {**attributes}
+        self.parent = parent
         self.deferred = []
         self.deferred_attributes = {}
 
@@ -131,7 +134,36 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
         self._parse_attributes()
         self.relationship_manager = relationship_manager
-        self._load_instance()
+        try:
+            self._load_instance()
+        except ObjectDoesNotExist as ex:
+            raise errors.DoesNotExistError(self) from ex
+        except MultipleObjectsReturned as ex:
+            raise errors.MultipleObjectsReturnedError(self) from ex
+
+    def create_child(
+        self,
+        model_class: Type[BaseModel],
+        attributes: dict,
+        relationship_manager=None,
+    ):
+        """Create a new ModelInstance that is linked to the current instance.
+
+        Args:
+            model_class: Class of the child model.
+            attributes: Design attributes for the child.
+            relationship_manager: Database relationship manager to use for the new instance.
+
+        Returns:
+            _type_: _description_
+        """
+        return ModelInstance(
+            self.creator,
+            model_class,
+            attributes,
+            relationship_manager,
+            parent=self,
+        )
 
     def _parse_attributes(self):  # pylint: disable=too-many-branches
         self.custom_fields = self.attributes.pop("custom_fields", {})
@@ -154,24 +186,24 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     if self.action is None:
                         self.action = args[0]
                     elif self.action != args[0]:
-                        raise DesignImplementationError(
+                        raise errors.DesignImplementationError(
                             f"Can perform only one action for a model, got both {self.action} and {args[0]}",
                             self.model_class,
                         )
                 else:
-                    raise DesignImplementationError(f"Unknown action {args[0]}", self.model_class)
+                    raise errors.DesignImplementationError(f"Unknown action {args[0]}", self.model_class)
             elif "__" in key:
                 fieldname, search = key.split("__", 1)
                 if not hasattr(self.model_class, fieldname):
-                    raise DesignImplementationError(f"{fieldname} is not a property", self.model_class)
+                    raise errors.DesignImplementationError(f"{fieldname} is not a property", self.model_class)
                 self.attributes[fieldname] = {search: self.attributes.pop(key)}
             elif not hasattr(self.model_class, key) and key not in self.instance_fields:
-                raise DesignImplementationError(f"{key} is not a property", self.model_class)
+                raise errors.DesignImplementationError(f"{key} is not a property", self.model_class)
 
         if self.action is None:
             self.action = self.CREATE
         if self.action not in self.ACTION_CHOICES:
-            raise DesignImplementationError(f"Unknown action {self.action}", self.model_class)
+            raise errors.DesignImplementationError(f"Unknown action {self.action}", self.model_class)
 
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
@@ -203,13 +235,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 return
             except ObjectDoesNotExist:
                 if self.action == "update":
-                    raise DesignImplementationError(f"No match with {query_filter}", self.model_class)
+                    raise errors.DesignImplementationError(f"No match with {query_filter}", self.model_class)
                 # since the object was not found, we need to
                 # put the search criteria back into the attributes
                 # so that they will be set when the object is created
                 self.attributes.update(query_filter)
         elif self.action != "create":
-            raise DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
+            raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
         self.instance = self.model_class()
 
     def _update_fields(self):  # pylint: disable=too-many-branches
@@ -247,9 +279,12 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # ensure that parent instances have been saved and
         # assigned a primary key
         self._update_fields()
-        self.instance.full_clean()
-        self.instance.save()
-        self.instance.refresh_from_db()
+        try:
+            self.instance.full_clean()
+            self.instance.save()
+            self.instance.refresh_from_db()
+        except ValidationError as validation_error:
+            raise errors.DesignValidationError(self) from validation_error
 
         for field_name in self.deferred:
             items = self.deferred_attributes[field_name]
@@ -322,7 +357,7 @@ class Builder(LoggingMixin):
 
         for extn_cls in [*extensions, *ext.extensions()]:
             if not issubclass(extn_cls, ext.Extension):
-                raise DesignImplementationError("{extn_cls} is not an action tag extension.")
+                raise errors.DesignImplementationError("{extn_cls} is not an action tag extension.")
 
             extn = {
                 "class": extn_cls,
@@ -370,13 +405,16 @@ class Builder(LoggingMixin):
         Raises:
             DesignImplementationError: if the model is not in the model map
         """
+        if not design:
+            raise errors.DesignImplementationError("Empty design")
+
         sid = transaction.savepoint()
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
                     self._create_objects(self.model_map[key], value)
                 else:
-                    raise DesignImplementationError(f"Unknown model key {key} in design")
+                    raise errors.DesignImplementationError(f"Unknown model key {key} in design")
             if not commit:
                 transaction.savepoint_rollback(sid)
                 self.roll_back()
@@ -392,7 +430,7 @@ class Builder(LoggingMixin):
             if extn:
                 value = extn.value(arg)
             else:
-                raise DesignImplementationError(f"Unknown attribute extension {value}")
+                raise errors.DesignImplementationError(f"Unknown attribute extension {value}")
         return value
 
     def resolve_values(self, value):
@@ -443,7 +481,7 @@ class Builder(LoggingMixin):
             type_str = model.model_class._meta.verbose_name.capitalize()
             if instance_str:
                 type_str = f"{type_str} {instance_str}"
-            raise DesignValidationError(f"{type_str} failed validation") from validation_error
+            raise errors.DesignValidationError(f"{type_str} failed validation") from validation_error
 
     def commit(self):
         """Method to commit all changes to the database."""
