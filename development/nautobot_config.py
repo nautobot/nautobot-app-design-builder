@@ -5,6 +5,8 @@ import sys
 
 from nautobot.core.settings import *  # noqa: F403
 from nautobot.core.settings_funcs import parse_redis_connection
+from importlib import metadata
+from packaging.version import Version
 
 
 #
@@ -133,5 +135,12 @@ CACHEOPS_REDIS = parse_redis_connection(redis_database=1)
 
 # Enable installed plugins. Add the name of each plugin to the list.
 PLUGINS = ["design_builder"]
+
+# TODO: The following is necessary only until BGP models plugin
+# is officially supported in 2.0
+nautobot_version = Version(Version(metadata.version("nautobot")).base_version)
+
+if nautobot_version < Version("2.0"):
+    PLUGINS.append("nautobot_bgp_models")
 
 PLUGINS_CONFIG = {"design_builder": {"context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None)}}

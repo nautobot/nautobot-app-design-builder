@@ -1,8 +1,10 @@
 """Provides ORM interaction for design builder."""
+from collections import defaultdict
 from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
 from django.db.models.fields import Field as DjangoField
+from django.dispatch.dispatcher import Signal
 from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
 from django.db import transaction
 
@@ -99,12 +101,17 @@ def _map_query_values(query: Mapping) -> Mapping:
 class ModelInstance:  # pylint: disable=too-many-instance-attributes
     """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file."""
 
+    # Action Definitions
     GET = "get"
     CREATE = "create"
     UPDATE = "update"
     CREATE_OR_UPDATE = "create_or_update"
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
+
+    # Callback Event types
+    PRE_SAVE = Signal()
+    POST_SAVE = Signal()
 
     def __init__(
         self, creator: "Builder", model_class: Type[BaseModel], attributes: dict, relationship_manager=None, parent=None
@@ -120,6 +127,9 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.parent = parent
         self.deferred = []
         self.deferred_attributes = {}
+
+        # Event handlers
+        self._handlers = defaultdict(set)
 
         self.filter = {}
         self.action = None
@@ -168,7 +178,9 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     def _parse_attributes(self):  # pylint: disable=too-many-branches
         self.custom_fields = self.attributes.pop("custom_fields", {})
         self.custom_relationships = self.attributes.pop("custom_relationships", {})
-        for key in list(self.attributes.keys()):
+        attribute_names = list(self.attributes.keys())
+        while attribute_names:
+            key = attribute_names.pop(0)
             self.attributes[key] = self.creator.resolve_values(self.attributes[key])
             if key.startswith("!"):
                 value = self.attributes.pop(key)
@@ -177,8 +189,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 extn = self.creator.get_extension("attribute", args[0])
                 if extn:
                     result = extn.attribute(*args[1:], value=self.creator.resolve_values(value), model_instance=self)
-                    if result:
+                    if isinstance(result, tuple):
                         self.attributes[result[0]] = result[1]
+                    elif isinstance(result, dict):
+                        self.attributes.update(result)
+                        attribute_names.extend(result.keys())
+                    elif result is not None:
+                        raise errors.DesignImplementationError(f"Cannot handle extension return type {type(result)}")
                 elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
                     self.action = args[0]
                     self.filter[args[1]] = value
@@ -205,6 +222,15 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         if self.action not in self.ACTION_CHOICES:
             raise errors.DesignImplementationError(f"Unknown action {self.action}", self.model_class)
 
+    def connect(self, signal: Signal, handler):
+        """Connect a handler between this model instance (as sender) and signal.
+
+        Args:
+            signal: Signal to listen for.
+            handler: Callback function
+        """
+        signal.connect(handler, self)
+
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
         if self.action == self.GET:
@@ -220,12 +246,16 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     value = query_filter.pop(query_param)
                     attribute, filter_param = query_param.split("__", 1)
                     query_filter.setdefault(attribute, {})
-                    query_filter[attribute][filter_param] = value
+                    query_filter[attribute][f"!get:{filter_param}"] = value
 
             for query_param, value in query_filter.items():
                 if isinstance(value, Mapping):
                     rel = getattr(self.model_class, query_param)
-                    query_filter[query_param] = rel.get_queryset().get(**value)
+                    queryset = rel.get_queryset()
+                    model = self.create_child(queryset.model, value, relationship_manager=queryset)
+                    if model.action != self.GET:
+                        model.save()
+                    query_filter[query_param] = model.instance
 
             try:
                 if self.relationship_manager is None:
@@ -279,6 +309,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # ensure that parent instances have been saved and
         # assigned a primary key
         self._update_fields()
+        ModelInstance.PRE_SAVE.send(sender=self)
         try:
             self.instance.full_clean()
             self.instance.save()
@@ -299,9 +330,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     relationship_manager = None
                     if hasattr(self.instance, field_name):
                         relationship_manager = getattr(self.instance, field_name)
-                    related_object = ModelInstance(self.creator, field.model, item, relationship_manager)
+                    related_object = self.create_child(field.model, item, relationship_manager)
                 related_object.save()
                 field.set_value(related_object.instance)
+        ModelInstance.POST_SAVE.send(sender=self)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
@@ -471,17 +503,10 @@ class Builder(LoggingMixin):
             DesignValidationError: if the model fails to save, refresh or log to the journal
         """
         created = model.instance._state.adding  # pylint: disable=protected-access
-        msg = "Created" if model.instance._state.adding else "Updated"  # pylint: disable=protected-access
-        try:
-            model.save()
-            self.log_success(message=f"{msg} {model.name} {model.instance}", obj=model.instance)
-            self.journal.log(model, created)
-        except ValidationError as validation_error:
-            instance_str = str(model.instance)
-            type_str = model.model_class._meta.verbose_name.capitalize()
-            if instance_str:
-                type_str = f"{type_str} {instance_str}"
-            raise errors.DesignValidationError(f"{type_str} failed validation") from validation_error
+        msg = "Created" if created else "Updated"
+        model.save()
+        self.log_success(message=f"{msg} {model.name} {model.instance}", obj=model.instance)
+        self.journal.log(model, created)
 
     def commit(self):
         """Method to commit all changes to the database."""
