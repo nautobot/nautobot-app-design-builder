@@ -14,7 +14,7 @@ from jinja2 import TemplateError
 from nautobot.extras.jobs import Job
 
 
-from design_builder.errors import DesignImplementationError, DesignValidationError
+from design_builder.errors import DesignImplementationError, DesignModelError
 from design_builder.jinja2 import new_template_environment
 from design_builder.logging import LoggingMixin
 from design_builder.design import Builder
@@ -221,7 +221,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 self.log_info(
                     message=f"{self.name} can be imported successfully - No database changes made",
                 )
-        except (DesignImplementationError, DesignValidationError) as ex:
+        except (DesignImplementationError, DesignModelError) as ex:
             transaction.savepoint_rollback(sid)
             self.log_failure(message="Failed to implement design")
             self.log_failure(message=str(ex))

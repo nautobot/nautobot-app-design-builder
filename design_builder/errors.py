@@ -30,26 +30,138 @@ class DesignImplementationError(Exception):
             super().__init__(f"{message} for {model.__class__.__name__} {model}")
 
 
-class DesignValidationError(Exception):
-    """Exception to be raised before a design is implemented if it fails any validation checks."""
+class DesignModelError(Exception):
+    """Parent class for all model related design errors."""
+
+    def __init__(self, model=None) -> None:
+        """Initialize a DesignError with optional model_stack.
+
+        Args:
+            model: The model that generated the error.
+        """
+        super().__init__()
+        self.model = model
+
+    @staticmethod
+    def _model_str(model):
+        instance_str = None
+        if not hasattr(model, "instance"):
+            return str(model)
+
+        if model.instance:
+            instance_str = str(model.instance)
+        model_str = model.model_class._meta.verbose_name.capitalize()
+        if instance_str:
+            model_str = f"{model_str} {instance_str}"
+        return model_str
+
+    @staticmethod
+    def _object_to_markdown(obj, indentation=""):
+        msg = []
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                msg.append(f"{indentation}- **{key}:** ")
+                if isinstance(value, dict):
+                    msg.append(DesignModelError._object_to_markdown(value, indentation=f"{indentation}    "))
+                else:
+                    msg[-1] += DesignModelError._model_str(value)
+        else:
+            msg.append(f"{indentation}- {DesignModelError._model_str(obj)}")
+        return "\n".join(msg)
+
+    @property
+    def model_str(self):
+        """User-friendly name for the model instance."""
+        return DesignModelError._model_str(self.model)
+
+    @property
+    def path_str(self):
+        """List of properly indented parents for the model."""
+        path_msg = []
+        model = self.model
+        while model is not None:
+            path_msg.insert(0, DesignModelError._model_str(model))
+            if hasattr(model, "parent"):
+                model = model.parent
+            else:
+                model = None
+        # don't include the top level model in the ancestry
+        # tree because details about it should be included
+        # in the implementing class's __str__ method
+        path_msg.pop()
+        indentation = ""
+
+        for i, msg in enumerate(path_msg):
+            path_msg[i] = f"{indentation}- {msg}"
+            indentation += "    "
+
+        return indentation, "\n".join(path_msg)
+
+
+class DesignValidationError(DesignModelError):
+    """Exception indicating a design failed validation checks.
+
+    A DesignValidationError can be raised by `validate_` methods
+    in a `Context` or by the `Builder` during implementation.
+    During the implementation process, if any object fails validation
+    during it's `full_clean` check, then the ValidationError is raised
+    from that point as a DesignValidationError.
+    """
 
     def __str__(self) -> str:
         """The string representation of an object of the DesignValidationError class.
 
         Provides information about what caused the validation to fail.
         """
-        msg = [f"{super().__str__()}"]
+        msg = []
+        indentation, path_msg = self.path_str
+        if path_msg:
+            msg.append(path_msg)
+        msg.append(f"{indentation}{self.model_str} failed validation")
         if isinstance(self.__cause__, ValidationError):
             fields = _error_msg(self.__cause__)
             keys = list(fields.keys())
             keys.sort()
             for message in fields.pop("__all__", []):
-                msg.append(f"{message}")
+                msg.append(f"{indentation}  {message}")
 
             for key in keys:
                 if key == "__all__":
                     continue
 
                 field_msg = "\n".join(fields[key])
-                msg.append(f"**{key}:** {field_msg}")
+                msg.append(f"{indentation}  **{key}:** {field_msg}")
         return "\n\n".join(msg)
+
+
+class DesignQueryError(DesignModelError):
+    """Exception indicating design builder could not find the object."""
+
+    def __str__(self) -> str:
+        """The string representation of an object of the DoesNotExistError class."""
+        msg = []
+        indentation, path_msg = self.path_str
+        if path_msg:
+            msg.append(path_msg)
+        msg.append(f"{indentation}- {self.model_str}:")
+        if hasattr(self.model, "query_filter"):
+            msg.append(DesignModelError._object_to_markdown(self.model.query_filter, indentation=f"{indentation}    "))
+        else:
+            msg.append(DesignModelError._object_to_markdown(self.model.filter, indentation=f"{indentation}    "))
+        return "\n".join(msg)
+
+
+class DoesNotExistError(DesignQueryError):
+    """Raised when a `ModelInstance` underlying database object cannot be found."""
+
+    def __str__(self):
+        """Error message with context."""
+        return f"Failed to find {self.model_str} matching query.\n\n{super().__str__()}"
+
+
+class MultipleObjectsReturnedError(DesignQueryError):
+    """Raised when a `ModelInstance` query matches more than one database object."""
+
+    def __str__(self):
+        """Error message with context."""
+        return f"Multiple {self.model_str} objects matched query.\n\n{super().__str__()}"

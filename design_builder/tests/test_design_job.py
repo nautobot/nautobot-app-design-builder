@@ -79,7 +79,7 @@ class TestDesignJobLogging(DesignTestCase):
         job.run(data={}, commit=True)
         message = self.logged_messages[-1]["message"]
 
-        want_error = DesignValidationError("Manufacturer failed validation")
+        want_error = DesignValidationError("Manufacturer")
         want_error.__cause__ = ValidationError(
             {
                 "name": "This field cannot be blank.",
