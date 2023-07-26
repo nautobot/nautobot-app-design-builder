@@ -11,6 +11,7 @@ from nautobot.extras.models import Status
 from nautobot.ipam.models import Prefix
 
 import netaddr
+from design_builder.design import Builder
 from design_builder.design import ModelInstance
 
 from design_builder.errors import DesignImplementationError
@@ -58,6 +59,7 @@ class LookupMixin:
         Returns:
             Any: The object matching the query.
         """
+        # TODO: Convert this to lookup via ModelInstance
         for key, value in query.items():
             if hasattr(value, "instance"):
                 query[key] = value.instance
@@ -354,3 +356,111 @@ class ChildPrefixExtension(Extension):
             raise DesignImplementationError("offset must be string")
 
         return "prefix", network_offset(parent, offset)
+
+
+class BGPPeeringExtension(Extension):
+    """Create BGP peerings in the BGP Models Plugin."""
+
+    attribute_tag = "bgp_peering"
+
+    def __init__(self, object_creator: Builder):
+        """Initialize the BGPPeeringExtension.
+
+        This initializer will import the necessary BGP models. If the
+        BGP models plugin is not installed then it raises a DesignImplementationError.
+
+        Raises:
+            DesignImplementationError: Raised when the BGP Models Plugin is not installed.
+        """
+        super().__init__(object_creator)
+        try:
+            from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
+
+            self.PeerEndpoint = PeerEndpoint  # pylint:disable=invalid-name
+            self.Peering = Peering  # pylint:disable=invalid-name
+        except ModuleNotFoundError:
+            raise DesignImplementationError(
+                "the `bgp_peering` tag can only be used when the bgp models plugin is installed."
+            )
+
+    @staticmethod
+    def _post_save(sender, **kwargs) -> None:
+        peering_instance: ModelInstance = sender
+        endpoint_a = peering_instance.instance.endpoint_a
+        endpoint_z = peering_instance.instance.endpoint_z
+        endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
+        endpoint_a.save()
+        endpoint_z.save()
+
+    def attribute(self, value, model_instance) -> None:
+        """This attribute tag creates or updates a BGP peering for two endpoints.
+
+        !bgp_peering will take an `endpoint_a` and `endpoint_z` argument to correctly
+        create or update a BGP peering. Both endpoints can be specified using typical
+        Design Builder syntax.
+
+        Args:
+            value (dict): dictionary containing the keys `entpoint_a`
+            and `endpoint_z`. Both of these keys must be dictionaries
+            specifying a way to either lookup or create the appropriate
+            peer endpoints.
+
+        Raises:
+            DesignImplementationError: if the supplied value is not a dictionary
+            or it does not include `endpoint_a` and `endpoint_z` as keys.
+
+
+        Returns:
+            dict: Dictionary that can be used by the design.Builder to create
+            the peerings.
+
+        Example:
+        ```yaml
+        bgp_peerings:
+        - "!bgp_peering":
+              endpoint_a:
+                  "!create_or_update:routing_instance__autonomous_system__asn": "64496"
+                  "!create_or_update:source_ip":
+                      "interface__device__name": "device1"
+                      "interface__name": "Ethernet1/1"
+              endpoint_z:
+                  "!create_or_update:routing_instance__autonomous_system__asn": "64500"
+                  "!create_or_update:source_ip":
+                      "interface__device__name": "device2"
+                      "interface__name": "Ethernet1/1"
+          status__name: "Active"
+        ```
+        """
+        if not (isinstance(value, dict) and value.keys() >= {"endpoint_a", "endpoint_z"}):
+            raise DesignImplementationError(
+                "bgp peerings must be supplied a dictionary with `endpoint_a` and `endpoint_z`."
+            )
+
+        # copy the value so it won't be modified in later
+        # use
+        retval = {**value}
+        endpoint_a = ModelInstance(self.object_creator, self.PeerEndpoint, retval.pop("endpoint_a"))
+        endpoint_z = ModelInstance(self.object_creator, self.PeerEndpoint, retval.pop("endpoint_z"))
+        peering_a = None
+        peering_z = None
+        try:
+            peering_a = endpoint_a.instance.peering
+            peering_z = endpoint_z.instance.peering
+        except self.Peering.DoesNotExist:
+            pass
+
+        # try to prevent empty peerings
+        if peering_a == peering_z:
+            if peering_a:
+                retval["!update:pk"] = peering_a.pk
+        else:
+            if peering_a:
+                peering_a.delete()
+            if peering_z:
+                peering_z.delete()
+
+        retval["endpoints"] = [endpoint_a, endpoint_z]
+        endpoint_a.attributes["peering"] = model_instance
+        endpoint_z.attributes["peering"] = model_instance
+        model_instance.connect(ModelInstance.POST_SAVE, BGPPeeringExtension._post_save)
+        return retval

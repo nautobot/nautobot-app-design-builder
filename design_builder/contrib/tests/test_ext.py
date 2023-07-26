@@ -5,11 +5,12 @@ from django.db.models import Q
 from django.test import TestCase
 
 from nautobot.extras.models import Status
-from nautobot.dcim.models import Interface, DeviceType
+from nautobot.dcim.models import Interface, Device, DeviceType
 from nautobot.tenancy.models import Tenant
 from nautobot.ipam.models import Prefix
 
 from design_builder.contrib.ext import (
+    BGPPeeringExtension,
     ChildPrefixExtension,
     LookupExtension,
     CableConnectionExtension,
@@ -280,3 +281,103 @@ class TestChildPrefixExtension(PrefixExtensionTests):
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.0/25").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.128/25").exists())
+
+
+class TestBGPExtension(TestCase):
+    def setUp(self):
+        # TODO: Remove this when BGP models is migrated to 2.0
+        if nautobot_version >= "2.0.0":
+            self.skipTest("BGP Models is not supported in Nautobot 2.x")
+        super().setUp()
+
+    def test_creation(self):
+        design_template = """
+        sites:
+          - "!create_or_update:name": "Site"
+            status__name: "Active"
+
+        device_roles:
+          - "!create_or_update:name": "test-role"
+
+        manufacturers:
+          - "!create_or_update:name": "test-manufacturer"
+
+        device_types:
+          - manufacturer__name: "test-manufacturer"
+            "!create_or_update:model": "test-type"
+
+        autonomous_systems:
+        - "!create_or_update:asn": 64500
+          status__name: "Active"
+
+        devices:
+        - "!create_or_update:name": "device1"
+          status__name: "Active"
+          site__name: "Site"
+          device_role__name: "test-role"
+          device_type__model: "test-type"
+          interfaces:
+          - "!create_or_update:name": "Ethernet1/1"
+            type: "virtual"
+            status__name: "Active"
+            ip_addresses:
+            - "!create_or_update:address": "192.168.1.1/24"
+              status__name: "Active"
+          bgp_routing_instances:
+          - "!create_or_update:autonomous_system__asn": 64500
+            "!ref": "device1-instance"
+
+        - "!create_or_update:name": "device2"
+          status__name: "Active"
+          site__name: "Site"
+          device_role__name: "test-role"
+          device_type__model: "test-type"
+          interfaces:
+          - "!create_or_update:name": "Ethernet1/1"
+            type: "virtual"
+            status__name: "Active"
+            ip_addresses:
+            - "!create_or_update:address": "192.168.1.2/24"
+              status__name: "Active"
+          bgp_routing_instances:
+          - "!create_or_update:autonomous_system__asn": 64500
+            "!ref": "device2-instance"
+
+        bgp_peerings:
+        - "!bgp_peering":
+              endpoint_a:
+                  "!create_or_update:routing_instance__device__name": "device1"
+                  "!create_or_update:source_ip":
+                      "!get:interface__device__name": "device1"
+                      "!get:interface__name": "Ethernet1/1"
+              endpoint_z:
+                  "!create_or_update:routing_instance__device__name": "device2"
+                  "!create_or_update:source_ip":
+                      "!get:interface__device__name": "device2"
+                      "!get:interface__name": "Ethernet1/1"
+          status__name: "Active"
+        """
+        from nautobot_bgp_models.models import Peering  # pylint: disable=import-outside-toplevel
+
+        design = yaml.safe_load(design_template)
+        object_creator = Builder(extensions=[BGPPeeringExtension])
+        object_creator.implement_design(design, commit=True)
+        for peering in Peering.objects.all():
+            print("Peering:", peering)
+        device1 = Device.objects.get(name="device1")
+        device2 = Device.objects.get(name="device2")
+
+        endpoint1 = device1.bgp_routing_instances.first().endpoints.first()
+        endpoint2 = device2.bgp_routing_instances.first().endpoints.first()
+        self.assertEqual(endpoint1.peering, endpoint2.peering)
+        peering_pk = endpoint1.peering.pk
+        self.assertEqual(1, Peering.objects.all().count())
+        self.assertEqual(endpoint2.peer, endpoint1)
+        self.assertEqual(endpoint1.peer, endpoint2)
+
+        # confirm idempotence
+        object_creator.implement_design(design, commit=True)
+        self.assertEqual(1, Peering.objects.all().count())
+        self.assertEqual(peering_pk, Peering.objects.first().pk)
+        self.assertEqual(endpoint2.peer, endpoint1)
+        self.assertEqual(endpoint1.peer, endpoint2)

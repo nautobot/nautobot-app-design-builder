@@ -126,8 +126,10 @@ class ManyToOneField(RelationshipField):
     def set_value(self, value):  # noqa:D102
         if isinstance(value, Mapping):
             try:
-                value = self.model.objects.get(**value)  # pylint: disable=not-a-mapping
-                setattr(self.instance.instance, self.field.name, value)
+                value = {f"!get:{key}": value for key, value in value.items()}
+                value = self.instance.create_child(self.model, value)
+                # value = self.model.objects.get(**value)  # pylint: disable=not-a-mapping
+                setattr(self.instance.instance, self.field.name, value.instance)
             except MultipleObjectsReturned:
                 raise DesignImplementationError(
                     f"Expected exactly 1 object for {self.model.__name__}({value}) but got more than one"
