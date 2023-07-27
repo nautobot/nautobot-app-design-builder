@@ -11,7 +11,7 @@ from nautobot.extras.models import Status
 from nautobot.ipam.models import Prefix
 
 import netaddr
-from design_builder.design import Builder
+from design_builder.design import INSTANCE_POST_SAVE, Builder
 from design_builder.design import ModelInstance
 
 from design_builder.errors import DesignImplementationError
@@ -462,5 +462,5 @@ class BGPPeeringExtension(Extension):
         retval["endpoints"] = [endpoint_a, endpoint_z]
         endpoint_a.attributes["peering"] = model_instance
         endpoint_z.attributes["peering"] = model_instance
-        model_instance.connect(ModelInstance.POST_SAVE, BGPPeeringExtension._post_save)
+        model_instance.connect(INSTANCE_POST_SAVE, BGPPeeringExtension._post_save)
         return retval

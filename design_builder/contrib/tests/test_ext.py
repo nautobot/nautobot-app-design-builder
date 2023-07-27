@@ -364,8 +364,6 @@ class TestBGPExtension(TestCase):
         design = yaml.safe_load(design_template)
         object_creator = Builder(extensions=[BGPPeeringExtension])
         object_creator.implement_design(design, commit=True)
-        for peering in Peering.objects.all():
-            print("Peering:", peering)
         device1 = Device.objects.get(name="device1")
         device2 = Device.objects.get(name="device2")
 
