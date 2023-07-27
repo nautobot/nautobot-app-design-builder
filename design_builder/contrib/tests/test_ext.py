@@ -148,6 +148,8 @@ class TestCableConnectionExtension(TestCase):
         interfaces = Interface.objects.all()
         self.assertEqual(2, len(interfaces))
         self.assertEqual(interfaces[0].connected_endpoint, interfaces[1])
+        self.assertIsNotNone(interfaces[0]._path_id)  # pylint: disable=protected-access
+        self.assertIsNotNone(interfaces[1]._path_id)  # pylint: disable=protected-access
 
 
 class PrefixExtensionTests(TestCase):

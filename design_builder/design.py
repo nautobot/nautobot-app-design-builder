@@ -144,6 +144,9 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
         self._parse_attributes()
         self.relationship_manager = relationship_manager
+        if self.relationship_manager is None:
+            self.relationship_manager = self.model_class.objects
+
         try:
             self._load_instance()
         except ObjectDoesNotExist as ex:
@@ -258,10 +261,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     query_filter[query_param] = model.instance
 
             try:
-                if self.relationship_manager is None:
-                    self.instance = self.model_class.objects.get(**query_filter)
-                else:
-                    self.instance = self.relationship_manager.get(**query_filter)
+                self.instance = self.relationship_manager.get(**query_filter)
                 return
             except ObjectDoesNotExist:
                 if self.action == "update":
@@ -332,6 +332,11 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                         relationship_manager = getattr(self.instance, field_name)
                     related_object = self.create_child(field.model, item, relationship_manager)
                 related_object.save()
+                # BEWARE
+                # DO NOT REMOVE THE FOLLOWING LINE, IT WILL BREAK THINGS
+                # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
+                self.instance.refresh_from_db()
+
                 field.set_value(related_object.instance)
         ModelInstance.POST_SAVE.send(sender=self)
 
