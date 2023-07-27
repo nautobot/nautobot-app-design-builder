@@ -169,7 +169,7 @@ class ReferenceExtension(Extension):
             model_instance = self._env[key]
         except KeyError:
             raise DesignImplementationError(f"No ref named {key} has been saved in the design.")
-        if model_instance.instance:
+        if model_instance.instance and not model_instance.instance._state.adding:  # pylint: disable=protected-access
             model_instance.instance.refresh_from_db()
         if attribute:
             return reduce(getattr, [model_instance.instance, *attribute.split(".")])

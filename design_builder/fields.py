@@ -5,7 +5,7 @@ from typing import Mapping, Type
 from django.db.models.base import Model
 from django.db.models.fields import Field as DjangoField
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 
 from taggit.managers import TaggableManager
@@ -108,6 +108,22 @@ class GenericRelationField(RelationshipField):
         getattr(self.instance.instance, self.field.name).add(value)
 
 
+class GenericForeignKeyField(RelationshipField):
+    """Generic foreign key field."""
+
+    @property
+    def deferrable(self):  # noqa:D102
+        return False
+
+    def set_value(self, value):  # noqa:D102
+        fk_field = self.field.fk_field
+        ct_field = self.field.ct_field
+        if hasattr(value, "instance"):
+            value = value.instance
+        setattr(self.instance.instance, fk_field, value.pk)
+        setattr(self.instance.instance, ct_field, ContentType.objects.get_for_model(value))
+
+
 class TagField(ManyToManyField):
     """Taggit field."""
 
@@ -127,9 +143,7 @@ class ManyToOneField(RelationshipField):
         if isinstance(value, Mapping):
             try:
                 value = {f"!get:{key}": value for key, value in value.items()}
-                value = self.instance.create_child(self.model, value)
-                # value = self.model.objects.get(**value)  # pylint: disable=not-a-mapping
-                setattr(self.instance.instance, self.field.name, value.instance)
+                value = self.instance.create_child(self.model, value).instance
             except MultipleObjectsReturned:
                 raise DesignImplementationError(
                     f"Expected exactly 1 object for {self.model.__name__}({value}) but got more than one"
@@ -138,13 +152,12 @@ class ManyToOneField(RelationshipField):
                 query = ",".join([f'{k}="{v}"' for k, v in value.items()])
                 raise DesignImplementationError(f"Could not find {self.model.__name__}: {query}")
         elif hasattr(value, "instance"):
-            setattr(self.instance.instance, self.field.name, value.instance)
-        elif isinstance(value, Model) or value is None:
-            setattr(self.instance.instance, self.field.name, value)
-        else:
+            value = value.instance
+        elif not isinstance(value, Model) and value is not None:
             raise DesignImplementationError(
                 f"Expecting input field '{self.field.name}' to be a mapping or reference, got {type(value)}: {value}"
             )
+        setattr(self.instance.instance, self.field.attname, value.pk)
 
 
 class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-methods
@@ -206,6 +219,8 @@ def field_factory(arg1, arg2) -> ModelField:
         field = SimpleField(arg1, arg2)
     elif isinstance(arg2, GenericRelation):
         field = GenericRelationField(arg1, arg2)
+    elif isinstance(arg2, GenericForeignKey):
+        field = GenericForeignKeyField(arg1, arg2)
     elif isinstance(arg2, TaggableManager):
         field = TagField(arg1, arg2)
     elif arg2.one_to_one:
