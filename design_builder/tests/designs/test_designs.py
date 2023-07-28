@@ -1,10 +1,15 @@
 """Design jobs used for unit testing."""
+from nautobot.dcim.models import Manufacturer
+from nautobot.extras.jobs import StringVar, ObjectVar
+
 from design_builder.base import DesignJob
 from design_builder.ext import Extension
 
 
 class SimpleDesign(DesignJob):
     """Simple design job."""
+    instance = StringVar()
+    manufacturer = ObjectVar(model=Manufacturer)
 
     class Meta:  # pylint: disable=too-few-public-methods
         name = "Simple Design"
@@ -15,7 +20,7 @@ class SimpleDesignReport(DesignJob):
     """Simple design job that includes a post-implementation report."""
 
     class Meta:  # pylint: disable=too-few-public-methods
-        name = "Simple Design"
+        name = "Simple Design with Report"
         design_file = "templates/simple_design.yaml.j2"
         report = "templates/simple_report.md.j2"
 

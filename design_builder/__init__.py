@@ -28,6 +28,10 @@ class DesignBuilderConfig(PluginConfig):
     default_settings = {}
     caching_config = {}
 
+    def ready(self):
+        super().ready()
+        from . import signals  # noqa: F401
+
     # pylint: disable=no-self-argument
     @classproperty
     def context_repository(cls):
