@@ -462,5 +462,6 @@ class BGPPeeringExtension(Extension):
         retval["endpoints"] = [endpoint_a, endpoint_z]
         endpoint_a.attributes["peering"] = model_instance
         endpoint_z.attributes["peering"] = model_instance
+
         model_instance.connect(ModelInstance.POST_SAVE, BGPPeeringExtension._post_save)
         return retval
