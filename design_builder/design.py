@@ -233,7 +233,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             signal: Signal to listen for.
             handler: Callback function
         """
-        signal.connect(handler, self)
+        signal.connect(handler, self.instance.pk)
 
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
@@ -310,7 +310,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # ensure that parent instances have been saved and
         # assigned a primary key
         self._update_fields()
-        INSTANCE_PRE_SAVE.send(sender=self)
+        INSTANCE_PRE_SAVE.send(sender=self.instance.pk, model_instance=self)
         try:
             self.instance.full_clean()
             self.instance.save()
@@ -339,7 +339,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.instance.refresh_from_db()
 
                 field.set_value(related_object.instance)
-        INSTANCE_POST_SAVE.send(sender=self)
+        INSTANCE_POST_SAVE.send(sender=self.instance.pk, model_instance=self)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
