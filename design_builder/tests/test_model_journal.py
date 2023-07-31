@@ -15,6 +15,7 @@ from .. import models
 
 class TestJournal(BaseDesignInstanceTest):
     """Test Journal."""
+
     def setUp(self):
         super().setUp()
         self.manufacturer = Manufacturer.objects.create(name="manufacturer")
@@ -34,10 +35,7 @@ class TestJournal(BaseDesignInstanceTest):
         else:
             self.job_result.task_kwargs = kwargs
         self.job_result.validated_save()
-        self.journal = models.Journal(
-            design_instance=self.design_instance,
-            job_result=self.job_result
-        )
+        self.journal = models.Journal(design_instance=self.design_instance, job_result=self.job_result)
         self.journal.validated_save()
 
     def test_user_input(self):

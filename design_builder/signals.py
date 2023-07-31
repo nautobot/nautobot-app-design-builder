@@ -34,7 +34,7 @@ def create_design_model(sender, instance: Job, **kwargs):
             job=instance,
             defaults={
                 "status": status,
-            }
+            },
         )
         if created:
             _LOGGER.debug("Created design from %s", instance)

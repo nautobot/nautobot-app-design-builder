@@ -8,6 +8,7 @@ from design_builder.ext import Extension
 
 class SimpleDesign(DesignJob):
     """Simple design job."""
+
     instance = StringVar()
     manufacturer = ObjectVar(model=Manufacturer)
 

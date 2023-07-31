@@ -11,88 +11,174 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('extras', '0058_jobresult_add_time_status_idxs'),
-        ('contenttypes', '0002_remove_content_type_name'),
+        ("extras", "0058_jobresult_add_time_status_idxs"),
+        ("contenttypes", "0002_remove_content_type_name"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Design',
+            name="Design",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('job', models.ForeignKey(editable=False, on_delete=django.db.models.deletion.CASCADE, to='extras.job')),
-                ('status', nautobot.extras.models.statuses.StatusField(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='design_builder_design_related', to='extras.status')),
-                ('tags', taggit.managers.TaggableManager(through='extras.TaggedItem', to='extras.Tag')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                (
+                    "job",
+                    models.ForeignKey(editable=False, on_delete=django.db.models.deletion.CASCADE, to="extras.job"),
+                ),
+                (
+                    "status",
+                    nautobot.extras.models.statuses.StatusField(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="design_builder_design_related",
+                        to="extras.status",
+                    ),
+                ),
+                ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='DesignInstance',
+            name="DesignInstance",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('name', models.CharField(max_length=100)),
-                ('first_implemented', models.DateTimeField(blank=True, null=True)),
-                ('last_implemented', models.DateTimeField(blank=True, null=True)),
-                ('design', models.ForeignKey(editable=False, on_delete=django.db.models.deletion.PROTECT, to='design_builder.design')),
-                ('tags', taggit.managers.TaggableManager(through='extras.TaggedItem', to='extras.Tag')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("name", models.CharField(max_length=100)),
+                ("first_implemented", models.DateTimeField(blank=True, null=True)),
+                ("last_implemented", models.DateTimeField(blank=True, null=True)),
+                (
+                    "design",
+                    models.ForeignKey(
+                        editable=False, on_delete=django.db.models.deletion.PROTECT, to="design_builder.design"
+                    ),
+                ),
+                ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='Journal',
+            name="Journal",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('design_instance', models.ForeignKey(editable=False, on_delete=django.db.models.deletion.CASCADE, to='design_builder.designinstance')),
-                ('job_result', models.ForeignKey(editable=False, on_delete=django.db.models.deletion.PROTECT, to='extras.jobresult')),
-                ('tags', taggit.managers.TaggableManager(through='extras.TaggedItem', to='extras.Tag')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                (
+                    "design_instance",
+                    models.ForeignKey(
+                        editable=False, on_delete=django.db.models.deletion.CASCADE, to="design_builder.designinstance"
+                    ),
+                ),
+                (
+                    "job_result",
+                    models.ForeignKey(
+                        editable=False, on_delete=django.db.models.deletion.PROTECT, to="extras.jobresult"
+                    ),
+                ),
+                ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.CreateModel(
-            name='JournalEntry',
+            name="JournalEntry",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
-                ('created', models.DateField(auto_now_add=True, null=True)),
-                ('last_updated', models.DateTimeField(auto_now=True, null=True)),
-                ('_custom_field_data', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder)),
-                ('_design_object_id', models.UUIDField()),
-                ('changes', models.JSONField(blank=True, editable=False, encoder=nautobot.core.celery.NautobotKombuJSONEncoder, null=True)),
-                ('full_control', models.BooleanField(editable=False)),
-                ('_design_object_type', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='+', to='contenttypes.contenttype')),
-                ('journal', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='design_builder.journal')),
-                ('tags', taggit.managers.TaggableManager(through='extras.TaggedItem', to='extras.Tag')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True
+                    ),
+                ),
+                ("created", models.DateField(auto_now_add=True, null=True)),
+                ("last_updated", models.DateTimeField(auto_now=True, null=True)),
+                (
+                    "_custom_field_data",
+                    models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder),
+                ),
+                ("_design_object_id", models.UUIDField()),
+                (
+                    "changes",
+                    models.JSONField(
+                        blank=True, editable=False, encoder=nautobot.core.celery.NautobotKombuJSONEncoder, null=True
+                    ),
+                ),
+                ("full_control", models.BooleanField(editable=False)),
+                (
+                    "_design_object_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, related_name="+", to="contenttypes.contenttype"
+                    ),
+                ),
+                (
+                    "journal",
+                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="design_builder.journal"),
+                ),
+                ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],
             options={
-                'abstract': False,
+                "abstract": False,
             },
-            bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
+            bases=(
+                models.Model,
+                nautobot.extras.models.mixins.DynamicGroupMixin,
+                nautobot.extras.models.mixins.NotesMixin,
+            ),
         ),
         migrations.AddConstraint(
-            model_name='designinstance',
-            constraint=models.UniqueConstraint(fields=('design', 'name'), name='unique_design_instances'),
+            model_name="designinstance",
+            constraint=models.UniqueConstraint(fields=("design", "name"), name="unique_design_instances"),
         ),
         migrations.AlterUniqueTogether(
-            name='designinstance',
-            unique_together={('design', 'name')},
+            name="designinstance",
+            unique_together={("design", "name")},
         ),
         migrations.AddConstraint(
-            model_name='design',
-            constraint=models.UniqueConstraint(fields=('job',), name='unique_designs'),
+            model_name="design",
+            constraint=models.UniqueConstraint(fields=("job",), name="unique_designs"),
         ),
     ]

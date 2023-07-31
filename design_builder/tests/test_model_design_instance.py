@@ -9,6 +9,7 @@ from .. import models
 
 class BaseDesignInstanceTest(BaseDesignTest):
     """Base fixtures for tests using design instances."""
+
     def setUp(self):
         super().setUp()
         self.design_name = "My Design"
@@ -18,6 +19,7 @@ class BaseDesignInstanceTest(BaseDesignTest):
 
 class TestDesignInstance(BaseDesignInstanceTest):
     """Test DesignInstance."""
+
     def test_design_instance_queryset(self):
         design = models.DesignInstance.objects.get_by_natural_key(self.job1.name, self.design_name)
         self.assertIsNotNone(design)

@@ -13,6 +13,7 @@ from .. import models
 
 class BaseDesignTest(TestCase):
     """Common fixtures for design builder model testing."""
+
     def setUp(self):
         super().setUp()
         settings.JOBS_ROOT = path.dirname(test_designs.__file__)

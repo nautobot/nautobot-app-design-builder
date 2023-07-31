@@ -202,6 +202,7 @@ class JournalEntry(PrimaryModel):
     Args:
         PrimaryModel (_type_): _description_
     """
+
     journal = models.ForeignKey(to=Journal, on_delete=models.CASCADE)
     _design_object_type = models.ForeignKey(
         to=ContentType,
@@ -210,14 +211,6 @@ class JournalEntry(PrimaryModel):
         blank=False,
     )
     _design_object_id = models.UUIDField(blank=False)
-    design_object = ct_fields.GenericForeignKey(
-        ct_field="_design_object_type",
-        fk_field="_design_object_id"
-    )
-    changes = models.JSONField(
-        encoder=NautobotKombuJSONEncoder,
-        editable=False,
-        null=True,
-        blank=True
-    )
+    design_object = ct_fields.GenericForeignKey(ct_field="_design_object_type", fk_field="_design_object_id")
+    changes = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
     full_control = models.BooleanField(editable=False)
