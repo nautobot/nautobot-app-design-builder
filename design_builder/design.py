@@ -98,11 +98,6 @@ def _map_query_values(query: Mapping) -> Mapping:
     return retval
 
 
-# Callback Event types
-INSTANCE_PRE_SAVE = Signal()
-INSTANCE_POST_SAVE = Signal()
-
-
 class ModelInstance:  # pylint: disable=too-many-instance-attributes
     """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file."""
 
@@ -113,6 +108,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     CREATE_OR_UPDATE = "create_or_update"
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
+
+    # Callback Event types
+    PRE_SAVE = Signal()
+    POST_SAVE = Signal()
 
     def __init__(
         self, creator: "Builder", model_class: Type[BaseModel], attributes: dict, relationship_manager=None, parent=None
@@ -233,7 +232,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             signal: Signal to listen for.
             handler: Callback function
         """
-        signal.connect(handler, self.instance.pk)
+        dispatch_id = (
+            self.model_class._meta.app_label,
+            self.model_class._meta.model_name,
+            id(handler),
+        )
+
+        signal.connect(handler, self, dispatch_uid=dispatch_id)
 
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
@@ -310,7 +315,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # ensure that parent instances have been saved and
         # assigned a primary key
         self._update_fields()
-        INSTANCE_PRE_SAVE.send(sender=self.instance.pk, model_instance=self)
+        ModelInstance.PRE_SAVE.send(sender=self)
         try:
             self.instance.full_clean()
             self.instance.save()
@@ -339,7 +344,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.instance.refresh_from_db()
 
                 field.set_value(related_object.instance)
-        INSTANCE_POST_SAVE.send(sender=self.instance.pk, model_instance=self)
+        ModelInstance.POST_SAVE.send(sender=self)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
