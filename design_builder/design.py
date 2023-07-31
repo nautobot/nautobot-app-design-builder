@@ -232,7 +232,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             signal: Signal to listen for.
             handler: Callback function
         """
-        signal.connect(handler, self)
+        dispatch_id = (
+            self.model_class._meta.app_label,
+            self.model_class._meta.model_name,
+            id(handler),
+        )
+
+        signal.connect(handler, self, dispatch_uid=dispatch_id)
 
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
