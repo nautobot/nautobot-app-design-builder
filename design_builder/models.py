@@ -66,9 +66,7 @@ class Design(PrimaryModel, StatusModel):
 
     # TODO: Add version field (future feature)
     # TODO: Add saved graphql query (future feature)
-    # TODO: I'm not sure on_delete should be CASCADE... I don't really
-    # know how job instances get deleted from Nautobot.
-    job = models.ForeignKey(to=JobModel, on_delete=models.CASCADE, editable=False)
+    job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
 
     objects = DesignQuerySet.as_manager()
 
@@ -117,13 +115,9 @@ class DesignInstance(PrimaryModel):
 
     # TODO: add version field to indicate which version of a design
     #       this instance is on. (future feature)
-    #
-    # TODO: Add reference to an "owner" (future feature)
-
-    # TODO: Is this `on_delete` setting right? We don't want designs to
-    # be deleted unless there are no more design instances left.
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False)
     name = models.CharField(max_length=100)
+    owner = models.CharField(max_length=100)
     first_implemented = models.DateTimeField(blank=True, null=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
 
