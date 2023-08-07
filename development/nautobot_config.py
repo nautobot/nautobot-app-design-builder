@@ -144,3 +144,5 @@ if nautobot_version < Version("2.0"):
     PLUGINS.append("nautobot_bgp_models")
 
 PLUGINS_CONFIG = {"design_builder": {"context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None)}}
+
+STRICT_FILTERING = False

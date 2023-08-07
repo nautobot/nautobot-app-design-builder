@@ -1,6 +1,5 @@
 """Unit tests for design_builder plugin."""
 
-import logging
 import shutil
 import tempfile
 from os import path
@@ -13,7 +12,7 @@ from django.test import TestCase
 from design_builder.base import DesignJob
 from design_builder.util import nautobot_version
 
-logging.disable(logging.CRITICAL)
+# logging.disable(logging.CRITICAL)
 
 
 class DesignTestCase(TestCase):

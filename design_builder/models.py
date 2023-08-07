@@ -90,7 +90,7 @@ class Design(PrimaryModel, StatusModel):
 
     def get_absolute_url(self):
         """Return detail view for Designs."""
-        return reverse("plugins:design_builder:design", args=[self.name])
+        return reverse("plugins:design_builder:design", args=[self.pk])
 
     def __str__(self):
         """Stringify instance."""
@@ -115,9 +115,9 @@ class DesignInstance(PrimaryModel):
 
     # TODO: add version field to indicate which version of a design
     #       this instance is on. (future feature)
-    design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False)
+    design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=100)
-    owner = models.CharField(max_length=100)
+    owner = models.CharField(max_length=100, blank=True, null=True)
     first_implemented = models.DateTimeField(blank=True, null=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
 
@@ -141,8 +141,8 @@ class DesignInstance(PrimaryModel):
             enforce_managed_fields(self, ["design"], message="is a field that cannot be changed")
 
     def get_absolute_url(self):
-        """Return detail view for Designs."""
-        return reverse("plugins:design_builder:design", args=[self.design.name, self.name])
+        """Return detail view for design instances."""
+        return reverse("plugins:design_builder:designinstance", args=[self.pk])
 
     def __str__(self):
         """Stringify instance."""
@@ -165,6 +165,10 @@ class Journal(PrimaryModel):
 
     design_instance = models.ForeignKey(to=DesignInstance, on_delete=models.CASCADE, editable=False)
     job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
+
+    def get_absolute_url(self):
+        """Return detail view for design instances."""
+        return reverse("plugins:design_builder:journal", args=[self.pk])
 
     @property
     def user_input(self):
@@ -208,3 +212,7 @@ class JournalEntry(PrimaryModel):
     design_object = ct_fields.GenericForeignKey(ct_field="_design_object_type", fk_field="_design_object_id")
     changes = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
     full_control = models.BooleanField(editable=False)
+
+    def get_absolute_url(self):
+        """Return detail view for design instances."""
+        return reverse("plugins:design_builder:journalentry", args=[self.pk])
