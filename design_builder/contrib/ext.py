@@ -201,7 +201,8 @@ class CableConnectionExtension(Extension, LookupMixin):
                 attributes={
                     "status": status,
                     "termination_a": model_instance,
-                    "termination_b": remote_instance,
+                    "!create_or_update:termination_b_type": ContentType.objects.get_for_model(remote_instance),
+                    "!create_or_update:termination_b_id": remote_instance.id,
                 },
             )
         ]
