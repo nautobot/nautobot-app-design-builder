@@ -1,5 +1,4 @@
 """Provides ORM interaction for design builder."""
-from collections import defaultdict
 from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
@@ -110,8 +109,8 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
 
     # Callback Event types
-    PRE_SAVE = Signal()
-    POST_SAVE = Signal()
+    PRE_SAVE = "PRE_SAVE"
+    POST_SAVE = "POST_SAVE"
 
     def __init__(
         self, creator: "Builder", model_class: Type[BaseModel], attributes: dict, relationship_manager=None, parent=None
@@ -127,9 +126,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.parent = parent
         self.deferred = []
         self.deferred_attributes = {}
-
-        # Event handlers
-        self._handlers = defaultdict(set)
+        self.signals = {
+            self.PRE_SAVE: Signal(),
+            self.POST_SAVE: Signal(),
+        }
 
         self.filter = {}
         self.action = None
@@ -232,13 +232,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             signal: Signal to listen for.
             handler: Callback function
         """
-        dispatch_id = (
-            self.model_class._meta.app_label,
-            self.model_class._meta.model_name,
-            id(handler),
-        )
-
-        signal.connect(handler, self, dispatch_uid=dispatch_id)
+        self.signals[signal].connect(handler, self)
 
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
@@ -315,7 +309,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # ensure that parent instances have been saved and
         # assigned a primary key
         self._update_fields()
-        ModelInstance.PRE_SAVE.send(sender=self)
+        self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
         try:
             self.instance.full_clean()
             self.instance.save()
@@ -344,7 +338,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.instance.refresh_from_db()
 
                 field.set_value(related_object.instance)
-        ModelInstance.POST_SAVE.send(sender=self)
+        self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
