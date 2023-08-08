@@ -1,5 +1,4 @@
 """Provides ORM interaction for design builder."""
-from collections import defaultdict
 from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
