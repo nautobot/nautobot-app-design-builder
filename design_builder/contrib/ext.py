@@ -385,8 +385,9 @@ class BGPPeeringExtension(Extension):
             )
 
     @staticmethod
-    def _post_save(sender, **kwargs) -> None:
-        peering_instance: ModelInstance = sender
+    def _post_save(sender, instance, **kwargs) -> None:
+        print("Post Save Callback. Sender:", id(sender))
+        peering_instance: ModelInstance = instance
         endpoint_a = peering_instance.instance.endpoint_a
         endpoint_z = peering_instance.instance.endpoint_z
         endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
