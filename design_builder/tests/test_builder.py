@@ -512,6 +512,39 @@ devices:
           - "!ref:lag2"
 """
 
+INPUT_PRIMARY_INTERFACE_ADDRESSES = """
+manufacturers:
+  - name: "manufacturer1"
+
+device_types:
+  - manufacturer__name: "manufacturer1"
+    model: "model name"
+    u_height: 1
+
+device_roles:
+  - name: "device role"
+
+sites:
+  - name: "site_1"
+    status__name: "Active"
+
+devices:
+  - name: "device_1"
+    site__name: "site_1"
+    status__name: "Active"
+    device_type__model: "model name"
+    device_role__name: "device role"
+    interfaces:
+      - name: "Ethernet1/1"
+        type: "virtual"
+        status__name: "Active"
+        description: "description for Ethernet1/1"
+        ip_addresses:
+          - address: 192.168.56.1/24
+            status__name: "Active"
+    primary_ip4: {"!get:address": "192.168.56.1/24"}
+  """
+
 
 class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
     builder = None
@@ -731,3 +764,9 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
         self.assertEqual("Vendor", device_type.manufacturer.name)
         device = Device.objects.get(name="test device")
         self.assertEqual(device_type, device.device_type)
+
+    def test_primary_interface_addresses(self):
+        self.implement_design(INPUT_PRIMARY_INTERFACE_ADDRESSES)
+        want = "192.168.56.1/24"
+        device = Device.objects.get(name="device_1")
+        self.assertEqual(want, device.primary_ipv4.address)
