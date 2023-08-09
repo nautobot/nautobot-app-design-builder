@@ -769,4 +769,4 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
         self.implement_design(INPUT_PRIMARY_INTERFACE_ADDRESSES)
         want = "192.168.56.1/24"
         device = Device.objects.get(name="device_1")
-        self.assertEqual(want, device.primary_ipv4.address)
+        self.assertEqual(want, str(device.primary_ip4.address))

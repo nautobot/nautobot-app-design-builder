@@ -76,6 +76,7 @@ class OneToOneField(RelationshipField):
 
     def set_value(self, value):  # noqa:D102
         setattr(self.instance.instance, self.field.name, value)
+        self.instance.instance.save()
 
 
 class OneToManyField(RelationshipField):
