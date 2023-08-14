@@ -770,3 +770,30 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
         want = "192.168.56.1/24"
         device = Device.objects.get(name="device_1")
         self.assertEqual(want, str(device.primary_ip4.address))
+
+    def test_create_or_update_rack(self):
+        design = """
+        manufacturers:
+        - name: "Vendor"
+        device_types:
+        - "!create_or_update:model": "test model"
+          "!create_or_update:manufacturer__name": "Vendor"
+        device_roles:
+        - "name": "role"
+        sites:
+        - "name": "Site"
+          "status__name": "Active"
+        devices:
+        - "!create_or_update:name": "test device"
+          "!create_or_update:device_type__manufacturer__name": "Vendor"
+          "device_role__name": "role"
+          "site__name": "Site"
+          "status__name": "Active"
+          "rack":
+            "!create_or_update:name": "rack-1"
+            "!create_or_update:site__name": "Site"
+            "status__name": "Active"
+        """
+        self.implement_design(design)
+        device = Device.objects.get(name="test device")
+        self.assertEqual("rack-1", device.rack.name)

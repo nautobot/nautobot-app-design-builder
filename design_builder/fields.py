@@ -143,8 +143,16 @@ class ManyToOneField(RelationshipField):
     def set_value(self, value):  # noqa:D102
         if isinstance(value, Mapping):
             try:
-                value = {f"!get:{key}": value for key, value in value.items()}
-                value = self.instance.create_child(self.model, value).instance.pk
+                includes_action = False
+                for key in value.keys():
+                    if key.startswith("!"):
+                        includes_action = True
+                if not includes_action:
+                    value = {f"!get:{key}": value for key, value in value.items()}
+                value = self.instance.create_child(self.model, value)
+                if value.created:
+                    value.save()
+                value = value.instance.pk
             except MultipleObjectsReturned:
                 raise DesignImplementationError(
                     f"Expected exactly 1 object for {self.model.__name__}({value}) but got more than one"
@@ -160,6 +168,7 @@ class ManyToOneField(RelationshipField):
             raise DesignImplementationError(
                 f"Expecting input field '{self.field.name}' to be a mapping or reference, got {type(value)}: {value}"
             )
+        print("Setting", self.instance.model_class, self.field.attname, "to", value)
         setattr(self.instance.instance, self.field.attname, value)
 
 
