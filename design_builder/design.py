@@ -504,22 +504,11 @@ class Builder(LoggingMixin):
     def _create_objects(self, model_cls, objects):
         if isinstance(objects, dict):
             model = ModelInstance(self, model_cls, objects)
-            self.save_model(model)
+            model.save()
         elif isinstance(objects, list):
             for model_instance in objects:
                 model = ModelInstance(self, model_cls, model_instance)
-                self.save_model(model)
-
-    def save_model(self, model):
-        """Performs a validated save on the object and then refreshes that object from the database.
-
-        Args:
-            model (CreatorObject): ingests the creator property of a CreatorObject model
-
-        Raises:
-            DesignValidationError: if the model fails to save, refresh or log to the journal
-        """
-        model.save()
+                model.save()
 
     def commit(self):
         """Method to commit all changes to the database."""
