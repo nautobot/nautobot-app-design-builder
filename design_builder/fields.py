@@ -168,7 +168,6 @@ class ManyToOneField(RelationshipField):
             raise DesignImplementationError(
                 f"Expecting input field '{self.field.name}' to be a mapping or reference, got {type(value)}: {value}"
             )
-        print("Setting", self.instance.model_class, self.field.attname, "to", value)
         setattr(self.instance.instance, self.field.attname, value)
 
 
