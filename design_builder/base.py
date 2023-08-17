@@ -1,4 +1,5 @@
 """Base Design Job class definition."""
+from functools import cached_property
 import logging
 import sys
 import traceback
@@ -11,13 +12,15 @@ from django.utils.functional import classproperty
 
 from jinja2 import TemplateError
 
-from nautobot.extras.jobs import Job
+from nautobot.extras.jobs import Job, StringVar
 
 
 from design_builder.errors import DesignImplementationError, DesignModelError
 from design_builder.jinja2 import new_template_environment
 from design_builder.logging import LoggingMixin
 from design_builder.design import Builder
+from design_builder import models
+
 from .util import nautobot_version
 
 
@@ -28,6 +31,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     Any design that is to be included in the list of Jobs in Nautobot *must* include
     a Meta class.
     """
+
+    instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
+    owner = StringVar(label="Implementation Owner", required=False, max_length=models.DESIGN_OWNER_MAX_LENGTH)
 
     if nautobot_version >= "2.0.0":
         from nautobot.extras.jobs import DryRunVar  # pylint: disable=no-name-in-module,import-outside-toplevel
@@ -87,6 +93,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             # get here is if we're building docs and mkdocs is trying
             # to load the class path.
             return "/".join(["plugins", cls.__module__, cls.__name__])  # pylint: disable=no-member
+
+    @cached_property
+    def design_model(self):
+        return models.Design.objects.for_design_job(self.job_result.job_model)
 
     def post_implementation(self, context, creator: Builder):
         """Generic implementation of Nautobot post_implementation method for a job class.
@@ -178,11 +188,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     @transaction.atomic
     def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
         """Render the design and implement it with ObjectCreator."""
-        self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
-        extensions = getattr(self.Meta, "extensions", [])
-        self.creator = Builder(job_result=self.job_result, extensions=extensions)
-
-        design_files = None
 
         if nautobot_version < "2.0.0":
             commit = kwargs["commit"]
@@ -190,6 +195,36 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         else:
             commit = kwargs.pop("dryrun", False)
             data = kwargs
+
+        instance_name = data.pop("instance_name")
+        design_owner = data.pop("owner")
+        try:
+            instance = models.DesignInstance.objects.get(name=instance_name)
+            self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
+        except models.DesignInstance.DoesNotExist:
+            self.log_info(message=f'Implementing new design "{instance_name}".')
+            instance = models.DesignInstance(
+                name=instance_name,
+                owner=design_owner,
+                design=self.design_model,
+            )
+            instance.validated_save()
+
+        journal = models.Journal(
+            design_instance=instance,
+            job_result=self.job_result,
+        )
+        journal.validated_save()
+
+        self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
+        extensions = getattr(self.Meta, "extensions", [])
+        self.creator = Builder(
+            job_result=self.job_result, 
+            extensions=extensions,
+            journal=journal,
+        )
+
+        design_files = None
 
         if hasattr(self.Meta, "context_class"):
             context = self.Meta.context_class(data=data, job_result=self.job_result)

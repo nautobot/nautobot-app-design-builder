@@ -160,7 +160,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "journal",
-                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="design_builder.journal"),
+                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='design_builder.journal'),
                 ),
                 ("tags", taggit.managers.TaggableManager(through="extras.TaggedItem", to="extras.Tag")),
             ],

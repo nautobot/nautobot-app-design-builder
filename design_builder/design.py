@@ -1,4 +1,5 @@
 """Provides ORM interaction for design builder."""
+from collections import defaultdict
 from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
@@ -11,13 +12,17 @@ from django.db import transaction
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.core.models import BaseModel
 from nautobot.extras.models import JobResult, Relationship
+from nautobot.utilities.utils import serialize_object_v2, shallow_compare_dict
+
 
 from design_builder import errors
 from design_builder import ext
 from design_builder.logging import LoggingMixin
 from design_builder.fields import field_factory, OneToOneField, ManyToOneField
+from design_builder import models
 
 
+# TODO: Refactor this code into the Journal model
 class Journal:
     """Keep track of the objects created or updated during the course of a design's implementation.
 
@@ -40,11 +45,12 @@ class Journal:
     will only be in each of those indices at most once.
     """
 
-    def __init__(self):
+    def __init__(self, design_journal: models.Journal = None):
         """Constructor for Journal object."""
         self.index = set()
-        self.created = {}
-        self.updated = {}
+        self.created = defaultdict(set)
+        self.updated = defaultdict(set)
+        self.design_journal = design_journal
 
     def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
@@ -56,15 +62,16 @@ class Journal:
         """
         instance = model.instance
         model_type = instance.__class__
+        if self.design_journal:
+            self.design_journal.log(model)
+
         if instance.pk not in self.index:
             self.index.add(instance.pk)
-
             if model.created:
                 index = self.created
             else:
                 index = self.updated
 
-            index.setdefault(model_type, set())
             index[model_type].add(instance.pk)
 
     @property
@@ -159,6 +166,54 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
             raise errors.MultipleObjectsReturnedError(self) from ex
+
+    def get_changes(self, pre_change=None):
+        """Determine the differences between the original instance and the current.
+
+        This will calculate the changes between the ModelInstance initial state
+        and its current state. If pre_change is supplied it will use this
+        dictionary as the initial state rather than the current ModelInstance
+        initial state.
+
+        Args:
+            pre_change (dict, optional): Initial state for comparison. If not
+            supplied then the initial state from this instance is used.
+
+        Returns:
+            Return a dictionary with the changed object's serialized data compared
+            with either the model instance initial state, or the supplied pre_change
+            state. The dicionary has the following values:
+
+            dict: {
+                "prechange": dict(),
+                "postchange": dict(),
+                "differences": {
+                    "removed": dict(),
+                    "added": dict(),
+                }
+            }
+        """
+        post_change = serialize_object_v2(self.instance)
+
+        if not self.created and not pre_change:
+            pre_change = self._initial_state
+
+        if pre_change and post_change:
+            diff_added = shallow_compare_dict(pre_change, post_change, exclude=["last_updated"])
+            diff_removed = {x: pre_change.get(x) for x in diff_added}
+        elif pre_change and not post_change:
+            diff_added, diff_removed = None, pre_change
+        else:
+            diff_added, diff_removed = post_change, None
+
+        return {
+            "pre_change": pre_change,
+            "post_change": post_change,
+            "differences": {
+                "added": diff_added,
+                "removed": diff_removed,
+            },
+        }
 
     def create_child(
         self,
@@ -268,6 +323,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
             try:
                 self.instance = self.relationship_manager.get(**query_filter)
+                self._initial_state = serialize_object_v2(self.instance)
                 return
             except ObjectDoesNotExist:
                 if self.action == "update":
@@ -279,6 +335,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.attributes.update(query_filter)
         elif self.action != "create":
             raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
+        self._initial_state = {}
         self.instance = self.model_class()
 
     def _update_fields(self):  # pylint: disable=too-many-branches
@@ -392,7 +449,7 @@ class Builder(LoggingMixin):
                 cls.model_map[plural_name] = model_class
         return object.__new__(cls)
 
-    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None):
+    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None):
         """Constructor for Builder."""
         self.job_result = job_result
 
@@ -418,7 +475,7 @@ class Builder(LoggingMixin):
                     if hasattr(extn_cls, f"{ext_type}_tag"):
                         self.extensions[ext_type][getattr(extn_cls, f"{ext_type}_tag")] = extn
 
-        self.journal = Journal()
+        self.journal = Journal(design_journal=journal)
 
     def get_extension(self, ext_type, tag):
         """Looks up an extension based on its tag name and returns an instance of that Extension type.
