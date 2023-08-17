@@ -57,33 +57,33 @@ class TestCableConnectionExtension(TestCase):
     def test_connect_cable(self):
         design_template_v1 = """
         sites:
-          - name: "Site"
+          - "!create_or_update:name": "Site"
             status__name: "Active"
         device_roles:
-          - name: "test-role"
+          - "!create_or_update:name": "test-role"
         manufacturers:
-          - name: "test-manufacturer"
+          - "!create_or_update:name": "test-manufacturer"
         device_types:
           - manufacturer__name: "test-manufacturer"
-            model: "test-type"
+            "!create_or_update:model": "test-type"
         devices:
-            - name: "Device 1"
+            - "!create_or_update:name": "Device 1"
               "!ref": "device1"
               site__name: "Site"
               status__name: "Active"
               device_role__name: "test-role"
               device_type__model: "test-type"
               interfaces:
-                - name: "GigabitEthernet1"
+                - "!create_or_update:name": "GigabitEthernet1"
                   type: "1000base-t"
                   status__name: "Active"
-            - name: "Device 2"
+            - "!create_or_update:name": "Device 2"
               site__name: "Site"
               status__name: "Active"
               device_role__name: "test-role"
               device_type__model: "test-type"
               interfaces:
-                - name: "GigabitEthernet1"
+                - "!create_or_update:name": "GigabitEthernet1"
                   type: "1000base-t"
                   status__name: "Active"
                   "!connect_cable":
@@ -94,42 +94,42 @@ class TestCableConnectionExtension(TestCase):
 
         design_template_v2 = """
         location_types:
-          - name: "Site"
+          - "!create_or_update:name": "Site"
             content_types:
                 - "!get:app_label": "dcim"
                   "!get:model": "device"
         locations:
           - location_type__name: "Site"
-            name: "Site"
+            "!create_or_update:name": "Site"
             status__name: "Active"
         roles:
-          - name: "test-role"
+          - "!create_or_update:name": "test-role"
             content_types:
                 - "!get:app_label": "dcim"
                   "!get:model": "device"
         manufacturers:
-          - name: "test-manufacturer"
+          - "!create_or_update:name": "test-manufacturer"
         device_types:
           - manufacturer__name: "test-manufacturer"
-            model: "test-type"
+            "!create_or_update:model": "test-type"
         devices:
-            - name: "Device 1"
+            - "!create_or_update:name": "Device 1"
               "!ref": "device1"
               location__name: "Site"
               status__name: "Active"
               role__name: "test-role"
               device_type__model: "test-type"
               interfaces:
-                - name: "GigabitEthernet1"
+                - "!create_or_update:name": "GigabitEthernet1"
                   type: "1000base-t"
                   status__name: "Active"
-            - name: "Device 2"
+            - "!create_or_update:name": "Device 2"
               location__name: "Site"
               status__name: "Active"
               role__name: "test-role"
               device_type__model: "test-type"
               interfaces:
-                - name: "GigabitEthernet1"
+                - "!create_or_update:name": "GigabitEthernet1"
                   type: "1000base-t"
                   status__name: "Active"
                   "!connect_cable":
@@ -143,13 +143,15 @@ class TestCableConnectionExtension(TestCase):
         else:
             design = yaml.safe_load(design_template_v2)
 
-        builder = Builder(extensions=[CableConnectionExtension])
-        builder.implement_design(design, commit=True)
-        interfaces = Interface.objects.all()
-        self.assertEqual(2, len(interfaces))
-        self.assertEqual(interfaces[0].connected_endpoint, interfaces[1])
-        self.assertIsNotNone(interfaces[0]._path_id)  # pylint: disable=protected-access
-        self.assertIsNotNone(interfaces[1]._path_id)  # pylint: disable=protected-access
+        # test idempotence by running it twice:
+        for _ in range(2):
+            builder = Builder(extensions=[CableConnectionExtension])
+            builder.implement_design(design, commit=True)
+            interfaces = Interface.objects.all()
+            self.assertEqual(2, len(interfaces))
+            self.assertEqual(interfaces[0].connected_endpoint, interfaces[1])
+            self.assertIsNotNone(interfaces[0]._path_id)  # pylint: disable=protected-access
+            self.assertIsNotNone(interfaces[1]._path_id)  # pylint: disable=protected-access
 
 
 class PrefixExtensionTests(TestCase):

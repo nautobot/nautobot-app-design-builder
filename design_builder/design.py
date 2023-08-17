@@ -1,5 +1,4 @@
 """Provides ORM interaction for design builder."""
-from collections import defaultdict
 from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
@@ -47,7 +46,7 @@ class Journal:
         self.created = {}
         self.updated = {}
 
-    def log(self, model: BaseModel, created=False):
+    def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
 
         Args:
@@ -60,7 +59,7 @@ class Journal:
         if instance.pk not in self.index:
             self.index.add(instance.pk)
 
-            if created:
+            if model.created:
                 index = self.created
             else:
                 index = self.updated
@@ -110,11 +109,16 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
 
     # Callback Event types
-    PRE_SAVE = Signal()
-    POST_SAVE = Signal()
+    PRE_SAVE = "PRE_SAVE"
+    POST_SAVE = "POST_SAVE"
 
     def __init__(
-        self, creator: "Builder", model_class: Type[BaseModel], attributes: dict, relationship_manager=None, parent=None
+        self,
+        creator: "Builder",
+        model_class: Type[BaseModel],
+        attributes: dict,
+        relationship_manager=None,
+        parent=None,
     ):  # pylint:disable=too-many-arguments
         """Constructor for a ModelInstance."""
         self.creator = creator
@@ -127,9 +131,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.parent = parent
         self.deferred = []
         self.deferred_attributes = {}
-
-        # Event handlers
-        self._handlers = defaultdict(set)
+        self.signals = {
+            self.PRE_SAVE: Signal(),
+            self.POST_SAVE: Signal(),
+        }
 
         self.filter = {}
         self.action = None
@@ -142,6 +147,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         for field in self.model_class._meta.get_fields():
             self.instance_fields[field.name] = field_factory(self, field)
 
+        self.created = False
         self._parse_attributes()
         self.relationship_manager = relationship_manager
         if self.relationship_manager is None:
@@ -168,7 +174,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             relationship_manager: Database relationship manager to use for the new instance.
 
         Returns:
-            _type_: _description_
+            ModelInstance: Model instance that has its parent correctly set.
         """
         return ModelInstance(
             self.creator,
@@ -232,13 +238,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             signal: Signal to listen for.
             handler: Callback function
         """
-        dispatch_id = (
-            self.model_class._meta.app_label,
-            self.model_class._meta.model_name,
-            id(handler),
-        )
-
-        signal.connect(handler, self, dispatch_uid=dispatch_id)
+        self.signals[signal].connect(handler, self)
 
     def _load_instance(self):
         query_filter = _map_query_values(self.filter)
@@ -272,6 +272,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             except ObjectDoesNotExist:
                 if self.action == "update":
                     raise errors.DesignImplementationError(f"No match with {query_filter}", self.model_class)
+                self.created = True
                 # since the object was not found, we need to
                 # put the search criteria back into the attributes
                 # so that they will be set when the object is created
@@ -315,10 +316,15 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # ensure that parent instances have been saved and
         # assigned a primary key
         self._update_fields()
-        ModelInstance.PRE_SAVE.send(sender=self)
+        self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
+
+        msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
         try:
             self.instance.full_clean()
             self.instance.save()
+            if self.parent is None:
+                self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
+            self.creator.journal.log(self)
             self.instance.refresh_from_db()
         except ValidationError as validation_error:
             raise errors.DesignValidationError(self) from validation_error
@@ -344,7 +350,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.instance.refresh_from_db()
 
                 field.set_value(related_object.instance)
-        ModelInstance.POST_SAVE.send(sender=self)
+        self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
@@ -498,26 +504,11 @@ class Builder(LoggingMixin):
     def _create_objects(self, model_cls, objects):
         if isinstance(objects, dict):
             model = ModelInstance(self, model_cls, objects)
-            self.save_model(model)
+            model.save()
         elif isinstance(objects, list):
             for model_instance in objects:
                 model = ModelInstance(self, model_cls, model_instance)
-                self.save_model(model)
-
-    def save_model(self, model):
-        """Performs a validated save on the object and then refreshes that object from the database.
-
-        Args:
-            model (CreatorObject): ingests the creator property of a CreatorObject model
-
-        Raises:
-            DesignValidationError: if the model fails to save, refresh or log to the journal
-        """
-        created = model.instance._state.adding  # pylint: disable=protected-access
-        msg = "Created" if created else "Updated"
-        model.save()
-        self.log_success(message=f"{msg} {model.name} {model.instance}", obj=model.instance)
-        self.journal.log(model, created)
+                model.save()
 
     def commit(self):
         """Method to commit all changes to the database."""

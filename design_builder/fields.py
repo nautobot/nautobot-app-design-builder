@@ -76,6 +76,7 @@ class OneToOneField(RelationshipField):
 
     def set_value(self, value):  # noqa:D102
         setattr(self.instance.instance, self.field.name, value)
+        self.instance.instance.save()
 
 
 class OneToManyField(RelationshipField):
@@ -142,8 +143,16 @@ class ManyToOneField(RelationshipField):
     def set_value(self, value):  # noqa:D102
         if isinstance(value, Mapping):
             try:
-                value = {f"!get:{key}": value for key, value in value.items()}
-                value = self.instance.create_child(self.model, value).instance
+                includes_action = False
+                for key in value.keys():
+                    if key.startswith("!"):
+                        includes_action = True
+                if not includes_action:
+                    value = {f"!get:{key}": value for key, value in value.items()}
+                value = self.instance.create_child(self.model, value)
+                if value.created:
+                    value.save()
+                value = value.instance.pk
             except MultipleObjectsReturned:
                 raise DesignImplementationError(
                     f"Expected exactly 1 object for {self.model.__name__}({value}) but got more than one"
@@ -152,12 +161,14 @@ class ManyToOneField(RelationshipField):
                 query = ",".join([f'{k}="{v}"' for k, v in value.items()])
                 raise DesignImplementationError(f"Could not find {self.model.__name__}: {query}")
         elif hasattr(value, "instance"):
-            value = value.instance
-        elif not isinstance(value, Model) and value is not None:
+            value = value.instance.pk
+        elif isinstance(value, Model):
+            value = value.pk
+        elif value is not None:
             raise DesignImplementationError(
                 f"Expecting input field '{self.field.name}' to be a mapping or reference, got {type(value)}: {value}"
             )
-        setattr(self.instance.instance, self.field.attname, value.pk)
+        setattr(self.instance.instance, self.field.attname, value)
 
 
 class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-methods

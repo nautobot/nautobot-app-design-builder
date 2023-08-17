@@ -26,9 +26,7 @@ services:
       timeout: "10s"
       start_period: "120s"
       retries: 3
-    <<:
-      - *nautobot-build
-      - *nautobot-base
+    <<: [*nautobot-build, *nautobot-base]
   worker:
     entrypoint:
       - "sh"
@@ -41,5 +39,10 @@ services:
       timeout: "10s"
       start_period: "30s"
       retries: 3
-      test: ["CMD", "bash", "-c", "nautobot-server celery inspect ping --destination celery@$$HOSTNAME"]  ## $$ because of docker-compose
+      test: [
+        "CMD",
+        "bash",
+        "-c",
+        "nautobot-server celery inspect ping --destination celery@$$HOSTNAME",
+      ]  ## $$ because of docker-compose
     <<: *nautobot-base

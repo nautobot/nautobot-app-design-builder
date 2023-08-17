@@ -512,6 +512,39 @@ devices:
           - "!ref:lag2"
 """
 
+INPUT_PRIMARY_INTERFACE_ADDRESSES = """
+manufacturers:
+  - name: "manufacturer1"
+
+device_types:
+  - manufacturer__name: "manufacturer1"
+    model: "model name"
+    u_height: 1
+
+device_roles:
+  - name: "device role"
+
+sites:
+  - name: "site_1"
+    status__name: "Active"
+
+devices:
+  - name: "device_1"
+    site__name: "site_1"
+    status__name: "Active"
+    device_type__model: "model name"
+    device_role__name: "device role"
+    interfaces:
+      - name: "Ethernet1/1"
+        type: "virtual"
+        status__name: "Active"
+        description: "description for Ethernet1/1"
+        ip_addresses:
+          - address: 192.168.56.1/24
+            status__name: "Active"
+    primary_ip4: {"!get:address": "192.168.56.1/24"}
+  """
+
 
 class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
     builder = None
@@ -731,3 +764,36 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
         self.assertEqual("Vendor", device_type.manufacturer.name)
         device = Device.objects.get(name="test device")
         self.assertEqual(device_type, device.device_type)
+
+    def test_primary_interface_addresses(self):
+        self.implement_design(INPUT_PRIMARY_INTERFACE_ADDRESSES)
+        want = "192.168.56.1/24"
+        device = Device.objects.get(name="device_1")
+        self.assertEqual(want, str(device.primary_ip4.address))
+
+    def test_create_or_update_rack(self):
+        design = """
+        manufacturers:
+        - name: "Vendor"
+        device_types:
+        - "!create_or_update:model": "test model"
+          "!create_or_update:manufacturer__name": "Vendor"
+        device_roles:
+        - "name": "role"
+        sites:
+        - "name": "Site"
+          "status__name": "Active"
+        devices:
+        - "!create_or_update:name": "test device"
+          "!create_or_update:device_type__manufacturer__name": "Vendor"
+          "device_role__name": "role"
+          "site__name": "Site"
+          "status__name": "Active"
+          "rack":
+            "!create_or_update:name": "rack-1"
+            "!create_or_update:site__name": "Site"
+            "status__name": "Active"
+        """
+        self.implement_design(design)
+        device = Device.objects.get(name="test device")
+        self.assertEqual("rack-1", device.rack.name)
