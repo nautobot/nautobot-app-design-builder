@@ -201,7 +201,8 @@ class CableConnectionExtension(Extension, LookupMixin):
                 attributes={
                     "status": status,
                     "termination_a": model_instance,
-                    "termination_b": remote_instance,
+                    "!create_or_update:termination_b_type": ContentType.objects.get_for_model(remote_instance),
+                    "!create_or_update:termination_b_id": remote_instance.id,
                 },
             )
         ]
@@ -384,8 +385,8 @@ class BGPPeeringExtension(Extension):
             )
 
     @staticmethod
-    def _post_save(sender, **kwargs) -> None:
-        peering_instance: ModelInstance = sender
+    def _post_save(sender, instance, **kwargs) -> None:  # pylint:disable=unused-argument
+        peering_instance: ModelInstance = instance
         endpoint_a = peering_instance.instance.endpoint_a
         endpoint_z = peering_instance.instance.endpoint_z
         endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a

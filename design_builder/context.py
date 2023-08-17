@@ -32,6 +32,9 @@ class _Node:
                 return False
         return True
 
+    def __len__(self):
+        return len(self._store)
+
     def __contains__(self, key):
         if hasattr(self, "_store"):
             return key in getattr(self, "_store")
@@ -143,6 +146,9 @@ class _TemplateNode(_Node):
     def __str__(self) -> str:
         return str(self.render())
 
+    def __len__(self):
+        return len(str(self))
+
 
 class _ListNode(_Node):
     """A _ListNode is a level in the context tree backed by a list store.
@@ -169,9 +175,6 @@ class _ListNode(_Node):
                 self._store[i].update(item)
             else:
                 self._store[i] = self._root._create_node(item)  # pylint: disable=protected-access
-
-    def __len__(self):
-        return len(self._store)
 
     def __eq__(self, other: list):
         if len(self._store) != len(other):
