@@ -7,20 +7,21 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db.models import Q
 
 from nautobot.dcim.models import Cable
-from nautobot.extras.models import Status
 from nautobot.ipam.models import Prefix
 
 import netaddr
 from design_builder.design import Builder
 from design_builder.design import ModelInstance
 
-from design_builder.errors import DesignImplementationError
+from design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
 from design_builder.ext import Extension
 from design_builder.jinja2 import network_offset
 
 
 class LookupMixin:
     """A helper mixin that provides a way to lookup objects."""
+
+    builder: Builder
 
     def lookup_by_content_type(self, app_label, model_name, query):
         """Perform a query on a model.
@@ -46,29 +47,31 @@ class LookupMixin:
 
         return self.lookup(queryset, query)
 
-    def lookup(self, queryset, query):  # pylint: disable=R0201
+    def lookup(self, queryset, query, parent=None):
         """Perform a single object lookup from a queryset.
 
         Args:
             queryset: Queryset (e.g. Status.objects.all) from which to query.
             query: Query params to filter by.
+            parent: Optional field used for better error reporting. Set this
+            value to the model instance that is semantically the parent so
+            that DesignModelErrors raised are more easily debugged.
 
         Raises:
-            DesignImplementationError: If either no object is found, or multiple objects are found.
+            DoesNotExistError: If either no object is found.
+            MultipleObjectsReturnedError: if multiple objects are found.
 
         Returns:
             Any: The object matching the query.
         """
-        # TODO: Convert this to lookup via ModelInstance
-        for key, value in query.items():
-            if hasattr(value, "instance"):
-                query[key] = value.instance
+        self.builder.resolve_values(query, unwrap_model_instances=True)
+
         try:
             return queryset.get(**query)
         except ObjectDoesNotExist:
-            raise DesignImplementationError(f"no {queryset.model.__name__} matching {query}")
+            raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
         except MultipleObjectsReturned:
-            raise DesignImplementationError(f"Multiple {queryset.model.__name__} objects match {query}")
+            raise MultipleObjectsReturnedError(queryset.model, query=query, parent=parent)
 
 
 class LookupExtension(Extension, LookupMixin):
@@ -143,12 +146,13 @@ class CableConnectionExtension(Extension, LookupMixin):
         """Connect a cable termination to another cable termination.
 
         Args:
-            value: Query for the `termination_b` side. This dictionary must
-            include a field `status` or `status__<lookup param>` that is either
-            a reference to a status object (former) or a lookup key/value to
-            get a status (latter). The query must also include enough
-            differentiating lookup params to retrieve a single matching termination
-            of the same type as the `termination_a` side.
+            value: Dictionary with details about the cable. At a minimum
+            the dictionary must have a `to` key which includes a query
+            dictionary that will return exactly one object to be added to the
+            `termination_b` side of the cable. All other attributes map
+            directly to the cable attributes. Cables require a status,
+            so the `status` field is mandatory and follows typical design
+            builder query lookup.
 
         Raises:
             DesignImplementationError: If no `status` was provided, or no matching
@@ -172,38 +176,49 @@ class CableConnectionExtension(Extension, LookupMixin):
                   status__name: "Active"
                   "!connect_cable":
                     status__name: "Planned"
-                    device: "!ref:device1"
-                    name: "GigabitEthernet1"
+                    to:
+                        device: "!ref:device1"
+                        name: "GigabitEthernet1"
             ```
         """
-        query = {**value}
-        status = query.pop("status", None)
-        if status is None:
-            for key in list(query.keys()):
-                if key.startswith("status__"):
-                    status_lookup = key[len("status__") :]  # noqa: E203
-                    status = Status.objects.get(**{status_lookup: query.pop(key)})
-                    break
-        elif isinstance(status, dict):
-            status = Status.objects.get(**status)
-        elif hasattr(status, "instance"):
-            status = status.instance
+        if "to" not in value:
+            raise DesignImplementationError(
+                f"`connect_cable` must have a `to` field indicating what to terminate to. {value}"
+            )
 
-        if status is None:
-            raise DesignImplementationError("No status given for cable connection")
+        cable_attributes = {**value}
+        termination_query = cable_attributes.pop("to")
 
-        remote_instance = self.lookup(model_instance.model_class.objects, query)
+        # status = query.pop("status", None)
+        # if status is None:
+        #     for key in list(query.keys()):
+        #         if key.startswith("status__"):
+        #             status_lookup = key[len("status__") :]  # noqa: E203
+        #             status = Status.objects.get(**{status_lookup: query.pop(key)})
+        #             break
+        # elif isinstance(status, dict):
+        #     status = Status.objects.get(**status)
+        # elif hasattr(status, "instance"):
+        #     status = status.instance
+
+        # if status is None:
+        #     raise DesignImplementationError("No status given for cable connection")
+
+        remote_instance = self.lookup(model_instance.model_class.objects, termination_query)
+        cable_attributes.update(
+            {
+                "termination_a": model_instance,
+                "!create_or_update:termination_b_type": ContentType.objects.get_for_model(remote_instance),
+                "!create_or_update:termination_b_id": remote_instance.id,
+            }
+        )
+
         model_instance.deferred.append("cable")
         model_instance.deferred_attributes["cable"] = [
             model_instance.__class__(
-                self.object_creator,
+                self.builder,
                 model_class=Cable,
-                attributes={
-                    "status": status,
-                    "termination_a": model_instance,
-                    "!create_or_update:termination_b_type": ContentType.objects.get_for_model(remote_instance),
-                    "!create_or_update:termination_b_id": remote_instance.id,
-                },
+                attributes=cable_attributes,
             )
         ]
 
@@ -276,7 +291,7 @@ class NextPrefixExtension(Extension):
         prefixes = Prefix.objects.filter(query)
         return "prefix", self._get_next(prefixes, length)
 
-    def _get_next(self, prefixes, length) -> str:  # pylint:disable=no-self-use
+    def _get_next(self, prefixes, length) -> str:
         """Return the next available prefix from a parent prefix.
 
         Args:
@@ -364,7 +379,7 @@ class BGPPeeringExtension(Extension):
 
     attribute_tag = "bgp_peering"
 
-    def __init__(self, object_creator: Builder):
+    def __init__(self, builder: Builder):
         """Initialize the BGPPeeringExtension.
 
         This initializer will import the necessary BGP models. If the
@@ -373,7 +388,7 @@ class BGPPeeringExtension(Extension):
         Raises:
             DesignImplementationError: Raised when the BGP Models Plugin is not installed.
         """
-        super().__init__(object_creator)
+        super().__init__(builder)
         try:
             from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
 
@@ -440,8 +455,8 @@ class BGPPeeringExtension(Extension):
         # copy the value so it won't be modified in later
         # use
         retval = {**value}
-        endpoint_a = ModelInstance(self.object_creator, self.PeerEndpoint, retval.pop("endpoint_a"))
-        endpoint_z = ModelInstance(self.object_creator, self.PeerEndpoint, retval.pop("endpoint_z"))
+        endpoint_a = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_a"))
+        endpoint_z = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_z"))
         peering_a = None
         peering_z = None
         try:

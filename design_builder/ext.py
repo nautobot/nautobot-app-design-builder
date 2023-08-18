@@ -64,12 +64,12 @@ class Extension(ABC):
     tag matching `tag_name` or `value_name` is encountered.
 
     Args:
-        object_creator (ObjectCreator): The object creator that is implementing the
+        builder (Builder): The object creator that is implementing the
             current design.
     """
 
-    def __init__(self, object_creator: "Builder"):  # noqa: D107
-        self.object_creator = object_creator
+    def __init__(self, builder: "Builder"):  # noqa: D107
+        self.builder = builder
 
     def attribute(self, value: Any, model_instance: "ModelInstance") -> None:
         """This method is called when the `attribute_tag` is encountered.
@@ -115,15 +115,15 @@ class ReferenceExtension(Extension):
     stored creator object.
 
     Args:
-        object_creator (ObjectCreator): The object creator that is implementing the
+        builder (Builder): The object creator that is implementing the
             current design.
     """
 
     attribute_tag = "ref"
     value_tag = "ref"
 
-    def __init__(self, object_creator: "Builder"):  # noqa: D107
-        super().__init__(object_creator)
+    def __init__(self, builder: "Builder"):  # noqa: D107
+        super().__init__(builder)
         self._env = {}
 
     def attribute(self, value, model_instance):
@@ -180,7 +180,7 @@ class GitContextExtension(Extension):
     """Provides the "!git_context" attribute extension that will save content to a git repo.
 
     Args:
-        object_creator (ObjectCreator): The object creator that is implementing the
+        builder (Builder): The object creator that is implementing the
             current design.
 
     Example:
@@ -201,14 +201,14 @@ class GitContextExtension(Extension):
 
     attribute_tag = "git_context"
 
-    def __init__(self, object_creator: "Builder"):  # noqa: D107
-        super().__init__(object_creator)
+    def __init__(self, builder: "Builder"):  # noqa: D107
+        super().__init__(builder)
         self._env = {
             "files": [],
             "directories": [],
         }
         slug = DesignBuilderConfig.context_repository
-        self.context_repo = GitRepo(slug, object_creator.job_result)
+        self.context_repo = GitRepo(slug, builder.job_result)
 
     def attribute(self, value, model_instance):
         """Provide the attribute tag functionality for git_context.

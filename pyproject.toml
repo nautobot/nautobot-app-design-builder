@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "design-builder"
-version = "0.2.1"
+version = "0.3.0"
 description = "A plugin that uses design templates to easily create data objects in Nautobot with minimal input from a user."
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 readme = "README.md"
@@ -88,7 +88,6 @@ no-docstring-rgx="^(_|test_|Test|Meta$)"
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
 disable = """,
     line-too-long,
-    bad-continuation,
     duplicate-code,
     too-many-lines,
     too-many-ancestors,

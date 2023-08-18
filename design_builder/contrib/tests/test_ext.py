@@ -88,8 +88,9 @@ class TestCableConnectionExtension(TestCase):
                   status__name: "Active"
                   "!connect_cable":
                     status__name: "Planned"
-                    device: "!ref:device1"
-                    name: "GigabitEthernet1"
+                    to:
+                      device: "!ref:device1"
+                      name: "GigabitEthernet1"
         """
 
         design_template_v2 = """
@@ -134,8 +135,9 @@ class TestCableConnectionExtension(TestCase):
                   status__name: "Active"
                   "!connect_cable":
                     status__name: "Planned"
-                    device: "!ref:device1"
-                    name: "GigabitEthernet1"
+                    to:
+                      device: "!ref:device1"
+                      name: "GigabitEthernet1"
         """
 
         if nautobot_version < "2.0.0":

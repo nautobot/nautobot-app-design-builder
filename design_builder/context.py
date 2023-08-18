@@ -27,7 +27,7 @@ class _Node:
     def _compare(self, subscripts, other):
         """Compare 'other' to the node's data store."""
         for i in subscripts:
-            value = self.__getitem__(i)
+            value = self[i]
             if value != other[i]:
                 return False
         return True

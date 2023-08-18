@@ -471,7 +471,7 @@ class Builder(LoggingMixin):
             self.roll_back()
             raise ex
 
-    def resolve_value(self, value):
+    def resolve_value(self, value, unwrap_model_instance=False):
         """Resolve a value using extensions, if needed."""
         if isinstance(value, str) and value.startswith("!"):
             (action, arg) = value.lstrip("!").split(":", 1)
@@ -480,9 +480,11 @@ class Builder(LoggingMixin):
                 value = extn.value(arg)
             else:
                 raise errors.DesignImplementationError(f"Unknown attribute extension {value}")
+        if unwrap_model_instance and isinstance(value, ModelInstance):
+            value = value.instance
         return value
 
-    def resolve_values(self, value):
+    def resolve_values(self, value, unwrap_model_instances=False):
         """Resolve a value, or values, using extensions.
 
         Args:
@@ -492,13 +494,13 @@ class Builder(LoggingMixin):
             Any: The resolved value.
         """
         if isinstance(value, str):
-            value = self.resolve_value(value)
+            value = self.resolve_value(value, unwrap_model_instances)
         elif isinstance(value, list):
             for i, item in enumerate(value):
-                value[i] = self.resolve_value(item)
+                value[i] = self.resolve_value(item, unwrap_model_instances)
         elif isinstance(value, dict):
             for k, item in value.items():
-                value[k] = self.resolve_value(item)
+                value[k] = self.resolve_value(item, unwrap_model_instances)
         return value
 
     def _create_objects(self, model_cls, objects):

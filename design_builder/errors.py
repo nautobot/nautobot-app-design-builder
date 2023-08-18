@@ -3,6 +3,7 @@ from collections import defaultdict
 from inspect import isclass
 
 from django.core.exceptions import ValidationError
+from django.db.models import Model
 
 
 def _error_msg(validation_error):
@@ -33,24 +34,35 @@ class DesignImplementationError(Exception):
 class DesignModelError(Exception):
     """Parent class for all model related design errors."""
 
-    def __init__(self, model=None) -> None:
+    def __init__(self, model=None, parent=None) -> None:
         """Initialize a DesignError with optional model_stack.
 
         Args:
             model: The model that generated the error.
+            parent: If model is a django model (as opposed to a design
+            builder ModelInstance) then a parent can be specified
+            in order to better represent the relationship of the
+            model within the design.
         """
         super().__init__()
         self.model = model
+        self.parent = parent
 
     @staticmethod
     def _model_str(model):
         instance_str = None
-        if not hasattr(model, "instance"):
+        if not isinstance(model, Model) and not hasattr(model, "instance"):
             return str(model)
 
-        if model.instance:
-            instance_str = str(model.instance)
-        model_str = model.model_class._meta.verbose_name.capitalize()
+        model_class = model.__class__
+        # if it looks like a duck...
+        if hasattr(model, "instance"):
+            model_class = model.model_class
+            model = model.instance
+
+        if model:
+            instance_str = str(model)
+        model_str = model_class._meta.verbose_name.capitalize()
         if instance_str:
             model_str = f"{model_str} {instance_str}"
         return model_str
@@ -83,6 +95,9 @@ class DesignModelError(Exception):
             path_msg.insert(0, DesignModelError._model_str(model))
             if hasattr(model, "parent"):
                 model = model.parent
+            elif self.parent:
+                model = self.parent
+                self.parent = None
             else:
                 model = None
         # don't include the top level model in the ancestry
@@ -137,6 +152,16 @@ class DesignValidationError(DesignModelError):
 class DesignQueryError(DesignModelError):
     """Exception indicating design builder could not find the object."""
 
+    def __init__(self, model=None, query_filter=None, **kwargs):
+        """Initialize a design query error.
+
+        Args:
+            model: Model or model class this query error corresponds to.
+            query_filter: Query filter the generated the error.
+        """
+        super().__init__(model=model, **kwargs)
+        self.query_filter = query_filter
+
     def __str__(self) -> str:
         """The string representation of an object of the DoesNotExistError class."""
         msg = []
@@ -146,6 +171,8 @@ class DesignQueryError(DesignModelError):
         msg.append(f"{indentation}- {self.model_str}:")
         if hasattr(self.model, "query_filter"):
             msg.append(DesignModelError._object_to_markdown(self.model.query_filter, indentation=f"{indentation}    "))
+        elif self.query_filter:
+            msg.append(DesignModelError._object_to_markdown(self.query_filter, indentation=f"{indentation}    "))
         else:
             msg.append(DesignModelError._object_to_markdown(self.model.filter, indentation=f"{indentation}    "))
         return "\n".join(msg)
