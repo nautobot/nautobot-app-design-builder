@@ -2,6 +2,7 @@
 from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
+from django.db.models import Model
 from django.db.models.fields import Field as DjangoField
 from django.dispatch.dispatcher import Signal
 from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
@@ -9,7 +10,6 @@ from django.db import transaction
 
 
 from nautobot.core.graphql.utils import str_to_var_name
-from nautobot.core.models import BaseModel
 from nautobot.extras.models import JobResult, Relationship
 
 from nautobot_design_builder import errors
@@ -66,12 +66,12 @@ class Journal:
             index[model_type].add(instance.pk)
 
     @property
-    def created_objects(self) -> Dict[str, List[BaseModel]]:
+    def created_objects(self) -> Dict[str, List[Model]]:
         """Return a dictionary of Nautobot objects that were created.
 
         Returns:
             Dict[str, List[BaseModel]]: A dictionary of created objects. The
-            keys of the dictionary are the lower case content type labels 
+            keys of the dictionary are the lower case content type labels
             (such as `dcim.device`) and the values are lists of created objects
             of the corresponding type.
         """
@@ -115,7 +115,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         creator: "Builder",
-        model_class: Type[BaseModel],
+        model_class: Type[Model],
         attributes: dict,
         relationship_manager=None,
         parent=None,
@@ -124,7 +124,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.creator = creator
         self.model_class = model_class
         self.name = model_class.__name__
-        self.instance: BaseModel = None
+        self.instance: Model = None
         # Make a copy of the attributes so the original
         # design attributes are not overwritten
         self.attributes = {**attributes}
@@ -162,7 +162,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     def create_child(
         self,
-        model_class: Type[BaseModel],
+        model_class: Type[Model],
         attributes: dict,
         relationship_manager=None,
     ):
@@ -378,7 +378,7 @@ _OBJECT_TYPES_APP_FILTER = set(
 class Builder(LoggingMixin):
     """Iterates through a design and creates and updates the objects defined within."""
 
-    model_map: Dict[str, Type[BaseModel]]
+    model_map: Dict[str, Type[Model]]
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder initialized."""

@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Mapping, Type
 
-from django.db.models.base import Model
+from django.db.models import Model
 from django.db.models.fields import Field as DjangoField
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
@@ -10,7 +10,6 @@ from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 
 from taggit.managers import TaggableManager
 
-from nautobot.core.models import BaseModel
 from nautobot.extras.choices import RelationshipTypeChoices
 from nautobot.extras.models import Relationship, RelationshipAssociation
 
@@ -174,12 +173,12 @@ class ManyToOneField(RelationshipField):
 class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-methods
     """This class models a Nautobot custom relationship."""
 
-    def __init__(self, model_instance, relationship: Relationship):
+    def __init__(self, model_instance: Model, relationship: Relationship):
         """Create a new custom relationship field.
 
         Args:
             relationship (Relationship): The Nautobot custom relationship backing this field.
-            model_class (BaseModel): Model class for the remote end of this relationship.
+            model_class (Model): Model class for the remote end of this relationship.
             model_instance (ModelInstance): Object being updated to include this field.
         """
         self.relationship = relationship
@@ -197,11 +196,11 @@ class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-met
     def deferrable(self):  # noqa:D102
         return True
 
-    def set_value(self, value: BaseModel):  # noqa:D102
+    def set_value(self, value: Model):  # noqa:D102
         """Add an association between the created object and the given value.
 
         Args:
-            value (BaseModel): The related object to add.
+            value (Model): The related object to add.
         """
         source = self.instance.instance
         destination = value
