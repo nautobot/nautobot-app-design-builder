@@ -1,5 +1,4 @@
 """Base Design Job class definition."""
-import logging
 import sys
 import traceback
 from abc import ABC, abstractmethod
@@ -18,6 +17,7 @@ from nautobot_design_builder.errors import DesignImplementationError, DesignMode
 from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.design import Builder
+from nautobot_design_builder.context import Context
 from .util import nautobot_version
 
 
@@ -42,36 +42,12 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         """Initialize the design job."""
         # rendered designs
+        self.builder: Builder = None
         self.designs = {}
         self.rendered = None
         self.failed = False
 
-        # MIN_VERSION: 1.4.2
-        # Prior to Nautobot 1.4.2, Nautobot attempted to load the job source
-        # in the constructor. This failed for Design Builder since some
-        # of the source is auto-generated. For versions prior to 1.4.2
-        # we need to override the behavior of the constructor. This
-        # can be fully removed once 1.4 has been deprecated.
-        if nautobot_version >= "1.4.2":
-            super().__init__(*args, **kwargs)
-            return
-
-        # DO NOT CALL super().__init__(), it will raise an OSError for
-        # designs loaded from GIT
-        self.logger = logging.getLogger(__name__)
-        self.creator: Builder = None
-
-        self.request = None
-        self.active_test = "main"
-        self._job_result = None
-
-        # Compile test methods and initialize results skeleton
-        self.test_methods = []
-
-        for method_name in dir(self):
-            if method_name.startswith("test_") and callable(getattr(self, method_name)):
-                self.test_methods.append(method_name)
-        # /MIN_VERSION: 1.4.2
+        super().__init__(*args, **kwargs)
 
     @classproperty
     def class_path(cls):  # pylint: disable=no-self-argument
@@ -88,11 +64,20 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             # to load the class path.
             return "/".join(["plugins", cls.__module__, cls.__name__])  # pylint: disable=no-member
 
-    def post_implementation(self, context, creator: Builder):
-        """Generic implementation of Nautobot post_implementation method for a job class.
+    def post_implementation(self, context: Context, builder: Builder):
+        """Similar to Nautobot job's `post_run` method, but will be called after a design is implemented.
 
-        Since this is the abstract base class it is not used here and is just set to pass.
-        Design Jobs that inherit from this base DesignJob class will usually have this method extended and overridden.
+        Any design job that requires additional work to be completed after the design
+        has been implemented can provide a `post_implementation` method. This method will be
+        called after the entire set of design files has been implemented and the database
+        transaction has been committed.
+
+        Args:
+            context (Context): The render context that was used for rendering the
+            design files.
+
+            builder (Builder): The builder object that consumed the rendered design
+            files. This is useful for accessing the design journal.
         """
 
     def post_run(self):
@@ -173,14 +158,14 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def implement_design(self, context, design_file, commit):
         """Render the design_file template using the provided render context."""
         design = self.render_design(context, design_file)
-        self.creator.implement_design(design, commit)
+        self.builder.implement_design(design, commit)
 
     @transaction.atomic
     def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
-        """Render the design and implement it with ObjectCreator."""
+        """Render the design and implement it with a Builder object."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
-        self.creator = Builder(job_result=self.job_result, extensions=extensions)
+        self.builder = Builder(job_result=self.job_result, extensions=extensions)
 
         design_files = None
 
@@ -212,10 +197,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
             if commit:
-                self.creator.commit()
-                self.post_implementation(context, self.creator)
+                self.builder.commit()
+                self.post_implementation(context, self.builder)
                 if hasattr(self.Meta, "report"):
-                    self.job_result.data["report"] = self.render_report(context, self.creator.journal)
+                    self.job_result.data["report"] = self.render_report(context, self.builder.journal)
                     self.log_success(message=self.job_result.data["report"])
             else:
                 self.log_info(

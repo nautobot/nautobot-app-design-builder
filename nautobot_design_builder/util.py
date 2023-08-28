@@ -20,7 +20,7 @@ from packaging.version import Version
 from nautobot_design_builder import metadata
 
 if TYPE_CHECKING:
-    from nautobot_design_builder.base import DesignJob
+    from nautobot_design_builder.design_job import DesignJob
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +147,7 @@ def designs_in_directory(
         ("package_name.module_name", "DesignJobClassName")
     """
     # this prevents a circular import
-    from nautobot_design_builder.base import DesignJob  # pylint: disable=import-outside-toplevel
+    from nautobot_design_builder.design_job import DesignJob  # pylint: disable=import-outside-toplevel
 
     def is_design(obj):
         try:

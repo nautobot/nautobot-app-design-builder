@@ -11,7 +11,7 @@ from nautobot_design_builder.tests.designs import test_designs
 
 
 class TestDesignJob(DesignTestCase):
-    @patch("nautobot_design_builder.base.Builder")
+    @patch("nautobot_design_builder.design_job.Builder")
     def test_simple_design_commit(self, object_creator: Mock):
         job = self.get_mocked_job(test_designs.SimpleDesign)
         job.run(data={}, commit=True)
@@ -48,7 +48,7 @@ class TestDesignJob(DesignTestCase):
 
         self.assertEqual(0, Manufacturer.objects.all().count())
 
-    @patch("nautobot_design_builder.base.Builder")
+    @patch("nautobot_design_builder.design_job.Builder")
     def test_custom_extensions(self, builder_patch: Mock):
         job = self.get_mocked_job(test_designs.DesignJobWithExtensions)
         job.run(data={}, commit=True)
@@ -59,7 +59,7 @@ class TestDesignJob(DesignTestCase):
 
 
 class TestDesignJobLogging(DesignTestCase):
-    @patch("nautobot_design_builder.base.Builder")
+    @patch("nautobot_design_builder.design_job.Builder")
     def test_simple_design_implementation_error(self, object_creator: Mock):
         object_creator.return_value.implement_design.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(test_designs.SimpleDesign)
