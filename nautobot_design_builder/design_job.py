@@ -130,7 +130,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             context (Context object): a tree of variables that can include templates for values
             design_file (str): Filename of the design file to render.
         """
-
         self.rendered = self.render(context, design_file)
         design = yaml.safe_load(self.rendered)
         self.designs[design_file] = design
