@@ -9,15 +9,15 @@ from nautobot.dcim.models import Interface, Device, DeviceType
 from nautobot.tenancy.models import Tenant
 from nautobot.ipam.models import Prefix
 
-from design_builder.contrib.ext import (
+from nautobot_design_builder.contrib.ext import (
     BGPPeeringExtension,
     ChildPrefixExtension,
     LookupExtension,
     CableConnectionExtension,
     NextPrefixExtension,
 )
-from design_builder.design import Builder
-from design_builder.util import nautobot_version
+from nautobot_design_builder.design import Builder
+from nautobot_design_builder.util import nautobot_version
 
 
 class TestLookupExtension(TestCase):

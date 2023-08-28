@@ -1,4 +1,4 @@
-from design_builder.context import Context
+from nautobot_design_builder.context import Context
 
 
 class InitialDesignContext(Context):

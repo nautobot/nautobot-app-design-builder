@@ -2,8 +2,8 @@ from nautobot.dcim.models import Region, Site
 
 from netaddr import IPNetwork
 
-from design_builder.errors import DesignValidationError
-from design_builder.context import Context, context_file
+from nautobot_design_builder.errors import DesignValidationError
+from nautobot_design_builder.context import Context, context_file
 
 
 @context_file("core_site_context.yaml")

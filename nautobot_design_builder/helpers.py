@@ -4,7 +4,7 @@ from typing import List
 from nautobot.dcim.models import Device
 from netutils.interface import interface_range_expansion
 
-from design_builder.errors import DesignValidationError
+from nautobot_design_builder.errors import DesignValidationError
 
 
 class ProvisionerError(DesignValidationError):

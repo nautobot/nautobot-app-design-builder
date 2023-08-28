@@ -1,6 +1,6 @@
 """Basic design demonstrates the capabilities of the Design Builder."""
 
-from design_builder.base import DesignJob
+from nautobot_design_builder.base import DesignJob
 
 from .context import DesignContext
 

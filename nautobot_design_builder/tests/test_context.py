@@ -1,9 +1,9 @@
 """Test jinja2 render context."""
 import unittest
 
-from design_builder.context import Context, _DictNode
-from design_builder.tests.designs.context import BaseContext
-from design_builder.tests.designs.sub_designs import SubDesignContext
+from nautobot_design_builder.context import Context, _DictNode
+from nautobot_design_builder.tests.designs.context import BaseContext
+from nautobot_design_builder.tests.designs.sub_designs import SubDesignContext
 
 
 class TestContext(unittest.TestCase):

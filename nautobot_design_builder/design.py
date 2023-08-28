@@ -12,10 +12,10 @@ from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.core.models import BaseModel
 from nautobot.extras.models import JobResult, Relationship
 
-from design_builder import errors
-from design_builder import ext
-from design_builder.logging import LoggingMixin
-from design_builder.fields import field_factory, OneToOneField, ManyToOneField
+from nautobot_design_builder import errors
+from nautobot_design_builder import ext
+from nautobot_design_builder.logging import LoggingMixin
+from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
 
 
 class Journal:

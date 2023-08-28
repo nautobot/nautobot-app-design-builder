@@ -1,6 +1,6 @@
 """Unit tests for designs"""
 
-from design_builder.tests import DesignTestCase
+from nautobot_design_builder.tests import DesignTestCase
 
 from ..basic_design import BasicDesign
 

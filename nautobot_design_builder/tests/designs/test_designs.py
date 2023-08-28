@@ -1,6 +1,6 @@
 """Design jobs used for unit testing."""
-from design_builder.base import DesignJob
-from design_builder.ext import Extension
+from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.ext import Extension
 
 
 class SimpleDesign(DesignJob):
