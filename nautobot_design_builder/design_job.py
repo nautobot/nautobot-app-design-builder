@@ -102,6 +102,12 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """
         search_paths = []
         cls = self.__class__
+        # We pass a list of directories to the jinja template environment
+        # to be used for search paths in the FileSystemLoader. This list
+        # of paths is compiled from the directory location of the current
+        # design job and its entire inheritance tree. In order to produce
+        # this list, we traverse the inheritance tree upwards until we
+        # get to the toplevel base class, `DesignJob`
         while cls is not DesignJob:
             class_dir = path.dirname(sys.modules[cls.__module__].__file__)
             search_paths.append(class_dir)
@@ -124,13 +130,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             context (Context object): a tree of variables that can include templates for values
             design_file (str): Filename of the design file to render.
         """
-        # Make sure the design is defined even if exceptions are raised
-        try:
-            self.rendered = self.render(context, design_file)
-            design = yaml.safe_load(self.rendered)
-            self.designs[design_file] = design
-        except Exception as ex:
-            raise ex
+
+        self.rendered = self.render(context, design_file)
+        design = yaml.safe_load(self.rendered)
+        self.designs[design_file] = design
 
         # no need to save the rendered content if yaml loaded
         # it okay
