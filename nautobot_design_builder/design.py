@@ -51,8 +51,6 @@ class Journal:
 
         Args:
             model (BaseModel): The model that has been created or updated
-            created (bool, optional): If the object has just been created
-            then this argument should be True. Defaults to False.
         """
         instance = model.instance
         model_type = instance.__class__
@@ -68,12 +66,14 @@ class Journal:
             index[model_type].add(instance.pk)
 
     @property
-    def created_objects(self) -> List[BaseModel]:
-        """Return a list of Nautobot objects that were created.
+    def created_objects(self) -> Dict[str, List[BaseModel]]:
+        """Return a dictionary of Nautobot objects that were created.
 
         Returns:
-            List[BaseModel]: All of the objects that were created during the
-            design implementation.
+            Dict[str, List[BaseModel]]: A dictionary of created objects. The
+            keys of the dictionary are the lower case content type labels 
+            (such as `dcim.device`) and the values are lists of created objects
+            of the corresponding type.
         """
         results = {}
         for model_type, pk_list in self.created.items():
