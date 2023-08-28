@@ -217,7 +217,7 @@ def new_template_environment(root_context, base_dir=None, native_environment=Fal
     Args:
         root_context (design_builder.context.Context): Context object
         to use when resolving missing identifiers in the rendering process
-        base_dir (str): Base directory to search from for templates
+        base_dir (str): Path, or list of paths, to use as search paths for finding templates. 
 
     Returns:
         NativeEnvironment: Jinja native environment
