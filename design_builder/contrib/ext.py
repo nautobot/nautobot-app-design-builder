@@ -291,7 +291,8 @@ class NextPrefixExtension(Extension):
         prefixes = Prefix.objects.filter(query)
         return "prefix", self._get_next(prefixes, length)
 
-    def _get_next(self, prefixes, length) -> str:
+    @staticmethod
+    def _get_next(prefixes, length) -> str:
         """Return the next available prefix from a parent prefix.
 
         Args:

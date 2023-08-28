@@ -91,7 +91,8 @@ class IndentationExtension(Extension):
         args = [nodes.TemplateData(whitespace)]
         return nodes.CallBlock(self.call_method("_indent_support", args), [], [], body).set_lineno(lineno)
 
-    def _indent_support(self, indentation, caller):
+    @staticmethod
+    def _indent_support(indentation, caller):
         """Perform the block indentation.
 
         Args:
