@@ -16,14 +16,14 @@ __version__ = metadata.version(__name__)
 class DesignBuilderConfig(PluginConfig):
     """Plugin configuration for the design_builder plugin."""
 
-    name = "design_builder"
+    name = "nautobot_design_builder"
     verbose_name = "Design Builder"
     version = __version__
     author = "Network to Code, LLC"
     description = "Design Builder."
     base_url = "design-builder"
     required_settings = []
-    min_version = "1.2.7"
+    min_version = "1.5.0"
     max_version = "2.9999"
     default_settings = {}
     caching_config = {}

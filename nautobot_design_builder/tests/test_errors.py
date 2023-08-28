@@ -3,7 +3,7 @@ import unittest
 
 from django.core.exceptions import ValidationError
 
-from design_builder.errors import DesignModelError, DesignValidationError
+from nautobot_design_builder.errors import DesignModelError, DesignValidationError
 
 
 class TestDesignModelError(unittest.TestCase):

@@ -1,7 +1,7 @@
 from nautobot.dcim.models import Region
 from nautobot.extras.jobs import ObjectVar, StringVar, IPNetworkVar
 
-from design_builder.base import DesignJob
+from nautobot_design_builder.base import DesignJob
 
 from .core_site_context import CoreSiteContext
 

@@ -1,8 +1,8 @@
 """Unit tests related to jinja2 rendering in the Design Builder."""
 import unittest
 
-from design_builder.context import Context
-from design_builder.jinja2 import new_template_environment
+from nautobot_design_builder.context import Context
+from nautobot_design_builder.jinja2 import new_template_environment
 
 
 class TestJinja(unittest.TestCase):

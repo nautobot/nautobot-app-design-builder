@@ -10,8 +10,8 @@ from unittest.mock import PropertyMock, patch
 
 from django.test import TestCase
 
-from design_builder.base import DesignJob
-from design_builder.util import nautobot_version
+from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.util import nautobot_version
 
 logging.disable(logging.CRITICAL)
 
@@ -23,7 +23,7 @@ class DesignTestCase(TestCase):
         """Setup a mock git repo to watch for config context creation."""
         super().setUp()
         self.logged_messages = []
-        self.git_patcher = patch("design_builder.ext.GitRepo")
+        self.git_patcher = patch("nautobot_design_builder.ext.GitRepo")
         self.git_mock = self.git_patcher.start()
 
         self.git_path = tempfile.mkdtemp()

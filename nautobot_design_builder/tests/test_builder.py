@@ -17,8 +17,8 @@ from nautobot.extras.models import (
 )
 from nautobot.ipam.models import VLAN, IPAddress, Prefix
 
-from design_builder.design import Builder
-from design_builder.util import nautobot_version
+from nautobot_design_builder.design import Builder
+from nautobot_design_builder.util import nautobot_version
 
 if nautobot_version < "2.0.0":
     from nautobot.dcim.models import Region, Site  # pylint: disable=no-name-in-module,ungrouped-imports
@@ -694,7 +694,7 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
         self.assertIn(vlan42, vlans)
         self.assertIn(vlan43, vlans)
 
-    @patch("design_builder.design.Builder.roll_back")
+    @patch("nautobot_design_builder.design.Builder.roll_back")
     def test_simple_design_roll_back(self, roll_back: Mock):
         self.implement_design(INPUT_CREATE_OBJECTS, False)
         roll_back.assert_called()

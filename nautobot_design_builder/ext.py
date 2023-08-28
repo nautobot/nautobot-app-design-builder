@@ -8,9 +8,9 @@ import inspect
 import sys
 import yaml
 
-from design_builder import DesignBuilderConfig
-from design_builder.errors import DesignImplementationError
-from design_builder.git import GitRepo
+from nautobot_design_builder import DesignBuilderConfig
+from nautobot_design_builder.errors import DesignImplementationError
+from nautobot_design_builder.git import GitRepo
 
 if TYPE_CHECKING:
     from design import ModelInstance, Builder

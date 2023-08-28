@@ -34,13 +34,13 @@ def is_truthy(arg):
 
 
 # Use pyinvoke configuration for default values, see http://docs.pyinvoke.org/en/stable/concepts/configuration.html
-# Variables may be overwritten in invoke.yml or by the environment variables INVOKE_DESIGN_BUILDER_xxx
-namespace = Collection("design_builder")
+# Variables may be overwritten in invoke.yml or by the environment variables INVOKE_NAUTOBOT_DESIGN_BUILDER_xxx
+namespace = Collection("nautobot_design_builder")
 namespace.configure(
     {
-        "design_builder": {
+        "nautobot_design_builder": {
             "nautobot_ver": "latest",
-            "project_name": "design_builder",
+            "project_name": "nautobot_design_builder",
             "python_ver": "3.8",
             "local": False,
             "compose_dir": os.path.join(os.path.dirname(__file__), "development"),
@@ -87,13 +87,13 @@ def docker_compose(context, command, **kwargs):
     build_env = {
         # Note: 'docker compose logs' will stop following after 60 seconds by default,
         # so we are overriding that by setting this environment variable.
-        "COMPOSE_HTTP_TIMEOUT": context.design_builder.compose_http_timeout,
-        "NAUTOBOT_VER": context.design_builder.nautobot_ver,
-        "PYTHON_VER": context.design_builder.python_ver,
+        "COMPOSE_HTTP_TIMEOUT": context.nautobot_design_builder.compose_http_timeout,
+        "NAUTOBOT_VER": context.nautobot_design_builder.nautobot_ver,
+        "PYTHON_VER": context.nautobot_design_builder.python_ver,
     }
-    compose_command = f'docker compose --project-name {context.design_builder.project_name} --project-directory "{context.design_builder.compose_dir}"'
-    for compose_file in context.design_builder.compose_files:
-        compose_file_path = os.path.join(context.design_builder.compose_dir, compose_file)
+    compose_command = f'docker compose --project-name {context.nautobot_design_builder.project_name} --project-directory "{context.nautobot_design_builder.compose_dir}"'
+    for compose_file in context.nautobot_design_builder.compose_files:
+        compose_file_path = os.path.join(context.nautobot_design_builder.compose_dir, compose_file)
         compose_command += f' -f "{compose_file_path}"'
     compose_command += f" {command}"
     print(f'Running docker compose command "{command}"')
@@ -102,7 +102,7 @@ def docker_compose(context, command, **kwargs):
 
 def run_command(context, command, **kwargs):
     """Wrapper to run a command locally or inside the nautobot container."""
-    if is_truthy(context.design_builder.local):
+    if is_truthy(context.nautobot_design_builder.local):
         context.run(command, **kwargs)
     else:
         # Check if nautobot is running, no need to start another nautobot container to run a command
@@ -134,7 +134,7 @@ def build(context, force_rm=False, cache=True):
     if force_rm:
         command += " --force-rm"
 
-    print(f"Building Nautobot with Python {context.design_builder.python_ver}...")
+    print(f"Building Nautobot with Python {context.nautobot_design_builder.python_ver}...")
     docker_compose(context, command)
 
 
@@ -253,7 +253,7 @@ def createsuperuser(context, user="admin"):
 )
 def makemigrations(context, name=""):
     """Perform makemigrations operation in Django."""
-    command = "nautobot-server makemigrations design_builder"
+    command = "nautobot-server makemigrations nautobot_design_builder"
 
     if name:
         command += f" --name {name}"
@@ -296,11 +296,11 @@ def docs(context):
     """Build and serve docs locally for development."""
     command = "mkdocs serve -v"
 
-    if is_truthy(context.design_builder.local):
+    if is_truthy(context.nautobot_design_builder.local):
         print("Serving Documentation...")
         run_command(context, command)
     else:
-        print("Only used when developing locally (i.e. context.design_builder.local=True)!")
+        print("Only used when developing locally (i.e. context.nautobot_design_builder.local=True)!")
 
 
 @task
@@ -308,7 +308,7 @@ def sample_data(context):
     """Populate the database with some sample data for testing and demonstration."""
     migrate(context)
     script = """
-from design_builder.tests.util import populate_sample_data
+from nautobot_design_builder.tests.util import populate_sample_data
 print("Attempting to populate sample data.")
 populate_sample_data()
 """
@@ -353,7 +353,7 @@ def hadolint(context):
 @task
 def pylint(context):
     """Run pylint code analysis."""
-    command = 'pylint --init-hook "import nautobot; nautobot.setup()" --rcfile pyproject.toml design_builder'
+    command = 'pylint --init-hook "import nautobot; nautobot.setup()" --rcfile pyproject.toml nautobot_design_builder'
     run_command(context, command)
 
 
@@ -399,7 +399,7 @@ def check_migrations(context):
         "buffer": "Discard output from passing tests",
     }
 )
-def unittest(context, keepdb=False, label="design_builder", failfast=False, buffer=True):
+def unittest(context, keepdb=False, label="nautobot_design_builder", failfast=False, buffer=True):
     """Run Nautobot unit tests."""
     command = f"coverage run --module nautobot.core.cli test {label}"
 
@@ -415,7 +415,7 @@ def unittest(context, keepdb=False, label="design_builder", failfast=False, buff
 @task
 def unittest_coverage(context):
     """Report on code test coverage as measured by 'invoke unittest'."""
-    command = "coverage report --skip-covered --include 'design_builder/*' --omit *migrations*"
+    command = "coverage report --skip-covered --include 'nautobot_design_builder/*' --omit *migrations*"
 
     run_command(context, command)
 
@@ -428,7 +428,7 @@ def unittest_coverage(context):
 def tests(context, failfast=False):
     """Run all tests for this plugin."""
     # If we are not running locally, start the docker containers so we don't have to for each test
-    if not is_truthy(context.design_builder.local):
+    if not is_truthy(context.nautobot_design_builder.local):
         print("Starting Docker Containers...")
         start(context)
     # Sorted loosely from fastest to slowest

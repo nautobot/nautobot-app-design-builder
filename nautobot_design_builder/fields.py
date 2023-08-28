@@ -14,7 +14,7 @@ from nautobot.core.models import BaseModel
 from nautobot.extras.choices import RelationshipTypeChoices
 from nautobot.extras.models import Relationship, RelationshipAssociation
 
-from design_builder.errors import DesignImplementationError
+from nautobot_design_builder.errors import DesignImplementationError
 
 
 class ModelField(ABC):

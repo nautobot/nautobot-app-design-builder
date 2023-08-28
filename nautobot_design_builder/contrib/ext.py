@@ -10,12 +10,12 @@ from nautobot.dcim.models import Cable
 from nautobot.ipam.models import Prefix
 
 import netaddr
-from design_builder.design import Builder
-from design_builder.design import ModelInstance
+from nautobot_design_builder.design import Builder
+from nautobot_design_builder.design import ModelInstance
 
-from design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
-from design_builder.ext import Extension
-from design_builder.jinja2 import network_offset
+from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
+from nautobot_design_builder.ext import Extension
+from nautobot_design_builder.jinja2 import network_offset
 
 
 class LookupMixin:

@@ -1,1 +1,1 @@
-::: design_builder.ext
+::: nautobot_design_builder.ext

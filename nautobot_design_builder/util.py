@@ -17,10 +17,10 @@ from nautobot.extras.models import GitRepository
 
 from packaging.version import Version
 
-from design_builder import metadata
+from nautobot_design_builder import metadata
 
 if TYPE_CHECKING:
-    from design_builder.base import DesignJob
+    from nautobot_design_builder.base import DesignJob
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +147,7 @@ def designs_in_directory(
         ("package_name.module_name", "DesignJobClassName")
     """
     # this prevents a circular import
-    from design_builder.base import DesignJob  # pylint: disable=import-outside-toplevel
+    from nautobot_design_builder.base import DesignJob  # pylint: disable=import-outside-toplevel
 
     def is_design(obj):
         try:
@@ -232,7 +232,7 @@ def load_jobs(module_name=None):
     To use this method, create a jobs module like so:
 
         # jobs.py
-        from design_builder.util import load_jobs
+        from nautobot_design_builder.util import load_jobs
 
         load_jobs()
 
@@ -240,7 +240,7 @@ def load_jobs(module_name=None):
     is desired, then a module name can be supplied to the method:
 
         # jobs/tenant1.py
-        from design_builder.util import load_jobs
+        from nautobot_design_builder.util import load_jobs
 
         load_jobs(module_name="tenant1")
     """

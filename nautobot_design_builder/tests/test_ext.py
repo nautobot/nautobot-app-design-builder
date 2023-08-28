@@ -6,10 +6,10 @@ from django.test import TestCase
 
 from nautobot.dcim.models import DeviceType
 
-from design_builder import ext
-from design_builder.contrib.ext import LookupExtension
-from design_builder.design import Builder
-from design_builder.ext import DesignImplementationError
+from nautobot_design_builder import ext
+from nautobot_design_builder.contrib.ext import LookupExtension
+from nautobot_design_builder.design import Builder
+from nautobot_design_builder.ext import DesignImplementationError
 
 
 class Extension(ext.Extension):

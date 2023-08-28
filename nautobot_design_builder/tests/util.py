@@ -3,7 +3,7 @@ from os import getenv
 
 from nautobot.extras.models import GitRepository
 
-from design_builder.util import nautobot_version
+from nautobot_design_builder.util import nautobot_version
 
 
 def ensure_git_repo(name, slug, url, provides):

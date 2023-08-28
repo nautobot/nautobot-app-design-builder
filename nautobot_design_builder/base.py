@@ -14,10 +14,10 @@ from jinja2 import TemplateError
 from nautobot.extras.jobs import Job
 
 
-from design_builder.errors import DesignImplementationError, DesignModelError
-from design_builder.jinja2 import new_template_environment
-from design_builder.logging import LoggingMixin
-from design_builder.design import Builder
+from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
+from nautobot_design_builder.jinja2 import new_template_environment
+from nautobot_design_builder.logging import LoggingMixin
+from nautobot_design_builder.design import Builder
 from .util import nautobot_version
 
 
