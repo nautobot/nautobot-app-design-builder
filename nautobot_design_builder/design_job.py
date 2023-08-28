@@ -176,7 +176,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             commit = kwargs["commit"]
             data = kwargs["data"]
         else:
-            commit = kwargs.pop("dryrun", False)
+            commit = not kwargs.pop("dryrun", True)
             data = kwargs
 
         if hasattr(self.Meta, "context_class"):
