@@ -11,7 +11,7 @@ from django.test import TestCase
 from nautobot_design_builder.util import designs_in_repository, load_design_module, load_design_package
 
 DESIGN_FILE_1 = """
-from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.design_job import DesignJob
 
 class Design1(DesignJob):
     class Meta:
@@ -19,7 +19,7 @@ class Design1(DesignJob):
 """
 
 DESIGN_FILE_2_3 = """
-from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.design_job import DesignJob
 
 class Design2(DesignJob):
     class Meta:
@@ -32,7 +32,7 @@ class Design3(DesignJob):
 """
 
 DESIGN_FILE_3 = """
-from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.design_job import DesignJob
 
 class Design3(DesignJob):
     class Meta:
@@ -40,7 +40,7 @@ class Design3(DesignJob):
 """
 
 DESIGN_FILE_4 = """
-from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.design_job import DesignJob
 
 # This file has an intentional syntax error
 class Design4(DesignJob):

@@ -10,7 +10,7 @@ from unittest.mock import PropertyMock, patch
 
 from django.test import TestCase
 
-from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.util import nautobot_version
 
 logging.disable(logging.CRITICAL)
