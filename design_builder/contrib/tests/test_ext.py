@@ -88,8 +88,9 @@ class TestCableConnectionExtension(TestCase):
                   status__name: "Active"
                   "!connect_cable":
                     status__name: "Planned"
-                    device: "!ref:device1"
-                    name: "GigabitEthernet1"
+                    to:
+                      device: "!ref:device1"
+                      name: "GigabitEthernet1"
         """
 
         design_template_v2 = """
@@ -134,8 +135,9 @@ class TestCableConnectionExtension(TestCase):
                   status__name: "Active"
                   "!connect_cable":
                     status__name: "Planned"
-                    device: "!ref:device1"
-                    name: "GigabitEthernet1"
+                    to:
+                      device: "!ref:device1"
+                      name: "GigabitEthernet1"
         """
 
         if nautobot_version < "2.0.0":
@@ -330,6 +332,7 @@ class TestBGPExtension(TestCase):
           bgp_routing_instances:
           - "!create_or_update:autonomous_system__asn": 64500
             "!ref": "device1-instance"
+            "status__name": "Active"
 
         - "!create_or_update:name": "device2"
           status__name: "Active"
@@ -346,6 +349,7 @@ class TestBGPExtension(TestCase):
           bgp_routing_instances:
           - "!create_or_update:autonomous_system__asn": 64500
             "!ref": "device2-instance"
+            "status__name": "Active"
 
         bgp_peerings:
         - "!bgp_peering":

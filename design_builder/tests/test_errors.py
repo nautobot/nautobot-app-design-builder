@@ -54,6 +54,14 @@ class TestDesignModelError(unittest.TestCase):
         got = DesignModelError(child).path_str
         self.assertEqual(want, got)
 
+    def test_explicit_parent(self):
+        want = ("        ", "- Verbose name instance grandparent\n    - Verbose name instance parent")
+        grandparent = self.TestModel("instance grandparent")
+        parent = self.TestModel("instance parent", parent=grandparent)
+        child = "instance child"
+        got = DesignModelError(child, parent=parent).path_str
+        self.assertEqual(want, got)
+
 
 class TestDesignValidationError(unittest.TestCase):
     def test_single_string(self):

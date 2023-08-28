@@ -31,7 +31,7 @@ class DesignTestCase(TestCase):
         git_instance_mock.return_value.path = self.git_path
         self.git_mock.side_effect = git_instance_mock
 
-    def get_mocked_job(self, design_class: Type[DesignJob]):  # pylint: disable=no-self-use
+    def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
         job.job_result = mock.Mock()
