@@ -7,7 +7,6 @@ This document provides an overview of the App including critical information and
 
 ## Description
 
-
 ## Audience (User Personas) - Who should use this App?
 
 !!! warning "Developer Note - Remove Me!"
