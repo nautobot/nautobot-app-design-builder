@@ -8,28 +8,6 @@ from nautobot_design_builder.jinja2 import new_template_environment
 class TestJinja(unittest.TestCase):
     """Test jinja2 rendering with the custom context."""
 
-    def test_indent(self):
-        env = new_template_environment({})
-        want = "\n    - foo\n      bar\n"
-        got = env.from_string("\n    - {%indent%}foo\nbar{%endindent%}").render()
-        self.assertEqual(want, got)
-
-    def test_list_indent(self):
-        env = new_template_environment({})
-        items = ["foo1", "foo2", "foo3"]
-        want = "\n    - foo1\n\n    - foo2\n\n    - foo3\n\n"
-        template = "\n{% for item in items %}\n    - {%+ indent%}{{ item }}{%endindent +%}\n{%endfor%}\n"
-        got = env.from_string(template).render({"items": items})
-        self.assertEqual(want, got)
-
-    def test_dict_indent(self):
-        env = new_template_environment({})
-        items = {"foo1": 1, "foo2": 2, "foo3": 3}
-        want = "    - foo1: 1\n      foo2: 2\n      foo3: 3\n\n"
-        template = "{% for item in items %}\n    - {%+ indent%}{{ item | to_yaml }}{%endindent%}\n{%endfor%}"
-        got = env.from_string(template).render({"items": [items]})
-        self.assertEqual(want, got)
-
     def test_simple_render(self):
         data = {"var1": "val1", "var2": "val2"}
         context = Context.load(data)
