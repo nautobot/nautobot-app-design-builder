@@ -12,15 +12,17 @@ services:
     volumes:
       - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
       - "../:/source"
-      - "../examples/backbone_design//designs:/opt/nautobot/designs:cached"
-      - "../examples/backbone_design//jobs:/opt/nautobot/jobs:cached"
+      - "../designs:/opt/nautobot/designs:cached"
+      - "../jobs:/opt/nautobot/jobs:cached"
+    healthcheck:
+      test: ["CMD", "true"]  # Due to layering, disable: true won't work. Instead, change the test
   docs:
     entrypoint: "mkdocs serve -v -a 0.0.0.0:8080"
     ports:
       - "8001:8080"
     volumes:
       - "../:/source"
-    image: "design-builder/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
+    image: "example-design/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
     healthcheck:
       disable: true
     tty: true
@@ -32,8 +34,10 @@ services:
     volumes:
       - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
       - "../:/source"
-      - "../examples/backbone_design//designs:/opt/nautobot/designs:cached"
-      - "../examples/backbone_design//jobs:/opt/nautobot/jobs:cached"
+      - "../designs:/opt/nautobot/designs:cached"
+      - "../jobs:/opt/nautobot/jobs:cached"
+    healthcheck:
+      test: ["CMD", "true"]  # Due to layering, disable: true won't work. Instead, change the test
 # To expose postgres or redis to the host uncomment the following
 # postgres:
 #   ports:

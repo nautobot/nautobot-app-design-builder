@@ -45,7 +45,7 @@ Since the entrypoint for designs is a specialized Nautobot job, we must configur
 ```python
 """Module for design jobs"""
 
-from design_builder.util import load_jobs
+from nautobot_design_builder.util import load_jobs
 
 load_jobs()
 ```
@@ -86,7 +86,7 @@ Design file specifies the Jinja template that should be used to produce the inpu
 
 ### `context_class`
 
-The value of the `context_class` metadata attribute should be any Python class that inherits from the `design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
+The value of the `context_class` metadata attribute should be any Python class that inherits from the `nautobot_design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
 
 
 ### `report`
@@ -100,7 +100,7 @@ Primary Purpose:
 - Organize data from multiple places
 - Validate data
 
-As previously stated, the design context is a combination of user supplied input and computed values. The design context should include any details needed to produce a design that can be built. Fundamentally, the design context is a Python class that extends the `design_builder.Context` class. However, this context can be supplemented with YAML. Once Design Builder has created and populated the design context it passes this context off to a Jinja rendering environment to be used for variable lookups.
+As previously stated, the design context is a combination of user supplied input and computed values. The design context should include any details needed to produce a design that can be built. Fundamentally, the design context is a Python class that extends the `nautobot_design_builder.Context` class. However, this context can be supplemented with YAML. Once Design Builder has created and populated the design context it passes this context off to a Jinja rendering environment to be used for variable lookups.
 
 That's a lot to digest, so let's break it down to the net effect of the design context.
 
@@ -122,7 +122,7 @@ This context YAML creates two variables that will be added to the design context
 
 ### Context Validations
 
-Sometimes design data needs to be validated before a design can be built. The Design Builder provides a means for a design context to determine if it is valid and can/should the implementation proceed. After a design job creates and populates a design context, the job will call any methods on the context where the method name begins with `validate_`. These methods should not accept any arguments other than `self` and should either return `None` when valid or should raise `design_builder.DesignValidationError`. In the above Context example, the design context checks to see if a site with the same name already exists, and if so it raises an error. Any number of validation methods can exist in a design context. Each will be called in the order it is defined in the class.
+Sometimes design data needs to be validated before a design can be built. The Design Builder provides a means for a design context to determine if it is valid and can/should the implementation proceed. After a design job creates and populates a design context, the job will call any methods on the context where the method name begins with `validate_`. These methods should not accept any arguments other than `self` and should either return `None` when valid or should raise `nautobot_design_builder.DesignValidationError`. In the above Context example, the design context checks to see if a site with the same name already exists, and if so it raises an error. Any number of validation methods can exist in a design context. Each will be called in the order it is defined in the class.
 
 ## Design Templates
 

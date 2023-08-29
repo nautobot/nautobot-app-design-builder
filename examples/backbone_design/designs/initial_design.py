@@ -1,4 +1,4 @@
-from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.design_job import DesignJob
 
 from .initial_context import InitialDesignContext
 

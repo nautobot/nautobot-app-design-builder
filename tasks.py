@@ -303,19 +303,6 @@ def docs(context):
         print("Only used when developing locally (i.e. context.nautobot_design_builder.local=True)!")
 
 
-@task
-def sample_data(context):
-    """Populate the database with some sample data for testing and demonstration."""
-    migrate(context)
-    script = """
-from nautobot_design_builder.tests.util import populate_sample_data
-print("Attempting to populate sample data.")
-populate_sample_data()
-"""
-    command = "nautobot-server shell_plus --quiet-load"
-    run_command(context, command, in_stream=StringIO(script), pty=False)
-
-
 # ------------------------------------------------------------------------------
 # TESTS
 # ------------------------------------------------------------------------------
