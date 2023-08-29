@@ -1,13 +1,9 @@
 """Unit tests related to template extensions."""
 import sys
-import yaml
 
 from django.test import TestCase
 
-from nautobot.dcim.models import DeviceType
-
 from nautobot_design_builder import ext
-from nautobot_design_builder.contrib.ext import LookupExtension
 from nautobot_design_builder.design import Builder
 from nautobot_design_builder.ext import DesignImplementationError
 
@@ -49,3 +45,70 @@ class TestCustomExtensions(TestCase):
 
     def test_builder_called_with_invalid_extensions(self):
         self.assertRaises(DesignImplementationError, Builder, extensions=[NotExtension])
+
+
+class TestExtensionCommitRollback(TestCase):
+    @staticmethod
+    def run_test(design, commit):
+        """Implement a design and return wether or not `commit` and `roll_back` were called."""
+        committed = False
+        rolled_back = False
+
+        class CommitExtension(ext.Extension):
+            """Test extension."""
+
+            attribute_tag = "extension"
+
+            def commit(self) -> None:
+                nonlocal committed
+                committed = True
+
+            def roll_back(self) -> None:
+                nonlocal rolled_back
+                rolled_back = True
+
+        builder = Builder(extensions=[CommitExtension])
+        try:
+            builder.implement_design(design, commit=commit)
+        except DesignImplementationError:
+            pass
+        return committed, rolled_back
+
+    def test_extension_commit(self):
+        design = {
+            "manufacturers": [
+                {
+                    "name": "Test Manufacturer",
+                    "!extension": True,
+                }
+            ]
+        }
+        committed, rolled_back = self.run_test(design, commit=True)
+        self.assertTrue(committed)
+        self.assertFalse(rolled_back)
+
+    def test_extension_roll_back(self):
+        design = {
+            "manufacturers": [
+                {
+                    "!extension": True,
+                    "name": "!ref:noref",
+                }
+            ]
+        }
+        committed, rolled_back = self.run_test(design, commit=True)
+        self.assertTrue(rolled_back)
+        self.assertFalse(committed)
+
+    def test_extension_explicit_roll_back(self):
+        design = {
+            "manufacturers": [
+                {
+                    "name": "Test Manufacturer",
+                    "!extension": True,
+                }
+            ]
+        }
+        committed, rolled_back = self.run_test(design, commit=False)
+        self.assertTrue(rolled_back)
+        self.assertFalse(committed)

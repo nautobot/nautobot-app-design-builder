@@ -91,12 +91,15 @@ class Extension(ABC):
         """
 
     def commit(self) -> None:
-        """Optional method that is called once a design has been implemented and committed to the database."""
-        # TODO: Need to write unit tests for this
+        """Optional method that is called once a design has been implemented and committed to the database.
+
+        Note: Commit is called once for each time Builder.implement_design is called. For a design job with
+        multiple design files, commit will be called once for each design file. It is up to the extension
+        to track internal state so that multiple calls to `commit` don't introduce an inconsistency.
+        """
 
     def roll_back(self) -> None:
         """Optional method that is called if the design has failed and the database transaction will be rolled back."""
-        # TODO: Need to write unit tests for this
 
 
 class ReferenceExtension(Extension):
@@ -203,12 +206,17 @@ class GitContextExtension(Extension):
 
     def __init__(self, builder: "Builder"):  # noqa: D107
         super().__init__(builder)
+        slug = DesignBuilderConfig.context_repository
+        self.context_repo = GitRepo(slug, builder.job_result)
+        self._env = {}
+        self._reset()
+
+    def _reset(self):
+        """Reset the internal state for commit/rollback tracking."""
         self._env = {
             "files": [],
             "directories": [],
         }
-        slug = DesignBuilderConfig.context_repository
-        self.context_repo = GitRepo(slug, builder.job_result)
 
     def attribute(self, value, model_instance):
         """Provide the attribute tag functionality for git_context.
@@ -250,6 +258,7 @@ class GitContextExtension(Extension):
         """Commit the added files to the git repository and push the changes."""
         self.context_repo.commit_with_added("Created by design builder")
         self.context_repo.push()
+        self._reset()
 
     def roll_back(self):
         """Delete any files and directories that were created by the tag."""
@@ -258,3 +267,4 @@ class GitContextExtension(Extension):
 
         for dirpath in self._env["directories"]:
             os.rmdir(dirpath)
+        self._reset()

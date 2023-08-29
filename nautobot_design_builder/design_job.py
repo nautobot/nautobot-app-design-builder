@@ -199,7 +199,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
             if commit:
-                self.builder.commit()
                 self.post_implementation(context, self.builder)
                 if hasattr(self.Meta, "report"):
                     self.job_result.data["report"] = self.render_report(context, self.builder.journal)
