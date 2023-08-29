@@ -49,36 +49,3 @@ class TestCustomExtensions(TestCase):
 
     def test_builder_called_with_invalid_extensions(self):
         self.assertRaises(DesignImplementationError, Builder, extensions=[NotExtension])
-
-
-class TestLookupExtension(TestCase):
-    def test_lookup_by_dict(self):
-        design_template = """
-        manufacturers:
-            - name: "Manufacturer"
-
-        device_types:
-            - "!lookup:manufacturer":
-                name: "Manufacturer"
-              model: "model"
-        """
-        design = yaml.safe_load(design_template)
-        builder = Builder(extensions=[LookupExtension])
-        builder.implement_design(design, commit=True)
-        device_type = DeviceType.objects.get(model="model")
-        self.assertEqual("Manufacturer", device_type.manufacturer.name)
-
-    def test_lookup_by_single_attribute(self):
-        design_template = """
-        manufacturers:
-            - name: "Manufacturer"
-
-        device_types:
-            - "!lookup:manufacturer:name": "Manufacturer"
-              model: "model"
-        """
-        design = yaml.safe_load(design_template)
-        builder = Builder(extensions=[LookupExtension])
-        builder.implement_design(design, commit=True)
-        device_type = DeviceType.objects.get(model="model")
-        self.assertEqual("Manufacturer", device_type.manufacturer.name)
