@@ -464,7 +464,9 @@ class Builder(LoggingMixin):
                     self._create_objects(self.model_map[key], value)
                 else:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
-            if not commit:
+            if commit:
+                self.commit()
+            else:
                 transaction.savepoint_rollback(sid)
                 self.roll_back()
         except Exception as ex:
