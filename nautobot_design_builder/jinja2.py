@@ -1,115 +1,13 @@
 """Jinja2 related filters and environment methods."""
-import re
 import yaml
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, nodes
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from jinja2.environment import Context as JinjaContext
-from jinja2.ext import Extension
-from jinja2.lexer import TOKEN_DATA, TokenStream
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.utils import missing
 
 from netaddr import AddrFormatError, IPNetwork
 from netutils.utils import jinja2_convenience_function
-
-
-class TrackingTokenStream:
-    """Track leading whitespace in the token stream."""
-
-    def __init__(self, parent: TokenStream):
-        """Initialize the tracking token stream.
-
-        Args:
-            parent (jinja2.TokenStream): The token stream to watch.
-        """
-        self._parent = parent
-        self.prefix = ""
-
-    def __iter__(self):
-        """Makes class iterable, returns instance of self."""
-        return self
-
-    def __next__(self):
-        """Get the next token from the stream, record any leading whitespace."""
-        current = self._parent.current
-        if current.type == TOKEN_DATA:
-            index = current.value.rfind("\n")
-            if index >= 0:
-                self.prefix = current.value[index + 1 :]  # noqa: E203
-            else:
-                self.prefix = current.value
-        return self._parent.__next__()
-
-
-class IndentationExtension(Extension):
-    """Add an indent tag to Jinja2 that will indent a block with any whitespace preceding the tag.
-
-    This adds the ability to prepend each line of a block with leading whitespace characters. This is
-    especially useful when rendering content such as YAML, which depends on correct indentation. A
-    typical usage is:
-
-    ```jinja
-          {%+ indent %}{% include "path/to/template.j2" %}{% endindent %}
-    ```
-
-    Note the leading `+` just after the block start. This is necessary if lstrip_blocks is enabled
-    in the environment. `lstrip_blocks=True` prevents the indent tag from ever getting the leading
-    whitespace. However, the `+` will preserve leading whitespace despite lstrip_blocks.
-    """
-
-    stream: None
-    tags = {"indent"}
-
-    def filter_stream(self, stream):
-        """Set up stream filtering to watch for leading white space.
-
-        Args:
-            stream (jinja2.TokenStream): The input token stream to watch
-
-        Returns:
-            TrackingTokenStream: The returned token stream is a passthrough to the
-            input token stream, it only records whitespace occurring before tokens.
-        """
-        self.stream = TrackingTokenStream(stream)
-        return self.stream
-
-    def parse(self, parser):
-        """Parse the indent block.
-
-        Args:
-            parser (_type_): The active jinja2 parser
-
-        Returns:
-            jinja2.nodes.CallBlock: A CallBlock is returned that, when called, will
-            process the wrapped block and prepend indentation on each line.
-        """
-        token = next(parser.stream)
-        lineno = token.lineno
-        whitespace = re.sub(r"[^\s]", " ", self.stream.prefix)
-
-        body = parser.parse_statements(["name:endindent"], drop_needle=True)
-        args = [nodes.TemplateData(whitespace)]
-        return nodes.CallBlock(self.call_method("_indent_support", args), [], [], body).set_lineno(lineno)
-
-    @staticmethod
-    def _indent_support(indentation, caller):
-        """Perform the block indentation.
-
-        Args:
-            indentation (str): Whitespace to be prepended to each line
-            caller (_type_): Wrapped jinja2 block
-
-        Returns:
-            str: Processed block where each line has been prepended with whitespace.
-        """
-        body = caller()
-        lines = body.split("\n")
-        for i in range(1, len(lines)):
-            if lines[i]:
-                lines[i] = indentation + lines[i]
-        # TODO: remove the trailing newline. This *might* be a breaking
-        # change for older designs
-        return "\n".join(lines) + "\n"
 
 
 def network_string(network: IPNetwork, attr="") -> str:
@@ -257,7 +155,6 @@ def new_template_environment(root_context, base_dir=None, native_environment=Fal
 
     env = env_class(
         loader=loader,
-        extensions=[IndentationExtension],
         trim_blocks=True,
         lstrip_blocks=True,
         undefined=StrictUndefined,
