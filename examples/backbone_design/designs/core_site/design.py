@@ -3,7 +3,7 @@ from nautobot.extras.jobs import ObjectVar, StringVar, IPNetworkVar
 
 from nautobot_design_builder.design_job import DesignJob
 
-from .core_site_context import CoreSiteContext
+from .context import CoreSiteContext
 
 
 class CoreSiteDesign(DesignJob):
@@ -20,5 +20,5 @@ class CoreSiteDesign(DesignJob):
     class Meta:
         name = "Backbone Site Design"
         commit_default = False
-        design_file = "templates/core_site_design.yaml.j2"
+        design_file = "designs/0001_design.yaml.j2"
         context_class = CoreSiteContext
