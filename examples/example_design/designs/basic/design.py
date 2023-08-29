@@ -1,6 +1,6 @@
 """Basic design demonstrates the capabilities of the Design Builder."""
 
-from nautobot_design_builder.base import DesignJob
+from nautobot_design_builder.design_job import DesignJob
 
 from .context import DesignContext
 
@@ -13,6 +13,6 @@ class BasicDesign(DesignJob):
 
         name = "{{ design_name }} Design"
         commit_default = False
-        design_file = "templates/basic_design.yaml.j2"
+        design_file = "designs/0001_design.yaml.j2"
         context_class = DesignContext
-        report = "templates/basic_design_report.md.j2"
+        report = "report.md.j2"

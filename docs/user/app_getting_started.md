@@ -24,7 +24,7 @@ Once you click `save`, the jobs should be runnable.
 To implement any design, click the run button [run button](../images/screenshots/run-button.png). For example, run the "Initial Data" job, which will add a manufacturer, a device type, a device role, several regions and several sites. Additionally, each site will have two devices. Here is the design template for this design:
 
 ```jinja
---8<-- "examples/backbone_design/designs/templates/initial_design.yaml.j2"
+--8<-- "examples/backbone_design/designs/core_site/designs/0001_design.yaml.j2"
 ```
 
 If you run the job you should see output in the job result that shows the various objects being created:

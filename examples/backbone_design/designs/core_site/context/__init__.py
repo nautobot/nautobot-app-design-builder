@@ -6,7 +6,7 @@ from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.context import Context, context_file
 
 
-@context_file("core_site_context.yaml")
+@context_file("context.yaml")
 class CoreSiteContext(Context):
     """Render context for core site design"""
 

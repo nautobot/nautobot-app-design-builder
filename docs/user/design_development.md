@@ -14,20 +14,28 @@ For the remainder of this tutorial we will focus solely on the Design Job, Desig
 
 ## Design Components
 
-Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. All designs will be loaded from a top-level directory called `designs`. That directory must be defined as a Python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `designs` module or be imported to it. The following directory layout is from the sample designs provided in the [project repository](https://github.com/networktocode-llc/nautobot-plugin-design-builder/tree/develop/development/git-repos/designs):
+Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. All designs will be loaded from a top-level directory called `designs`. That directory must be defined as a Python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `designs` module or be imported to it. The following directory layout is from the sample designs provided in the [project repository](https://github.com/networktocode-llc/nautobot-plugin-design-builder/tree/develop/examples/backbone_designs):
 
 ``` bash
 .
 ├── designs
 │   ├── __init__.py
-│   ├── core_site_context.py
-│   ├── core_site_context.yaml
-│   ├── core_site_design.py
-│   ├── initial_context.py
-│   ├── initial_design.py
-│   └── templates
-│       ├── core_site_design.yaml.j2
-│       └── initial_design.yaml.j2
+│   ├── core_site
+│   │   ├── __init__.py
+│   │   ├── context
+│   │   │   ├── __init__.py
+│   │   │   └── context.yaml
+│   │   ├── design.py
+│   │   └── designs
+│   │       └── 0001_design.yaml.j2
+│   ├── designs.py
+│   └── initial_data
+│       ├── __init__.py
+│       ├── context
+│       │   └── __init__.py
+│       ├── design.py
+│       └── designs
+│           └── 0001_design.yaml.j2
 └── jobs
     ├── __init__.py
     └── designs.py
@@ -63,7 +71,7 @@ Primary Purpose:
 As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
---8<-- "examples/backbone_design/designs/initial_design.py"
+--8<-- "examples/backbone_design/designs/initial_data/design.py"
 ```
 
 This particular design job does not collect any input from the user, it will use `InitialDesignContext` for its render context and it will consume the `templates/initial_design.yaml.j2` file for its design. When this job is run, the Design Builder will create an instance of `InitialDesignContext`, read `templates/initial_design.yaml.j2` and then render the template with Jinja using the design context as a render context.
@@ -71,7 +79,7 @@ This particular design job does not collect any input from the user, it will use
 Here is another, more interesting design:
 
 ```python
---8<-- "examples/backbone_design/designs/core_site_design.py"
+--8<-- "examples/backbone_design/designs/core_site/design.py"
 ```
 
 In this case, we have a design that will create a site, populate it with two racks, each rack will have a core router and each router will be populated with routing engines and switch fabric cards. The design job specifies that the user needs to supply a region for the new site, a site name and an IP prefix. These inputs will be combined in the design context to be used for building out a new site.
@@ -110,7 +118,7 @@ That's a lot to digest, so let's break it down to the net effect of the design c
 A context is essentially a mapping (similar to a dictionary) where the context's instance properties can be retrieved using the index operator (`[]`). YAML files that are included in the context will have their values added to the context as instance attributes. When design builder is rendering the design template it will use the context to resolve any unknown variables. One feature of the design context is that values in YAML contexts can include Jinja templates. For instance, consider the core site context from the design above:
 
 ```python
---8<-- "examples/backbone_design/designs/core_site_context.py"
+--8<-- "examples/backbone_design/designs/core_site/context/__init__.py"
 ```
 
 This context has instance variables `region`, `site_name` and `site_prefix`. These instance variables will be populated from the user input provided by the design job. Additionally note the class decorator `@context_file`. This decorator indicates that the `core_site_context.yaml` file should be used to also populate values of the design context. The context includes a method called `validate_new_site` to perform some pre-implementation validation (see the [next section](#context-validations) for details). The context also includes a method called `get_serial_number`. The implementation of this method is there only to demonstrate that some dynamic processing can occur to retrieve context values. For example, there may be an external CMDB that contains serial numbers for the devices. The `get_serial_number` method could connect to that system and lookup the serial number to populate the Nautobot object.
@@ -118,7 +126,7 @@ This context has instance variables `region`, `site_name` and `site_prefix`. The
 Now let's inspect the context YAML file:
 
 ```python
---8<-- "examples/backbone_design/designs/core_site_context.yaml"
+--8<-- "examples/backbone_design/designs/core_site/context/context.yaml"
 ```
 
 This context YAML creates two variables that will be added to the design context: `core_1_loopback` and `core_2_loopback`. The values of both of these variables are computed using a jinja template. The template uses a jinja filter from the `netutils` project to compute the address using the user-supplied `site_prefix`. When the design context is created, the variables will be added to the context. The values (from the jinja template) are rendered when the variables are looked up during the design template rendering process.
