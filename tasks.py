@@ -14,7 +14,6 @@ limitations under the License.
 
 from distutils.util import strtobool
 from invoke import Collection, task as invoke_task
-from io import StringIO
 import os
 
 
