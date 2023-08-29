@@ -1,5 +1,3 @@
 from .basic.design import BasicDesign
 
-__all__ = (
-    "BasicDesign",
-)
+__all__ = ("BasicDesign",)
