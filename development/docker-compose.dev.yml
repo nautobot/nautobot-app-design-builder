@@ -12,8 +12,8 @@ services:
     volumes:
       - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
       - "../:/source"
-      - "../examples/backbone_design//designs:/opt/nautobot/designs:cached"
-      - "../examples/backbone_design//jobs:/opt/nautobot/jobs:cached"
+      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
+      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"
   docs:
     entrypoint: "mkdocs serve -v -a 0.0.0.0:8080"
     ports:
@@ -32,8 +32,8 @@ services:
     volumes:
       - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
       - "../:/source"
-      - "../examples/backbone_design//designs:/opt/nautobot/designs:cached"
-      - "../examples/backbone_design//jobs:/opt/nautobot/jobs:cached"
+      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
+      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"
 # To expose postgres or redis to the host uncomment the following
 # postgres:
 #   ports:
