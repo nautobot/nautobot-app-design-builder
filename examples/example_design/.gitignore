@@ -1,13 +1,3 @@
-# Don't include the repos
-repos/
-config-contexts/
-
-# Don't need lcov files for now
-lcov.info
-
-# Drawio files
-*.drawio.bkp
-
 # Ansible Retry Files
 *.retry
 
@@ -304,7 +294,6 @@ fabric.properties
 ### vscode ###
 .vscode/*
 *.code-workspace
-!.devcontainer/wheels/
 
 # Rando
 creds.env
@@ -312,3 +301,10 @@ development/*.txt
 
 # Invoke overrides
 invoke.yml
+
+# Docs
+docs/README.md
+docs/CHANGELOG.md
+public
+/compose.yaml
+/dump.sql

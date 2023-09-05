@@ -14,20 +14,28 @@ For the remainder of this tutorial we will focus solely on the Design Job, Desig
 
 ## Design Components
 
-Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. All designs will be loaded from a top-level directory called `designs`. That directory must be defined as a Python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `designs` module or be imported to it. The following directory layout is from the sample designs provided in the [project repository](https://github.com/networktocode-llc/nautobot-plugin-design-builder/tree/develop/development/git-repos/designs):
+Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. All designs will be loaded from a top-level directory called `designs`. That directory must be defined as a Python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `designs` module or be imported to it. The following directory layout is from the sample designs provided in the [project repository](https://github.com/networktocode-llc/nautobot-plugin-design-builder/tree/develop/examples/backbone_designs):
 
 ``` bash
 .
 ├── designs
 │   ├── __init__.py
-│   ├── core_site_context.py
-│   ├── core_site_context.yaml
-│   ├── core_site_design.py
-│   ├── initial_context.py
-│   ├── initial_design.py
-│   └── templates
-│       ├── core_site_design.yaml.j2
-│       └── initial_design.yaml.j2
+│   ├── core_site
+│   │   ├── __init__.py
+│   │   ├── context
+│   │   │   ├── __init__.py
+│   │   │   └── context.yaml
+│   │   ├── design.py
+│   │   └── designs
+│   │       └── 0001_design.yaml.j2
+│   ├── designs.py
+│   └── initial_data
+│       ├── __init__.py
+│       ├── context
+│       │   └── __init__.py
+│       ├── design.py
+│       └── designs
+│           └── 0001_design.yaml.j2
 └── jobs
     ├── __init__.py
     └── designs.py
@@ -45,7 +53,7 @@ Since the entrypoint for designs is a specialized Nautobot job, we must configur
 ```python
 """Module for design jobs"""
 
-from design_builder.util import load_jobs
+from nautobot_design_builder.util import load_jobs
 
 load_jobs()
 ```
@@ -63,7 +71,7 @@ Primary Purpose:
 As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
---8<-- "development/git-repos/designs/designs/initial_design.py"
+--8<-- "examples/backbone_design/designs/initial_data/design.py"
 ```
 
 This particular design job does not collect any input from the user, it will use `InitialDesignContext` for its render context and it will consume the `templates/initial_design.yaml.j2` file for its design. When this job is run, the Design Builder will create an instance of `InitialDesignContext`, read `templates/initial_design.yaml.j2` and then render the template with Jinja using the design context as a render context.
@@ -71,7 +79,7 @@ This particular design job does not collect any input from the user, it will use
 Here is another, more interesting design:
 
 ```python
---8<-- "development/git-repos/designs/designs/core_site_design.py"
+--8<-- "examples/backbone_design/designs/core_site/design.py"
 ```
 
 In this case, we have a design that will create a site, populate it with two racks, each rack will have a core router and each router will be populated with routing engines and switch fabric cards. The design job specifies that the user needs to supply a region for the new site, a site name and an IP prefix. These inputs will be combined in the design context to be used for building out a new site.
@@ -82,12 +90,15 @@ The design jobs above include standard metadata (`name` and `commit_default` for
 
 ### `design_file`
 
-Design file specifies the Jinja template that should be used to produce the input for the design builder. The builder will resolve the file's location relative to the location of the design job class. This is a required field.
+Design file specifies the Jinja template that should be used to produce the input for the design builder. The builder will resolve the file's location relative to the location of the design job class.
+
+### `design_files`
+
+Design files specifies a list of Jinja template that should be used to produce the input for the design builder. The builder will resolve the files' locations relative to the location of the design job class. Exactly one of `design_file` or `design_files` must be present in the design's Metadata. If `design_files` is used for a list of design templates, each one is evaluated in order. The same context and builder are used for all files. Since a single builder instance is used, references can be created in one design file and then accessed in a later design file.
 
 ### `context_class`
 
-The value of the `context_class` metadata attribute should be any Python class that inherits from the `design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
-
+The value of the `context_class` metadata attribute should be any Python class that inherits from the `nautobot_design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
 
 ### `report`
 
@@ -100,14 +111,14 @@ Primary Purpose:
 - Organize data from multiple places
 - Validate data
 
-As previously stated, the design context is a combination of user supplied input and computed values. The design context should include any details needed to produce a design that can be built. Fundamentally, the design context is a Python class that extends the `design_builder.Context` class. However, this context can be supplemented with YAML. Once Design Builder has created and populated the design context it passes this context off to a Jinja rendering environment to be used for variable lookups.
+As previously stated, the design context is a combination of user supplied input and computed values. The design context should include any details needed to produce a design that can be built. Fundamentally, the design context is a Python class that extends the `nautobot_design_builder.Context` class. However, this context can be supplemented with YAML. Once Design Builder has created and populated the design context it passes this context off to a Jinja rendering environment to be used for variable lookups.
 
 That's a lot to digest, so let's break it down to the net effect of the design context.
 
 A context is essentially a mapping (similar to a dictionary) where the context's instance properties can be retrieved using the index operator (`[]`). YAML files that are included in the context will have their values added to the context as instance attributes. When design builder is rendering the design template it will use the context to resolve any unknown variables. One feature of the design context is that values in YAML contexts can include Jinja templates. For instance, consider the core site context from the design above:
 
 ```python
---8<-- "development/git-repos/designs/designs/core_site_context.py"
+--8<-- "examples/backbone_design/designs/core_site/context/__init__.py"
 ```
 
 This context has instance variables `region`, `site_name` and `site_prefix`. These instance variables will be populated from the user input provided by the design job. Additionally note the class decorator `@context_file`. This decorator indicates that the `core_site_context.yaml` file should be used to also populate values of the design context. The context includes a method called `validate_new_site` to perform some pre-implementation validation (see the [next section](#context-validations) for details). The context also includes a method called `get_serial_number`. The implementation of this method is there only to demonstrate that some dynamic processing can occur to retrieve context values. For example, there may be an external CMDB that contains serial numbers for the devices. The `get_serial_number` method could connect to that system and lookup the serial number to populate the Nautobot object.
@@ -115,20 +126,20 @@ This context has instance variables `region`, `site_name` and `site_prefix`. The
 Now let's inspect the context YAML file:
 
 ```python
---8<-- "development/git-repos/designs/designs/core_site_context.yaml"
+--8<-- "examples/backbone_design/designs/core_site/context/context.yaml"
 ```
 
 This context YAML creates two variables that will be added to the design context: `core_1_loopback` and `core_2_loopback`. The values of both of these variables are computed using a jinja template. The template uses a jinja filter from the `netutils` project to compute the address using the user-supplied `site_prefix`. When the design context is created, the variables will be added to the context. The values (from the jinja template) are rendered when the variables are looked up during the design template rendering process.
 
 ### Context Validations
 
-Sometimes design data needs to be validated before a design can be built. The Design Builder provides a means for a design context to determine if it is valid and can/should the implementation proceed. After a design job creates and populates a design context, the job will call any methods on the context where the method name begins with `validate_`. These methods should not accept any arguments other than `self` and should either return `None` when valid or should raise `design_builder.DesignValidationError`. In the above Context example, the design context checks to see if a site with the same name already exists, and if so it raises an error. Any number of validation methods can exist in a design context. Each will be called in the order it is defined in the class.
+Sometimes design data needs to be validated before a design can be built. The Design Builder provides a means for a design context to determine if it is valid and can/should the implementation proceed. After a design job creates and populates a design context, the job will call any methods on the context where the method name begins with `validate_`. These methods should not accept any arguments other than `self` and should either return `None` when valid or should raise `nautobot_design_builder.DesignValidationError`. In the above Context example, the design context checks to see if a site with the same name already exists, and if so it raises an error. Any number of validation methods can exist in a design context. Each will be called in the order it is defined in the class.
 
 ## Design Templates
 
 Primary Purpose:
 
-- Generate YAML files that confirm to the django `loaddata` format
+- Generate YAML files that conform to Design Builder's design file format.
 
 Design templates are Jinja templates that render to YAML. The YAML file represents a dictionary of objects that the design builder will create or update. The design builder supports all data models that exist within Nautobot, including any data models that are defined by applications installed within Nautobot. Top level keys in a design file map to the verbose plural name of the model. For instance, the `dcim.Device` model maps to the top level `devices` key within a design. Similarly, `dcim.Site` maps to `sites`.
 
@@ -146,6 +157,31 @@ regions:
 
 This design template will create a region with two sites. The Design Builder automatically takes care of the underlying relationships so that `IAD5` and `LGA1` are correctly associated with the `US-East-1` region. All relationships that are defined on the underlying database models are supported as nested objects within design templates.
 
+### Special Syntax - Query Fields
+
+Syntax: `field__<relatedfield>`
+
+Double underscores between a `field` and a `relatedfield` cause design builder to attempt to query a related object using the `relatedfield` as a query parameter. This query must return only one object. The returned object is then assigned to the `field` of the object being created or updated. For instance:
+
+```yaml
+devices:
+- name: "switch1"
+    platform__name: "Arista EOS"
+```
+
+This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`. The value for query fields can be a scalar or a dictionary. In the case above (`platform__name`) the scalar value `"Arista EOS"` expands the the equivalent ORM query: `Platform.objects.get(name="Arista EOS")` with the returned object being assigned to the `platform` attribute of the device.
+
+If a query field's value is a dictionary, then more complex lookups can be performed. For instance:
+
+```yaml
+devices:
+- name: "switch1"
+    platform: 
+        name: "Arista EOS"
+        napalm_driver: "eos"
+```
+
+The above query expands to the following ORM code: `Platform.objects.get(name="Arista EOS", napalm_driver="eos")` with the returned value being assigned to the `platform` attribute of the device.
 
 ### Special Syntax - Action Tag
 
@@ -181,21 +217,6 @@ devices:
 ```
 
 This template will cause design builder to attempt to first lookup the device by the name `bb-rtr-1`, if not found it will be created. Subsequently, the device interface named `Ethernet1/1` will also be either created or updated. Note that when being created all required fields must be specified. The above example would fail during creation since both the device and the interface are missing required fields. Design Builder performs model validation prior to saving any model to the database.
-
-#### Action Tag - Find Related Field
-
-Syntax: `field__<relatedfield>`
-
-Double underscores between a `field` and a `relatedfield` cause design builder to attempt to get a related object using the `relatedfield` as a query parameter. This query must return only one object. The returned object is then assigned to the `field` of the object being created or updated. For instance:
-
-```yaml
-devices:
-- name: "switch1"
-    platform__name: "Arista EOS"
-```
-
-This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`.
-
 
 #### Action Tag - Git Context
 
@@ -333,4 +354,18 @@ class DesignJobWithExtensions(DesignJob):
         name = "Design with Custom Extensions"
         design_file = "templates/simple_design.yaml.j2"
         extensions = [CustomExtension]
+```
+
+Several additional extensions ship with Design Builder and are located in the `nautobot_design_builder.contrib.ext` module. This module includes several useful extensions to help with things like connecting cables or creating BGP peers. However, these extensions may not be supported in all versions of Nautobot or in all configurations. For instance, the `bgp_peering` action tag requires that the BGP models plugin be installed. Given that these extensions may require optional packages, and are not supported across the entire Nautobot ecosystem they are distributed in the `contrib` package.
+
+In order to use any of these contributed packages, simply import the `ext` module and include the necessary extensions in the design job:
+
+```python
+from nautobot_design_builder.contrib import ext
+
+class DesignJobWithExtensions(DesignJob):
+    class Meta:
+        name = "Design with Custom Extensions"
+        design_file = "templates/simple_design.yaml.j2"
+        extensions = [ext.BGPPeeringExtension]
 ```
