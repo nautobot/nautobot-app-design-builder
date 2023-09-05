@@ -9,21 +9,14 @@ This document provides an overview of the App including critical information and
 
 ## Audience (User Personas) - Who should use this App?
 
-!!! warning "Developer Note - Remove Me!"
-    Who is this meant for/ who is the common user of this app?
+- Network engineers who want to have reproducible sets of Nautobot objects based on some standard design.
+- Automation engineers who want to be able to automate the creation of Nautobot objects based on a set of standard designs.
 
 ## Authors and Maintainers
 
-!!! warning "Developer Note - Remove Me!"
-    Add the team and/or the main individuals maintaining this project. Include historical maintainers as well.
+- Andrew Bates (@abates)
+- Mzb (@mzbroch)
 
 ## Nautobot Features Used
 
-!!! warning "Developer Note - Remove Me!"
-    What is shown today in the Installed Plugins page in Nautobot. What parts of Nautobot does it interact with, what does it add etc. ?
-
-### Extras
-
-!!! warning "Developer Note - Remove Me!"
-    Custom Fields - things like which CFs are created by this app?
-    Jobs - are jobs, if so, which ones, installed by this app?
+This application interacts directly with Nautobot's Object Relational Mapping (ORM) system.
