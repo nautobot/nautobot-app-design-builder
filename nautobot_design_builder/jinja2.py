@@ -1,5 +1,9 @@
 """Jinja2 related filters and environment methods."""
+import json
+from typing import TYPE_CHECKING
 import yaml
+
+from django.template import engines
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from jinja2.environment import Context as JinjaContext
@@ -7,7 +11,9 @@ from jinja2.nativetypes import NativeEnvironment
 from jinja2.utils import missing
 
 from netaddr import AddrFormatError, IPNetwork
-from netutils.utils import jinja2_convenience_function
+
+if TYPE_CHECKING:
+    from nautobot_design_builder.context import ContextNodeMixin
 
 
 def network_string(network: IPNetwork, attr="") -> str:
@@ -90,21 +96,23 @@ def network_offset(prefix: str, offset: str) -> IPNetwork:
     return new_prefix
 
 
-def __yaml_context_dumper(*args, **kwargs):
-    from . import context  # pylint:disable=import-outside-toplevel,cyclic-import
-
-    dumper = yaml.Dumper(*args, **kwargs)
-    for klass, representer in context.representers.items():
-        dumper.add_representer(klass, representer)
-    return dumper
+def _json_default(value):
+    try:
+        return value.data
+    except AttributeError:
+        raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
 
 
-def to_yaml(obj, *args, **kwargs):
-    """Convert an object to YAML."""
+def to_json(value: "ContextNodeMixin"):
+    """Convert a context node to JSON."""
+    return json.dumps(value, default=_json_default)
+
+
+def to_yaml(value: "ContextNodeMixin", *args, **kwargs):
+    """Convert a context node to YAML."""
     default_flow_style = kwargs.pop("default_flow_style", False)
-    return yaml.dump(
-        obj, allow_unicode=True, default_flow_style=default_flow_style, Dumper=__yaml_context_dumper, **kwargs
-    )
+
+    return yaml.dump(json.loads(to_json(value)), allow_unicode=True, default_flow_style=default_flow_style, **kwargs)
 
 
 def new_template_environment(root_context, base_dir=None, native_environment=False):
@@ -159,8 +167,8 @@ def new_template_environment(root_context, base_dir=None, native_environment=Fal
         lstrip_blocks=True,
         undefined=StrictUndefined,
     )
-    for name, func in jinja2_convenience_function().items():
-        # Register in django_jinja
+    for name, func in engines["jinja"].env.filters.items():
+        # Register standard Nautobot filters in the environment
         env.filters[name] = func
 
     env.filters["to_yaml"] = to_yaml
