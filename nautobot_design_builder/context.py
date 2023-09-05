@@ -1,7 +1,11 @@
 """Module that contains classes and functions for use with Design Builder context available when using Jinja templating."""
+from functools import cached_property
+from collections import UserList, UserDict, UserString
 import inspect
-from typing import Iterable
+from typing import Any
 import yaml
+
+from jinja2.nativetypes import NativeEnvironment
 
 from nautobot.extras.models import JobResult
 
@@ -11,41 +15,49 @@ from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.util import load_design_yaml
 
 
-class _Node:
-    _root: "_Node"
-    _store: None
+class ContextNodeMixin:
+    """A mixin to help create tree nodes for the Design Builder context.
 
-    def __init__(self, root: "_Node"):
-        super().__init__()
-        if root is None:
-            root = self
+    This mixin provides overridden __getitem__ and __setitem__ magic
+    methods that will automatically get and set the tree node types. The
+    mixin also provides a mechanism for a node within the tree to find
+    the context's root node and root render environment.
+    """
 
-        if root is self:
-            self.env = new_template_environment(root, native_environment=True)
-        self._root = root
+    _parent: "ContextNodeMixin" = None
+    _env: NativeEnvironment = None
 
-    def _compare(self, subscripts, other):
-        """Compare 'other' to the node's data store."""
-        for i in subscripts:
-            value = self[i]
-            if value != other[i]:
-                return False
-        return True
+    @cached_property
+    def root(self) -> "ContextNodeMixin":
+        """Lookup and return the root node in the context tree.
 
-    def __len__(self):
-        return len(self._store)
+        Returns:
+            ContextNodeMixin: root node
+        """
+        node: ContextNodeMixin = self
+        while node._parent is not None:  # pylint:disable=protected-access
+            node = node._parent  # pylint:disable=protected-access
 
-    def __contains__(self, key):
-        if hasattr(self, "_store"):
-            return key in getattr(self, "_store")
-        return False
+        if node._env is None:  # pylint:disable=protected-access
+            node._env = new_template_environment(node, native_environment=True)  # pylint:disable=protected-access
+        return node
 
-    def __repr__(self):
-        if hasattr(self, "_store"):
-            return repr(getattr(self, "_store"))
+    @property
+    def env(self) -> NativeEnvironment:
+        """Lookup the Jinja2 native environment from the root context node."""
+        return self.root._env  # pylint:disable=protected-access
+
+    def __repr__(self) -> str:
+        """Get the printable representation of the node.
+
+        This will return the `repr` of either the node's container `data`
+        attribute (if it exists) or the super class representation.
+        """
+        if hasattr(self, "data"):
+            return repr(getattr(self, "data"))
         return super().__repr__()
 
-    def __setitem__(self, key, item) -> "_Node":
+    def __setitem__(self, key, value) -> "ContextNodeMixin":
         """Store a new value within the node.
 
         Args:
@@ -58,39 +70,60 @@ class _Node:
         Returns:
             _Node: _description_
         """
-        if isinstance(item, str):
-            item = _TemplateNode(self._root, item)
+        if not isinstance(value, ContextNodeMixin):
+            value = self._create_node(value)
 
-        if isinstance(key, str) and hasattr(self, key):
-            setattr(self, key, item)
-        elif hasattr(self, "_store"):
-            self._store[key] = item
+        if hasattr(self, "data") and key in self.data:
+            old_value = self.data[key]
+            if hasattr(old_value, "update"):
+                old_value.update(value)
+            else:
+                self.data[key] = value
+        elif isinstance(key, str) and hasattr(self, key):
+            setattr(self, key, value)
         else:
-            raise KeyError(key)
+            super().__setitem__(key, value)
+        return value
 
-    def __getitem__(self, item) -> "_Node":
-        """Walk the context tree and return the value.
+    def __getitem__(self, key) -> "ContextNodeMixin":
+        """Get the desired item from within the node's children.
 
-        This method contains the logic that will find a leaf node
-        in a context tree and return its value. If the leaf node
-        is a template, the template is rendered before being returned.
+        `__getitem__` will first look for items in the context
+        node's `data` attribute. If the `data` attribute does
+        not exist, than the lookup will default to the superclass
+        `__getitem__`. If the found item is a `_TemplateNode` then
+        the template is rendered and the resulting native type is
+        returned.
         """
-        if isinstance(item, str) and hasattr(self, item):
-            val = getattr(self, item)
-        elif hasattr(self, "_store"):
-            val = self._store[item]
-        else:
-            raise KeyError(item)
+        try:
+            value = self.data[key]
+        except KeyError as ex:
+            if isinstance(key, str) and hasattr(self, key):
+                value = getattr(self, key)
+            else:
+                raise ex
+        except AttributeError:
+            value = super().__getitem__(key)
 
-        if isinstance(val, _TemplateNode):
-            val = val.render()
-        return val
+        # Use the _TemplateNode's data descriptor to
+        # render the template and get the native value
+        if isinstance(value, _TemplateNode):
+            value = value.data
+        return value
 
     def _create_node(self, value):
-        """Create a new node for the value.
+        """`_create_node` is a factory function for context nodes.
+
+        `_create_node` will take a value and create the proper tree
+        node type. Python types `list`, `dict` and `str` are converted
+        to the associated `_ListNode`, `_DictNode`, and `_TemplateNode`
+        with all other types being returned unchanged. If a context
+        node is created, than it's parent node is properly set so
+        that the root node, and environment, of the context can be
+        determined for `_TemplateNode` rendering.
 
         Args:
-            value: a value that needs to be inserted into a parent node
+            value: a value that needs to be added a parent node
 
         Returns:
             A new Node. If the value is a list then a new _ListNode is returned
@@ -99,143 +132,122 @@ class _Node:
             is returned.
         """
         if isinstance(value, list):
-            return _ListNode(self._root, value)
+            value = _ListNode(value)
 
-        if isinstance(value, dict):
-            return _DictNode(self._root, value)
+        elif isinstance(value, dict):
+            value = _DictNode(value)
 
-        if isinstance(value, str):
-            return _TemplateNode(self._root, value)
+        elif isinstance(value, str):
+            value = _TemplateNode(self, value)
+
+        if isinstance(value, ContextNodeMixin):
+            value._parent = self  # pylint:disable=protected-access
 
         return value
 
 
-class _TemplateNode(_Node):
+class _Template:
+    """`_Template` is a Python descriptor to render Jinja templates.
+
+    `_Template` can be used to assign Jinja templates to object
+    attributes. When the attribute is retrieved the template will
+    be automatically rendered before it is returned.
+    """
+
+    def __get__(self, obj: "_TemplateNode", objtype=None) -> Any:
+        """Render the template and return the native type."""
+        _template = getattr(obj, "_data_template", None)
+        if _template is None:
+            data = getattr(obj, "_data")
+            _template = obj._parent.env.from_string(data)
+            setattr(obj, "_data_template", _template)
+
+        return _template.render()
+
+    def __set__(self, obj, value):
+        """Set a new template for future rendering."""
+        setattr(obj, "_data", value)
+        setattr(obj, "_data_template", None)
+
+
+class _TemplateNode(UserString):
     """A TemplateNode represents a string or jinja2 template value.
 
+    _TemplateNode inherits from `collections.UserString` and follows the
+    conventions in that base class. See the `collections` documentation for
+    more information.
+
     Args:
-        root: The root node to be used when looking up variables in the context tree
-        tpl: a string template to be rendered at a later time
+        parent: The root node to be used when looking up variables in the context tree
+        seq: a jinja template to be rendered at a later time. This can also be a literal
+        string.
     """
 
-    def __init__(self, root: _Node, tpl: str):
-        super().__init__(root)
-        self.update(tpl)
+    data = _Template()
 
-    def render(self) -> str:
-        """Render the template node."""
-        return self._template.render()
+    def __init__(self, parent: ContextNodeMixin, seq):
+        self._parent = parent
+        if isinstance(seq, _TemplateNode):
+            seq = seq._data
 
-    def update(self, tpl: str):
-        """Replace the template node template with the input argument.
+        super().__init__(seq)
+
+    def update(self, seq):
+        """Update the node with a new template or string literal."""
+        if isinstance(seq, str):
+            self.data = seq
+        elif isinstance(seq, UserString):
+            self.data = seq.data[:]
+        elif isinstance(seq, _TemplateNode):
+            self.data = seq._data  # pylint:disable=protected-access
+        else:
+            self.data = str(seq)
+
+
+class _ListNode(ContextNodeMixin, UserList):
+    """`_ListNode` is a `collections.UserList` that can be used as a context node.
+
+    This type inherits from `collections.UserList` and should behave
+    the same way as that type. The only functionality added to
+    `collections.UserList` is that upon initialization all items
+    in the underlying data structure are converted to the appropriate
+    node type for the context tree (`_ListNode`, `_DictNode`, or
+    `_TemplateNode`)
+    """
+
+    def __init__(self, initlist=None):
+        super().__init__(initlist)
+        for i, item in enumerate(self.data):
+            self.data[i] = self._create_node(item)
+
+
+class _DictNode(ContextNodeMixin, UserDict):
+    """`_DictNode` is a `collections.UserDict` that can be used as a context node.
+
+    The `_DictNode` behaves the same as a typical dict/`collections.UserDict`
+    with the exception that all dictionary keys are also available as object
+    attributes on the node.
+    """
+
+    def __getattr__(self, attr) -> Any:
+        """Retrieve the dictionary key that matches `attr`.
+
+        If no dictionary key exists matching the attribute name then
+        an `AttributeError` is raised.
 
         Args:
-            tpl: the new template string
+            attr: Attribute name to lookup in the dictionary
+
+        Raises:
+            AttributeError: If no dictionary key matching the attribute
+            name exists.
+
+        Returns:
+            Any: The value of the item with the matching dictionary key.
         """
-        self._template = self._root.env.from_string(tpl)
-
-    def __eq__(self, other):
-        return self.__str__() == other
-
-    def __hash__(self) -> int:
-        return self.render().__hash__()
-
-    def __repr__(self) -> str:
-        return f"'{self.render()}'"
-
-    def __str__(self) -> str:
-        return str(self.render())
-
-    def __len__(self):
-        return len(str(self))
-
-
-class _ListNode(_Node):
-    """A _ListNode is a level in the context tree backed by a list store.
-
-    Args:
-        root: The root node for variable lookups.
-        data: The data to be populated into this _ListNode.
-    """
-
-    def __init__(self, root: _Node, data: dict):
-        super().__init__(root)
-        self._store = []
-        self.update(data)
-
-    def update(self, data: list):
-        """Merge the provided data with the current node."""
-        if not isinstance(data, list):
-            raise ValueError("ListNode can only be updated from a list")
-
-        for i, item in enumerate(data):
-            if i == len(self._store):
-                self._store.append(self._create_node(item))
-            elif isinstance(self._store[i], _Node):
-                self._store[i].update(item)
-            else:
-                self._store[i] = self._root._create_node(item)  # pylint: disable=protected-access
-
-    def __eq__(self, other: list):
-        if len(self._store) != len(other):
-            return False
-        return self._compare(range(len(self._store)), other)
-
-
-class _DictNode(_Node):
-    """A _DictNode is a level in the context tree backed by a dictionary store.
-
-    Args:
-        root: The root node for variable lookups.
-        data: The data to be populated into this _DictNode.
-    """
-
-    class DictNodeIterable:
-        """Iterator for _DictNode."""
-
-        def __init__(self, dict_node: "_DictNode"):
-            self._dict_node = dict_node
-            self._keys = iter(self._dict_node._store)
-
-        def __iter__(self):
-            return self
-
-        def __next__(self):
-            key = next(self._keys)
-            return [key, self._dict_node[key]]
-
-    def __init__(self, root: _Node, data: dict):
-        super().__init__(root)
-        self._store = {}
-        self.update(data)
-
-    def update(self, data: dict):
-        """Merge the provided data with this node."""
-        if not isinstance(data, dict):
-            raise ValueError("DictNode can only be updated from a dict")
-
-        for key, value in data.items():
-            if key in self._store and isinstance(self._store[key], _Node):
-                self._store[key].update(value)
-            else:
-                self._store[key] = self._root._create_node(value)  # pylint: disable=protected-access
-
-    def keys(self) -> Iterable:
-        """Return an iterable of the node's keys."""
-        return self._store.keys()
-
-    def values(self) -> Iterable:
-        """Return an iterable of the node's values."""
-        return self._store.values()
-
-    def items(self) -> Iterable:
-        """Return an iterable of the key/value pairs in this node."""
-        return self.DictNodeIterable(self)
-
-    def __eq__(self, other: dict):
-        if self._store.keys() != other.keys():
-            return False
-        return self._compare(self._store.keys(), other)
+        if attr in self.data:
+            return self[attr]
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{attr}'")
 
 
 def context_file(*ctx_files):
@@ -260,15 +272,24 @@ def context_file(*ctx_files):
     return wrapper
 
 
-class Context(_Node, LoggingMixin):
+class Context(_DictNode, LoggingMixin):
     """A context represents a tree of variables that can include templates for values.
 
-    Context provides a way to inject variables into designs. Contexts can be loaded from
-    YAML files or they can be defined as Python code or combinations of the two.  For
-    Contexts that are loaded from YAML files, values can be jinja templates that are
-    evaluated when looked up.  The jinja template can refer to other values within
-    the context.  If a context loads multiple files then the files are merged and
-    a template in one can refer to values assigned in another.
+    The Design Builder context is a tree structure that can be used for a
+    Jinja2 render context. One of the strengths of using the Design Builder
+    context is that context information can be provided both in a
+    python class (as normal properties and methods) as well as in YAML
+    files that can be loaded.
+
+    YAML files are loaded in and merged with the context, so many files
+    can be loaded to provide a complete context. This allows the context
+    files to be organized in whatever structure makes sense to the
+    design author.
+
+    Another strength of the context is that string values can be Jinja
+    templates that will render native Python types. The template render
+    context is the context tree root. This means that values within the
+    context tree can be used to compute other values at render time.
 
     Args:
         data: a dictionary of values to be loaded into the context. This dictionary
@@ -279,8 +300,7 @@ class Context(_Node, LoggingMixin):
 
     def __init__(self, data: dict = None, job_result: JobResult = None):
         """Constructor for Context class that creates data nodes from input data."""
-        super().__init__(self)
-        self._keys = []
+        super().__init__(data)
         self.job_result = job_result
 
         for base, filename in self.base_context_files():
@@ -288,11 +308,6 @@ class Context(_Node, LoggingMixin):
             # don't add anything if the file was empty
             if context:
                 self.update(context)
-
-        if data is not None:
-            for key, value in data.items():
-                self._keys.append(key)
-                setattr(self, key, self._create_node(value))
 
     @classmethod
     def base_context_files(cls):
@@ -352,48 +367,3 @@ class Context(_Node, LoggingMixin):
 
         if len(errors) > 0:
             raise DesignValidationError("\n".join(errors))
-
-    def update(self, data: dict):
-        """Update the context with the provided data.
-
-        Args:
-            data: The dictionary of items to be merged into the Context. The
-                  dictionary is evaluated recursively and merged in with
-                  existing levels. Leave nodes are replaced
-        """
-        for key, value in data.items():
-            if hasattr(self, key) and isinstance(getattr(self, key), _Node):
-                getattr(self, key).update(value)
-            else:
-                setattr(self, key, self._create_node(value))
-
-    def set_context(self, key, value):  # noqa: D102 pylint:disable=missing-function-docstring
-        setattr(self, key, self._create_node(value))
-        return value
-
-    def get_context(self, key):  # noqa: D102 pylint:disable=missing-function-docstring
-        return self[key]
-
-    def keys(self):  # noqa: D102 pylint:disable=missing-function-docstring
-        return self._keys
-
-    def __setitem__(self, key, item):  # noqa: D105
-        # raise Exception(f"Setting {key} to {item}")
-        setattr(self, key, self._create_node(item))
-
-
-def _represent_context(dumper: yaml.SafeDumper, context: "Context"):
-    return dumper.represent_dict([(key, getattr(context, key)) for key in context.keys()])
-
-
-def _represent_template(dumper, tpl):
-    value = tpl.render()
-    return dumper.yaml_representers[type(value)](dumper, value)
-
-
-representers = {
-    _DictNode: yaml.representer.Representer.represent_dict,
-    _ListNode: yaml.representer.Representer.represent_list,
-    _TemplateNode: _represent_template,
-    Context: _represent_context,
-}

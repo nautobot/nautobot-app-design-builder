@@ -46,8 +46,12 @@ class TestContext(unittest.TestCase):
         context.update(data2)
         self.assertEqual("val4", context.var1["var4"])
         self.assertEqual("val5", context.var1["var3"])
-        self.assertEqual("val5", context.var2)
+        self.assertEqual("val5", context["var2"])
         self.assertEqual("val33", context.var3)
+
+    def test_nested_list(self):
+        context = Context.load({"var1": {"var2": [True]}})
+        self.assertTrue(context.var1["var2"][0])
 
 
 class TestUpdateDictNode(unittest.TestCase):
@@ -56,7 +60,7 @@ class TestUpdateDictNode(unittest.TestCase):
         data2 = {"var1": "val2"}
         want = {"var1": "val2"}
 
-        got = _DictNode(None, data1)
+        got = _DictNode(data1)
         got.update(data2)
         self.assertEqual(want, got)
 
@@ -76,7 +80,7 @@ class TestUpdateDictNode(unittest.TestCase):
             "var3": "val1",
         }
 
-        got = _DictNode(None, data1)
+        got = _DictNode(data1)
         got.update(data2)
         self.assertEqual(want, got)
 
@@ -102,7 +106,7 @@ class TestUpdateDictNode(unittest.TestCase):
             "var3": "foo",
         }
 
-        got = _DictNode(None, data1)
+        got = _DictNode(data1)
         got.update(data2)
         self.assertEqual(want, got)
 
@@ -111,12 +115,12 @@ class TestRootNode(unittest.TestCase):
     def test_simple_struct(self):
         data = {"var1": "val1"}
         want = {"var1": "val1"}
-        self.assertEqual(want, _DictNode(None, data))
+        self.assertEqual(want, _DictNode(data))
 
     def test_different_structs(self):
         data = {"var1": "val1"}
         want = {"var1": "val2"}
-        self.assertNotEqual(want, _DictNode(None, data))
+        self.assertNotEqual(want, _DictNode(data))
 
     def test_nested_structs(self):
         data = {
@@ -129,7 +133,7 @@ class TestRootNode(unittest.TestCase):
         }
 
         want = {"var1": "val1", "var2": {"var1": True, "var2": False, "var3": "Foo"}}
-        self.assertEqual(want, _DictNode(None, data))
+        self.assertEqual(want, _DictNode(data))
 
     def test_different_nested_structs(self):
         data = {
@@ -142,13 +146,13 @@ class TestRootNode(unittest.TestCase):
         }
 
         want = {"var1": "val1", "var2": {"var1": True, "var2": True, "var3": "Foo"}}
-        self.assertNotEqual(want, _DictNode(None, data))
+        self.assertNotEqual(want, _DictNode(data))
 
     def test_simple_template_var(self):
         data = {"var1": "val1", "var2": "{{ var1 }}"}
 
         want = {"var1": "val1", "var2": "val1"}
-        self.assertEqual(want, _DictNode(None, data))
+        self.assertEqual(want, _DictNode(data))
 
     def test_nested_template_var(self):
         data = {
@@ -164,24 +168,24 @@ class TestRootNode(unittest.TestCase):
             },
             "var3": {"var4": "val1"},
         }
-        self.assertEqual(want, _DictNode(None, data))
+        self.assertEqual(want, _DictNode(data))
 
     def test_simple_lists(self):
         data = {"var1": ["one", "two", "three"]}
         want = {"var1": ["one", "two", "three"]}
-        got = _DictNode(None, data)
+        got = _DictNode(data)
         self.assertEqual(want, got)
 
     def test_list_with_template(self):
         data = {"var2": "{{ var1 }}", "var1": ["one", "two", "three"]}
         want = {"var2": ["one", "two", "three"], "var1": ["one", "two", "three"]}
-        got = _DictNode(None, data)
+        got = _DictNode(data)
         self.assertEqual(want, got)
 
     def test_list_with_differences(self):
         data = {"var2": "{{ var1 }}", "var1": ["one", "two", "three"]}
         want = {"var2": ["one", "two", "three"], "var1": ["one", "three"]}
-        self.assertNotEqual(want, _DictNode(None, data))
+        self.assertNotEqual(want, _DictNode(data))
 
     def test_complex_template_lookup(self):
         data = {
@@ -192,7 +196,7 @@ class TestRootNode(unittest.TestCase):
             "var4": "val4",
         }
 
-        node = _DictNode(None, data)
+        node = _DictNode(data)
         got = node["var1"]["var2"]
         self.assertEqual("val4", got)
 
@@ -213,7 +217,7 @@ class TestRootNode(unittest.TestCase):
             "var6": 3.14159,
         }
 
-        got = _DictNode(None, data)
+        got = _DictNode(data)
         self.assertEqual(want, got)
 
 
