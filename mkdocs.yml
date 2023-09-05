@@ -119,6 +119,8 @@ nav:
       - Development Environment: "dev/dev_environment.md"
       - Code Reference:
           - "dev/code_reference/index.md"
+          - Design Job: "dev/code_reference/design_job.md"
+          - Context: "dev/code_reference/context.md"
           - Design Builder: "dev/code_reference/design.md"
           - Jinja Rendering: "dev/code_reference/jinja2.md"
           - Template Extensions: "dev/code_reference/ext.md"
