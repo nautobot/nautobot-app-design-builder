@@ -452,7 +452,9 @@ class Builder(LoggingMixin):
                 cls.model_map[plural_name] = model_class
         return object.__new__(cls)
 
-    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None):
+    def __init__(
+        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
+    ):
         """Constructor for Builder."""
         self.job_result = job_result
 

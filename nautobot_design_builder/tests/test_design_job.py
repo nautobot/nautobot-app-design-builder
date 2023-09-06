@@ -53,9 +53,7 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.DesignJobWithExtensions)
         job.run(data=self.data, commit=True)
         builder_patch.assert_called_once_with(
-            job_result=job.job_result,
-            extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
-            journal=None
+            job_result=job.job_result, extensions=test_designs.DesignJobWithExtensions.Meta.extensions, journal=None
         )
 
 
