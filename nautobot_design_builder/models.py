@@ -1,4 +1,5 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
+from typing import List
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -16,7 +17,25 @@ from nautobot_design_builder.util import nautobot_version
 
 # TODO: this method needs to be put in the custom validators module.
 # it will be used to enforce attributes managed by Design Builder
-def enforce_managed_fields(new_model, field_names, message="is managed by Design Builder and cannot be changed."):
+def enforce_managed_fields(
+    new_model: models.Model, field_names: List[str], message="is managed by Design Builder and cannot be changed."
+):
+    """Raise a ValidationError if any field has changed that is non-editable.
+
+    This method checks a model to determine if any managed fields have changed
+    values. If there are changes to any of those fields then a ValidationError
+    is raised.
+
+    Args:
+        new_model (models.Model): The model being saved.
+        field_names (list[str]): A list of field names to check for changes.
+        message (str, optional): The message to include in the
+        validation error. Defaults to "is managed by Design Builder and cannot be changed.".
+
+    Raises:
+        ValidationError: the error will include all of the managed fields that have
+        changed.
+    """
     model_class = new_model.__class__
 
     old_model = model_class.objects.get(pk=new_model.pk)
@@ -44,7 +63,15 @@ def enforce_managed_fields(new_model, field_names, message="is managed by Design
 class DesignQuerySet(RestrictedQuerySet):
     """Queryset for `Design` objects."""
 
-    def get_by_natural_key(self, name):
+    def get_by_natural_key(self, name: str) -> "Design":
+        """Retrieve a design by its job name.
+
+        Args:
+            name (str): The `name` of the job associated with the `Design`
+
+        Returns:
+            Design: The `Design` model instance associated with the job.
+        """
         return self.get(job__name=name)
 
     def for_design_job(self, job: JobModel):
