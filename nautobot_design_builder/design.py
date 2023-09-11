@@ -457,7 +457,6 @@ class Builder(LoggingMixin):
         if not design:
             raise errors.DesignImplementationError("Empty design")
 
-        sid = transaction.savepoint()
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
@@ -467,7 +466,6 @@ class Builder(LoggingMixin):
             if commit:
                 self.commit()
             else:
-                transaction.savepoint_rollback(sid)
                 self.roll_back()
         except Exception as ex:
             self.roll_back()

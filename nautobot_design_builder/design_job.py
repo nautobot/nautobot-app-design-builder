@@ -204,6 +204,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     self.job_result.data["report"] = self.render_report(context, self.builder.journal)
                     self.log_success(message=self.job_result.data["report"])
             else:
+                transaction.savepoint_rollback(sid)
                 self.log_info(
                     message=f"{self.name} can be imported successfully - No database changes made",
                 )
