@@ -15,7 +15,7 @@ from nautobot_design_builder.design import Builder
 from nautobot_design_builder.design import ModelInstance
 
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
-from nautobot_design_builder.ext import Extension
+from nautobot_design_builder.ext import AttributeExtension
 from nautobot_design_builder.jinja2 import network_offset
 
 
@@ -75,10 +75,10 @@ class LookupMixin:
             raise MultipleObjectsReturnedError(queryset.model, query=query, parent=parent)
 
 
-class LookupExtension(Extension, LookupMixin):
+class LookupExtension(AttributeExtension, LookupMixin):
     """Lookup a model instance and assign it to an attribute."""
 
-    attribute_tag = "lookup"
+    tag = "lookup"
 
     def attribute(self, *args, value, model_instance) -> None:  # pylint:disable=arguments-differ
         """Provides the `!lookup` attribute that will lookup an instance.
@@ -138,28 +138,38 @@ class LookupExtension(Extension, LookupMixin):
         return attribute, self.lookup_by_content_type(app_label, model_name, query)
 
 
-class CableConnectionExtension(Extension, LookupMixin):
+class CableConnectionExtension(AttributeExtension, LookupMixin):
     """Connect a cable termination to another cable termination."""
 
-    attribute_tag = "connect_cable"
+    tag = "connect_cable"
 
     @staticmethod
-    def get_query_managers(model_class):
-        interface_types = (
-            dcim.FrontPort,
-            dcim.RearPort,
-            dcim.Interface,
-            circuits.CircuitTermination
-        )
+    def get_query_managers(endpoint_type):
+        """Get the list of query managers for the `endpoint_type`.
+
+        This method will return a list of query managers that correspond
+        to types that can be connected to the `endpoint_type`. For instance,
+        dcim.Interface types can be connected to dcim.FrontPort, dcim.RearPort,
+        circuits.CircuitTermination or other dcim.Interface objects. If
+        `dcim.Interface` is passed in, then the query manager for each of the
+        other endpoint types is returned.
+
+        Args:
+            endpoint_type: Model class of the endpoint that is to be connected.
+
+        Returns:
+            list: A list of query managers for types that can be connected to.
+        """
+        interface_types = (dcim.FrontPort, dcim.RearPort, dcim.Interface, circuits.CircuitTermination)
         query_managers = None
-        if issubclass(model_class, interface_types):
+        if issubclass(endpoint_type, interface_types):
             query_managers = [it.objects for it in interface_types]
-        elif issubclass(model_class, dcim.PowerPort):
+        elif issubclass(endpoint_type, dcim.PowerPort):
             query_managers = [
                 dcim.PowerFeed.objects,
                 dcim.PowerOutlet.objects,
             ]
-        elif issubclass(model_class, dcim.PowerOutlet):
+        elif issubclass(endpoint_type, dcim.PowerOutlet):
             query_managers = [dcim.PowerPort.objects]
 
         return query_managers
@@ -215,7 +225,7 @@ class CableConnectionExtension(Extension, LookupMixin):
         while remote_instance is None:
             try:
                 remote_instance = self.lookup(query_managers.pop(0), termination_query)
-            except (ObjectDoesNotExist, FieldError):
+            except (DoesNotExistError, FieldError):
                 if not query_managers:
                     raise DoesNotExistError(model_instance.model_class, query_filter=termination_query)
 
@@ -237,10 +247,10 @@ class CableConnectionExtension(Extension, LookupMixin):
         ]
 
 
-class NextPrefixExtension(Extension):
+class NextPrefixExtension(AttributeExtension):
     """Provision the next prefix for a given set of parent prefixes."""
 
-    attribute_tag = "next_prefix"
+    tag = "next_prefix"
 
     def attribute(self, value: dict, model_instance) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
@@ -324,10 +334,10 @@ class NextPrefixExtension(Extension):
         raise DesignImplementationError(f"No available prefixes could be found from {list(map(str, prefixes))}")
 
 
-class ChildPrefixExtension(Extension):
+class ChildPrefixExtension(AttributeExtension):
     """Calculates a child Prefix string in CIDR notation."""
 
-    attribute_tag = "child_prefix"
+    tag = "child_prefix"
 
     def attribute(self, value: dict, model_instance) -> None:
         """Provides the `!child_prefix` attribute.
@@ -389,10 +399,10 @@ class ChildPrefixExtension(Extension):
         return "prefix", network_offset(parent, offset)
 
 
-class BGPPeeringExtension(Extension):
+class BGPPeeringExtension(AttributeExtension):
     """Create BGP peerings in the BGP Models Plugin."""
 
-    attribute_tag = "bgp_peering"
+    tag = "bgp_peering"
 
     def __init__(self, builder: Builder):
         """Initialize the BGPPeeringExtension.

@@ -412,11 +412,12 @@ class Builder(LoggingMixin):
                 "class": extn_cls,
                 "object": None,
             }
+            if issubclass(extn_cls, ext.AttributeExtension):
+                self.extensions["attribute"][extn_cls.tag] = extn
+            if issubclass(extn_cls, ext.ValueExtension):
+                self.extensions["value"][extn_cls.tag] = extn
+
             self.extensions["extensions"].append(extn)
-            for ext_type in ["attribute", "value"]:
-                for extn in self.extensions["extensions"]:
-                    if hasattr(extn_cls, f"{ext_type}_tag"):
-                        self.extensions[ext_type][getattr(extn_cls, f"{ext_type}_tag")] = extn
 
         self.journal = Journal()
 

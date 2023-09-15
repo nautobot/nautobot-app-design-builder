@@ -1,6 +1,6 @@
 """Extensions API for the object creator."""
 import os
-from abc import ABC
+from abc import ABC, abstractmethod
 from functools import reduce
 from typing import TYPE_CHECKING, Any
 
@@ -68,27 +68,18 @@ class Extension(ABC):
             current design.
     """
 
+    @property
+    @abstractmethod
+    def tag(self):
+        """All Extensions must specify their tag name.
+
+        The `tag` method indicates to the Builder what the
+        tag name is for this extensions. For instance, a `tag`
+        of `ref` will match `!ref` in the design.
+        """
+
     def __init__(self, builder: "Builder"):  # noqa: D107
         self.builder = builder
-
-    def attribute(self, value: Any, model_instance: "ModelInstance") -> None:
-        """This method is called when the `attribute_tag` is encountered.
-
-        Args:
-            value (Any): The value of the data structure at this key's point in the design YAML. This could be a scalar, a dict or a list.
-            model_instance (CreatorObject): Object is the CreatorObject that would ultimately contain the values.
-        """
-
-    def value(self, key: str) -> "ModelInstance":
-        """Retrieve a CreatorObject to be assigned to the design.
-
-        Args:
-            key (str): The key to lookup the Creator Object.
-
-        Returns:
-            CreatorObject: A CreatorObject must be returned that will be used
-            in place of the `!attribute_tag` placeholder.
-        """
 
     def commit(self) -> None:
         """Optional method that is called once a design has been implemented and committed to the database.
@@ -102,7 +93,36 @@ class Extension(ABC):
         """Optional method that is called if the design has failed and the database transaction will be rolled back."""
 
 
-class ReferenceExtension(Extension):
+class AttributeExtension(Extension, ABC):
+    """An `AttributeExtension` will be evaluated when the design key matches the `tag`."""
+
+    @abstractmethod
+    def attribute(self, value: Any, model_instance: "ModelInstance") -> None:
+        """This method is called when the `attribute_tag` is encountered.
+
+        Args:
+            value (Any): The value of the data structure at this key's point in the design YAML. This could be a scalar, a dict or a list.
+            model_instance (CreatorObject): Object is the CreatorObject that would ultimately contain the values.
+        """
+
+
+class ValueExtension(Extension, ABC):
+    """A `ValueExtension` will be matched when a design value matches the `tag`."""
+
+    @abstractmethod
+    def value(self, key: str) -> "ModelInstance":
+        """Retrieve a CreatorObject to be assigned to the design.
+
+        Args:
+            key (str): The key to lookup the Creator Object.
+
+        Returns:
+            CreatorObject: A CreatorObject must be returned that will be used
+            in place of the `!attribute_tag` placeholder.
+        """
+
+
+class ReferenceExtension(AttributeExtension, ValueExtension):
     """An ObjectCreator extension the creates references to objects and retrieves them.
 
     This extension is both an attribute extension and a value extension that is
@@ -122,8 +142,7 @@ class ReferenceExtension(Extension):
             current design.
     """
 
-    attribute_tag = "ref"
-    value_tag = "ref"
+    tag = "ref"
 
     def __init__(self, builder: "Builder"):  # noqa: D107
         super().__init__(builder)
@@ -179,7 +198,7 @@ class ReferenceExtension(Extension):
         return model_instance
 
 
-class GitContextExtension(Extension):
+class GitContextExtension(AttributeExtension):
     """Provides the "!git_context" attribute extension that will save content to a git repo.
 
     Args:
@@ -202,7 +221,7 @@ class GitContextExtension(Extension):
         the configuration to have git_slug directly in the tag content?
     """
 
-    attribute_tag = "git_context"
+    tag = "git_context"
 
     def __init__(self, builder: "Builder"):  # noqa: D107
         super().__init__(builder)
