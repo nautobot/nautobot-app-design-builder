@@ -3,10 +3,11 @@ from functools import reduce
 import operator
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, FieldError
 from django.db.models import Q
 
-from nautobot.dcim.models import Cable
+from nautobot.circuits import models as circuits
+from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
 import netaddr
@@ -142,6 +143,27 @@ class CableConnectionExtension(Extension, LookupMixin):
 
     attribute_tag = "connect_cable"
 
+    @staticmethod
+    def get_query_managers(model_class):
+        interface_types = (
+            dcim.FrontPort,
+            dcim.RearPort,
+            dcim.Interface,
+            circuits.CircuitTermination
+        )
+        query_managers = None
+        if issubclass(model_class, interface_types):
+            query_managers = [it.objects for it in interface_types]
+        elif issubclass(model_class, dcim.PowerPort):
+            query_managers = [
+                dcim.PowerFeed.objects,
+                dcim.PowerOutlet.objects,
+            ]
+        elif issubclass(model_class, dcim.PowerOutlet):
+            query_managers = [dcim.PowerPort.objects]
+
+        return query_managers
+
     def attribute(self, value, model_instance) -> None:
         """Connect a cable termination to another cable termination.
 
@@ -188,23 +210,15 @@ class CableConnectionExtension(Extension, LookupMixin):
 
         cable_attributes = {**value}
         termination_query = cable_attributes.pop("to")
+        remote_instance = None
+        query_managers = self.get_query_managers(model_instance.model_class)
+        while remote_instance is None:
+            try:
+                remote_instance = self.lookup(query_managers.pop(0), termination_query)
+            except (ObjectDoesNotExist, FieldError):
+                if not query_managers:
+                    raise DoesNotExistError(model_instance.model_class, query_filter=termination_query)
 
-        # status = query.pop("status", None)
-        # if status is None:
-        #     for key in list(query.keys()):
-        #         if key.startswith("status__"):
-        #             status_lookup = key[len("status__") :]  # noqa: E203
-        #             status = Status.objects.get(**{status_lookup: query.pop(key)})
-        #             break
-        # elif isinstance(status, dict):
-        #     status = Status.objects.get(**status)
-        # elif hasattr(status, "instance"):
-        #     status = status.instance
-
-        # if status is None:
-        #     raise DesignImplementationError("No status given for cable connection")
-
-        remote_instance = self.lookup(model_instance.model_class.objects, termination_query)
         cable_attributes.update(
             {
                 "termination_a": model_instance,
@@ -217,7 +231,7 @@ class CableConnectionExtension(Extension, LookupMixin):
         model_instance.deferred_attributes["cable"] = [
             model_instance.__class__(
                 self.builder,
-                model_class=Cable,
+                model_class=dcim.Cable,
                 attributes=cable_attributes,
             )
         ]
