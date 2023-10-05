@@ -497,9 +497,13 @@ class Builder(LoggingMixin):
         if isinstance(value, str):
             value = self.resolve_value(value, unwrap_model_instances)
         elif isinstance(value, list):
+            # copy the list so we don't change the input
+            value = list(value)
             for i, item in enumerate(value):
                 value[i] = self.resolve_value(item, unwrap_model_instances)
         elif isinstance(value, dict):
+            # copy the dict so we don't change the input
+            value = dict(value)
             for k, item in value.items():
                 value[k] = self.resolve_value(item, unwrap_model_instances)
         return value
