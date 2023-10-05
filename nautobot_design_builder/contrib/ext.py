@@ -1,12 +1,14 @@
 """Extra action tags that are not part of the core Design Builder."""
 from functools import reduce
 import operator
+from typing import Any, Dict, Iterator, Tuple
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, FieldError
 from django.db.models import Q
 
-from nautobot.dcim.models import Cable
+from nautobot.circuits import models as circuits
+from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
 import netaddr
@@ -14,7 +16,7 @@ from nautobot_design_builder.design import Builder
 from nautobot_design_builder.design import ModelInstance
 
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
-from nautobot_design_builder.ext import Extension
+from nautobot_design_builder.ext import AttributeExtension
 from nautobot_design_builder.jinja2 import network_offset
 
 
@@ -47,6 +49,52 @@ class LookupMixin:
 
         return self.lookup(queryset, query)
 
+    @staticmethod
+    def _flatten(query: dict, prefix="") -> Iterator[Tuple[str, Any]]:
+        """Perform the flattening of a query dictionary.
+
+        Args:
+            query (dict): The input query (or subquery during recursion) to flatten.
+            prefix (str, optional): The prefix to add to each flattened key. Defaults to "".
+
+        Returns:
+            Iterator[Tuple[str, Any]]: A generator that yields they key/value pairs.
+        """
+        for key, value in query.items():
+            if isinstance(value, dict):
+                yield from LookupMixin._flatten(value, f"{prefix}{key}__")
+            else:
+                yield (f"{prefix}{key}", value)
+
+    @staticmethod
+    def flatten_query(query: dict) -> Dict[str, Any]:
+        """Flatten a dictionary of dictionaries into query params.
+
+        Django query arguments are a flat dictionary with the argument
+        name being the query parameter and the value being what to match. However,
+        it is sometimes clearer to express these queries in a hierarchy using dictionaries
+        of dictionaries. The `_flatten` method will take this hierarchy and flatten
+        it so that it can be expanded as keyword arguments for a Django query.
+
+        Args:
+            query (dict): The query dictionary to flatten.
+
+        Returns:
+            Dict[str, Any]: The flattened query dictionary.
+
+        Example:
+            >>> query = {
+            ...     "status": {
+            ...         "name": "Active",
+            ...     }
+            ... }
+            >>>
+            >>> LookupMixin.flatten_query(query)
+            {'status__name': 'Active'}
+            >>>
+        """
+        return dict(LookupMixin._flatten(query))
+
     def lookup(self, queryset, query, parent=None):
         """Perform a single object lookup from a queryset.
 
@@ -64,8 +112,8 @@ class LookupMixin:
         Returns:
             Any: The object matching the query.
         """
-        self.builder.resolve_values(query, unwrap_model_instances=True)
-
+        query = self.builder.resolve_values(query, unwrap_model_instances=True)
+        query = self.flatten_query(query)
         try:
             return queryset.get(**query)
         except ObjectDoesNotExist:
@@ -74,10 +122,10 @@ class LookupMixin:
             raise MultipleObjectsReturnedError(queryset.model, query=query, parent=parent)
 
 
-class LookupExtension(Extension, LookupMixin):
+class LookupExtension(AttributeExtension, LookupMixin):
     """Lookup a model instance and assign it to an attribute."""
 
-    attribute_tag = "lookup"
+    tag = "lookup"
 
     def attribute(self, *args, value, model_instance) -> None:  # pylint:disable=arguments-differ
         """Provides the `!lookup` attribute that will lookup an instance.
@@ -137,10 +185,41 @@ class LookupExtension(Extension, LookupMixin):
         return attribute, self.lookup_by_content_type(app_label, model_name, query)
 
 
-class CableConnectionExtension(Extension, LookupMixin):
+class CableConnectionExtension(AttributeExtension, LookupMixin):
     """Connect a cable termination to another cable termination."""
 
-    attribute_tag = "connect_cable"
+    tag = "connect_cable"
+
+    @staticmethod
+    def get_query_managers(endpoint_type):
+        """Get the list of query managers for the `endpoint_type`.
+
+        This method will return a list of query managers that correspond
+        to types that can be connected to the `endpoint_type`. For instance,
+        dcim.Interface types can be connected to dcim.FrontPort, dcim.RearPort,
+        circuits.CircuitTermination or other dcim.Interface objects. If
+        `dcim.Interface` is passed in, then the query manager for each of the
+        other endpoint types is returned.
+
+        Args:
+            endpoint_type: Model class of the endpoint that is to be connected.
+
+        Returns:
+            list: A list of query managers for types that can be connected to.
+        """
+        interface_types = (dcim.FrontPort, dcim.RearPort, dcim.Interface, circuits.CircuitTermination)
+        query_managers = None
+        if issubclass(endpoint_type, interface_types):
+            query_managers = [it.objects for it in interface_types]
+        elif issubclass(endpoint_type, dcim.PowerPort):
+            query_managers = [
+                dcim.PowerFeed.objects,
+                dcim.PowerOutlet.objects,
+            ]
+        elif issubclass(endpoint_type, dcim.PowerOutlet):
+            query_managers = [dcim.PowerPort.objects]
+
+        return query_managers
 
     def attribute(self, value, model_instance) -> None:
         """Connect a cable termination to another cable termination.
@@ -188,23 +267,15 @@ class CableConnectionExtension(Extension, LookupMixin):
 
         cable_attributes = {**value}
         termination_query = cable_attributes.pop("to")
+        remote_instance = None
+        query_managers = self.get_query_managers(model_instance.model_class)
+        while remote_instance is None:
+            try:
+                remote_instance = self.lookup(query_managers.pop(0), termination_query)
+            except (DoesNotExistError, FieldError):
+                if not query_managers:
+                    raise DoesNotExistError(model_instance.model_class, query_filter=termination_query)
 
-        # status = query.pop("status", None)
-        # if status is None:
-        #     for key in list(query.keys()):
-        #         if key.startswith("status__"):
-        #             status_lookup = key[len("status__") :]  # noqa: E203
-        #             status = Status.objects.get(**{status_lookup: query.pop(key)})
-        #             break
-        # elif isinstance(status, dict):
-        #     status = Status.objects.get(**status)
-        # elif hasattr(status, "instance"):
-        #     status = status.instance
-
-        # if status is None:
-        #     raise DesignImplementationError("No status given for cable connection")
-
-        remote_instance = self.lookup(model_instance.model_class.objects, termination_query)
         cable_attributes.update(
             {
                 "termination_a": model_instance,
@@ -217,16 +288,16 @@ class CableConnectionExtension(Extension, LookupMixin):
         model_instance.deferred_attributes["cable"] = [
             model_instance.__class__(
                 self.builder,
-                model_class=Cable,
+                model_class=dcim.Cable,
                 attributes=cable_attributes,
             )
         ]
 
 
-class NextPrefixExtension(Extension):
+class NextPrefixExtension(AttributeExtension):
     """Provision the next prefix for a given set of parent prefixes."""
 
-    attribute_tag = "next_prefix"
+    tag = "next_prefix"
 
     def attribute(self, value: dict, model_instance) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
@@ -310,10 +381,10 @@ class NextPrefixExtension(Extension):
         raise DesignImplementationError(f"No available prefixes could be found from {list(map(str, prefixes))}")
 
 
-class ChildPrefixExtension(Extension):
+class ChildPrefixExtension(AttributeExtension):
     """Calculates a child Prefix string in CIDR notation."""
 
-    attribute_tag = "child_prefix"
+    tag = "child_prefix"
 
     def attribute(self, value: dict, model_instance) -> None:
         """Provides the `!child_prefix` attribute.
@@ -375,10 +446,10 @@ class ChildPrefixExtension(Extension):
         return "prefix", network_offset(parent, offset)
 
 
-class BGPPeeringExtension(Extension):
+class BGPPeeringExtension(AttributeExtension):
     """Create BGP peerings in the BGP Models Plugin."""
 
-    attribute_tag = "bgp_peering"
+    tag = "bgp_peering"
 
     def __init__(self, builder: Builder):
         """Initialize the BGPPeeringExtension.

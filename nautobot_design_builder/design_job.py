@@ -6,7 +6,6 @@ from os import path
 import yaml
 
 from django.db import transaction
-from django.utils.functional import classproperty
 
 from jinja2 import TemplateError
 
@@ -39,7 +38,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def Meta(cls) -> Job.Meta:  # pylint: disable=invalid-name
         """Design jobs must provide either a Meta class method or a Meta class."""
 
-    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
+    def __init__(self, *args, **kwargs):
         """Initialize the design job."""
         # rendered designs
         self.builder: Builder = None
@@ -48,21 +47,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.failed = False
 
         super().__init__(*args, **kwargs)
-
-    @classproperty
-    def class_path(cls):  # pylint: disable=no-self-argument
-        """Returns the path to the module containing this class.
-
-        Returns:
-            str: path to module containing the path
-        """
-        try:
-            return super().class_path
-        except RuntimeError:
-            # Since this is an Abstract Base Class, the only way we'll
-            # get here is if we're building docs and mkdocs is trying
-            # to load the class path.
-            return "/".join(["plugins", cls.__module__, cls.__name__])  # pylint: disable=no-member
 
     def post_implementation(self, context: Context, builder: Builder):
         """Similar to Nautobot job's `post_run` method, but will be called after a design is implemented.
@@ -204,6 +188,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     self.job_result.data["report"] = self.render_report(context, self.builder.journal)
                     self.log_success(message=self.job_result.data["report"])
             else:
+                transaction.savepoint_rollback(sid)
                 self.log_info(
                     message=f"{self.name} can be imported successfully - No database changes made",
                 )

@@ -52,6 +52,8 @@ class DesignModelError(Exception):
     def _model_str(model):
         instance_str = None
         if not isinstance(model, Model) and not hasattr(model, "instance"):
+            if isclass(model):
+                return model.__name__
             return str(model)
 
         model_class = model.__class__
@@ -93,7 +95,7 @@ class DesignModelError(Exception):
         model = self.model
         while model is not None:
             path_msg.insert(0, DesignModelError._model_str(model))
-            if hasattr(model, "parent"):
+            if not isclass(model) and hasattr(model, "parent"):
                 model = model.parent
             elif self.parent:
                 model = self.parent
