@@ -12,8 +12,6 @@ from django.test import TestCase
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.util import nautobot_version
 
-# logging.disable(logging.CRITICAL)
-
 
 class DesignTestCase(TestCase):
     """DesignTestCase aides in creating unit tests for design jobs and templates."""
@@ -48,7 +46,7 @@ class DesignTestCase(TestCase):
 
             def new_run(data, commit):
                 kwargs = {**data}
-                kwargs["dryrun"] = commit
+                kwargs["dryrun"] = not commit
                 old_run(**kwargs)
 
             job.run = new_run

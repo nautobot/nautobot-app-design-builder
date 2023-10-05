@@ -90,7 +90,7 @@ plugins:
       default_handler: "python"
       handlers:
         python:
-          paths: ["."]
+          paths: ["nautobot_design_builder"]
           options:
             show_root_heading: true
 watch:

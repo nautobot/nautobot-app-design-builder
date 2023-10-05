@@ -8,10 +8,13 @@ from nautobot_design_builder.design import Builder
 from nautobot_design_builder.ext import DesignImplementationError
 
 
-class Extension(ext.Extension):
+class Extension(ext.AttributeExtension):
     """An extension for testing."""
 
-    attribute_tag = "custom_extension"
+    tag = "custom_extension"
+
+    def attribute(self, value, model_instance) -> None:
+        pass
 
 
 class NotExtension:  # pylint: disable=too-few-public-methods
@@ -54,10 +57,13 @@ class TestExtensionCommitRollback(TestCase):
         committed = False
         rolled_back = False
 
-        class CommitExtension(ext.Extension):
+        class CommitExtension(ext.AttributeExtension):
             """Test extension."""
 
-            attribute_tag = "extension"
+            tag = "extension"
+
+            def attribute(self, value, model_instance) -> None:
+                pass
 
             def commit(self) -> None:
                 nonlocal committed

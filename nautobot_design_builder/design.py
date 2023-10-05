@@ -474,11 +474,12 @@ class Builder(LoggingMixin):
                 "class": extn_cls,
                 "object": None,
             }
+            if issubclass(extn_cls, ext.AttributeExtension):
+                self.extensions["attribute"][extn_cls.tag] = extn
+            if issubclass(extn_cls, ext.ValueExtension):
+                self.extensions["value"][extn_cls.tag] = extn
+
             self.extensions["extensions"].append(extn)
-            for ext_type in ["attribute", "value"]:
-                for extn in self.extensions["extensions"]:
-                    if hasattr(extn_cls, f"{ext_type}_tag"):
-                        self.extensions[ext_type][getattr(extn_cls, f"{ext_type}_tag")] = extn
 
         self.journal = Journal(design_journal=journal)
 
@@ -519,7 +520,6 @@ class Builder(LoggingMixin):
         if not design:
             raise errors.DesignImplementationError("Empty design")
 
-        sid = transaction.savepoint()
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
@@ -529,7 +529,6 @@ class Builder(LoggingMixin):
             if commit:
                 self.commit()
             else:
-                transaction.savepoint_rollback(sid)
                 self.roll_back()
         except Exception as ex:
             self.roll_back()
@@ -560,9 +559,13 @@ class Builder(LoggingMixin):
         if isinstance(value, str):
             value = self.resolve_value(value, unwrap_model_instances)
         elif isinstance(value, list):
+            # copy the list so we don't change the input
+            value = list(value)
             for i, item in enumerate(value):
                 value[i] = self.resolve_value(item, unwrap_model_instances)
         elif isinstance(value, dict):
+            # copy the dict so we don't change the input
+            value = dict(value)
             for k, item in value.items():
                 value[k] = self.resolve_value(item, unwrap_model_instances)
         return value
