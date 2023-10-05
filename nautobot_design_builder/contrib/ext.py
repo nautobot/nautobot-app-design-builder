@@ -65,7 +65,7 @@ class LookupMixin:
         Returns:
             Any: The object matching the query.
         """
-        self.builder.resolve_values(query, unwrap_model_instances=True)
+        query = self.builder.resolve_values(query, unwrap_model_instances=True)
 
         try:
             return queryset.get(**query)
