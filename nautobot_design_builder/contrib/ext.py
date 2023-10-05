@@ -1,6 +1,7 @@
 """Extra action tags that are not part of the core Design Builder."""
 from functools import reduce
 import operator
+from typing import Any, Dict, Iterator, Tuple
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, FieldError
@@ -48,6 +49,52 @@ class LookupMixin:
 
         return self.lookup(queryset, query)
 
+    @staticmethod
+    def _flatten(query: dict, prefix="") -> Iterator[Tuple[str, Any]]:
+        """Perform the flattening of a query dictionary.
+
+        Args:
+            query (dict): The input query (or subquery during recursion) to flatten.
+            prefix (str, optional): The prefix to add to each flattened key. Defaults to "".
+
+        Returns:
+            Iterator[Tuple[str, Any]]: A generator that yields they key/value pairs.
+        """
+        for key, value in query.items():
+            if isinstance(value, dict):
+                yield from LookupMixin._flatten(value, f"{prefix}{key}__")
+            else:
+                yield (f"{prefix}{key}", value)
+
+    @staticmethod
+    def flatten_query(query: dict) -> Dict[str, Any]:
+        """Flatten a dictionary of dictionaries into query params.
+
+        Django query arguments are a flat dictionary with the argument
+        name being the query parameter and the value being what to match. However,
+        it is sometimes clearer to express these queries in a hierarchy using dictionaries
+        of dictionaries. The `_flatten` method will take this hierarchy and flatten
+        it so that it can be expanded as keyword arguments for a Django query.
+
+        Args:
+            query (dict): The query dictionary to flatten.
+
+        Returns:
+            Dict[str, Any]: The flattened query dictionary.
+
+        Example:
+            >>> query = {
+            ...     "status": {
+            ...         "name": "Active",
+            ...     }
+            ... }
+            >>>
+            >>> LookupMixin.flatten_query(query)
+            {'status__name': 'Active'}
+            >>>
+        """
+        return dict(LookupMixin._flatten(query))
+
     def lookup(self, queryset, query, parent=None):
         """Perform a single object lookup from a queryset.
 
@@ -66,7 +113,7 @@ class LookupMixin:
             Any: The object matching the query.
         """
         query = self.builder.resolve_values(query, unwrap_model_instances=True)
-
+        query = self.flatten_query(query)
         try:
             return queryset.get(**query)
         except ObjectDoesNotExist:
