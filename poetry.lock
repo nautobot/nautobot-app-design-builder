@@ -1932,6 +1932,20 @@ remote-storage = ["django-storages (>=1.12.3,<1.13.0)"]
 sso = ["social-auth-core[openidconnect,saml] (>=4.3.0,<4.4.0)"]
 
 [[package]]
+name = "nautobot-bgp-models"
+version = "0.7.1"
+description = "Nautobot BGP Models Plugin"
+optional = true
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "nautobot_bgp_models-0.7.1-py3-none-any.whl", hash = "sha256:6a480b64ed1fc565f889bc4baf4f4c176b370b83b8bc34ecc53e3100cc14e19f"},
+    {file = "nautobot_bgp_models-0.7.1.tar.gz", hash = "sha256:3fa1e6ab2eefa66807d04306181ace74567096b473fee6fd9452d6d997470814"},
+]
+
+[package.dependencies]
+nautobot = ">=1.5.4,<2.0.0"
+
+[[package]]
 name = "netaddr"
 version = "0.8.0"
 description = "A network address manipulation library for Python"
@@ -3264,4 +3278,4 @@ nautobot = ["nautobot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.11"
-content-hash = "41860faac2ab8e632880e33d652fc39d91b8ec6e25c3b6adaa6e9e4e6e21fe85"
+content-hash = "f2887a3c1ccab71be068a9d2f8c7e26cf8c28e6d7d792d66fa5c42448870a58d"
