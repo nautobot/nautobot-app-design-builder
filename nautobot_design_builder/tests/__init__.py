@@ -43,7 +43,7 @@ class DesignTestCase(TestCase):
 
             def new_run(data, commit):
                 kwargs = {**data}
-                kwargs["dryrun"] = commit
+                kwargs["dryrun"] = not commit
                 old_run(**kwargs)
 
             job.run = new_run
