@@ -19,6 +19,10 @@ class DesignTestCase(TestCase):
     def setUp(self):
         """Setup a mock git repo to watch for config context creation."""
         super().setUp()
+        self.data = {
+            "instance_name": "Test Design",
+            "owner": "",
+        }
         self.logged_messages = []
         self.git_patcher = patch("nautobot_design_builder.ext.GitRepo")
         self.git_mock = self.git_patcher.start()
@@ -31,6 +35,8 @@ class DesignTestCase(TestCase):
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
+        job._setup_journal = lambda *args: None
+
         job.job_result = mock.Mock()
         if nautobot_version < "2.0.0":
             job.request = mock.Mock()

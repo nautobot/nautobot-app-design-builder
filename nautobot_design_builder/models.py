@@ -1,3 +1,5 @@
+"""Collection of models that DesignBuilder uses to track design implementations."""
+from typing import List
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -15,7 +17,25 @@ from nautobot_design_builder.util import nautobot_version
 
 # TODO: this method needs to be put in the custom validators module.
 # it will be used to enforce attributes managed by Design Builder
-def enforce_managed_fields(new_model, field_names, message="is managed by Design Builder and cannot be changed."):
+def enforce_managed_fields(
+    new_model: models.Model, field_names: List[str], message="is managed by Design Builder and cannot be changed."
+):
+    """Raise a ValidationError if any field has changed that is non-editable.
+
+    This method checks a model to determine if any managed fields have changed
+    values. If there are changes to any of those fields then a ValidationError
+    is raised.
+
+    Args:
+        new_model (models.Model): The model being saved.
+        field_names (list[str]): A list of field names to check for changes.
+        message (str, optional): The message to include in the
+        validation error. Defaults to "is managed by Design Builder and cannot be changed.".
+
+    Raises:
+        ValidationError: the error will include all of the managed fields that have
+        changed.
+    """
     model_class = new_model.__class__
 
     old_model = model_class.objects.get(pk=new_model.pk)
@@ -43,8 +63,19 @@ def enforce_managed_fields(new_model, field_names, message="is managed by Design
 class DesignQuerySet(RestrictedQuerySet):
     """Queryset for `Design` objects."""
 
-    def get_by_natural_key(self, name):
+    def get_by_natural_key(self, name: str) -> "Design":
+        """Retrieve a design by its job name.
+
+        Args:
+            name (str): The `name` of the job associated with the `Design`
+
+        Returns:
+            Design: The `Design` model instance associated with the job.
+        """
         return self.get(job__name=name)
+
+    def for_design_job(self, job: JobModel):
+        return self.get(job=job)
 
 
 @extras_features("statuses")
@@ -104,6 +135,11 @@ class DesignInstanceQuerySet(RestrictedQuerySet):
         return self.get(design__job__name=design_name, name=instance_name)
 
 
+DESIGN_NAME_MAX_LENGTH = 100
+
+DESIGN_OWNER_MAX_LENGTH = 100
+
+
 class DesignInstance(PrimaryModel):
     """Design instance represents the result of executing a design.
 
@@ -116,8 +152,8 @@ class DesignInstance(PrimaryModel):
     # TODO: add version field to indicate which version of a design
     #       this instance is on. (future feature)
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
-    name = models.CharField(max_length=100)
-    owner = models.CharField(max_length=100, blank=True, null=True)
+    name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
+    owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, null=True)
     first_implemented = models.DateTimeField(blank=True, null=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
 
@@ -186,6 +222,37 @@ class Journal(PrimaryModel):
         job = self.design_instance.design.job
         return job.job_class.deserialize_data(user_input)
 
+    def log(self, model_instance):
+        """Log changes to a model instance.
+
+        This will log the differences between a model instance's
+        initial state and its current state. If the model instance
+        was previously updated during the life of the current journal
+        than the comparison is made with the initial state when the
+        object was logged in this journal.
+
+        Args:
+            model_instance: Model instance to log changes.
+        """
+        instance = model_instance.instance
+        content_type = ContentType.objects.get_for_model(instance)
+        try:
+            entry = self.entries.get(
+                _design_object_type=content_type,
+                _design_object_id=instance.id,
+            )
+            # Look up the pre_change state from the existing
+            # record and record the differences.
+            entry.changes = model_instance.get_changes(entry.changes["pre_change"])
+            entry.save()
+        except JournalEntry.DoesNotExist:
+            self.entries.create(
+                _design_object_type=content_type,
+                _design_object_id=instance.id,
+                changes=model_instance.get_changes(),
+                full_control=model_instance.created,
+            )
+
 
 class JournalEntry(PrimaryModel):
     """A single entry in the journal for exactly 1 object.
@@ -201,7 +268,12 @@ class JournalEntry(PrimaryModel):
         PrimaryModel (_type_): _description_
     """
 
-    journal = models.ForeignKey(to=Journal, on_delete=models.CASCADE)
+    journal = models.ForeignKey(
+        to=Journal,
+        on_delete=models.CASCADE,
+        related_name="entries",
+    )
+
     _design_object_type = models.ForeignKey(
         to=ContentType,
         on_delete=models.PROTECT,
