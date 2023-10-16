@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "0.4.3"
+version = "0.4.4"
 description = "A plugin that uses design templates to easily create data objects in Nautobot with minimal input from a user."
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 readme = "README.md"

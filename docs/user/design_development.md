@@ -25,7 +25,7 @@ Designs can be loaded either from local files or from a git repository. Either w
 │   │   ├── context
 │   │   │   ├── __init__.py
 │   │   │   └── context.yaml
-│   │   ├── design.py
+│   │   ├── jobs.py
 │   │   └── designs
 │   │       └── 0001_design.yaml.j2
 │   ├── designs.py
@@ -33,7 +33,7 @@ Designs can be loaded either from local files or from a git repository. Either w
 │       ├── __init__.py
 │       ├── context
 │       │   └── __init__.py
-│       ├── design.py
+│       ├── jobs.py
 │       └── designs
 │           └── 0001_design.yaml.j2
 └── jobs
@@ -71,7 +71,7 @@ Primary Purpose:
 As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
---8<-- "examples/backbone_design/designs/initial_data/design.py"
+--8<-- "examples/backbone_design/designs/initial_data/jobs.py"
 ```
 
 This particular design job does not collect any input from the user, it will use `InitialDesignContext` for its render context and it will consume the `templates/initial_design.yaml.j2` file for its design. When this job is run, the Design Builder will create an instance of `InitialDesignContext`, read `templates/initial_design.yaml.j2` and then render the template with Jinja using the design context as a render context.
@@ -79,7 +79,7 @@ This particular design job does not collect any input from the user, it will use
 Here is another, more interesting design:
 
 ```python
---8<-- "examples/backbone_design/designs/core_site/design.py"
+--8<-- "examples/backbone_design/designs/core_site/jobs.py"
 ```
 
 In this case, we have a design that will create a site, populate it with two racks, each rack will have a core router and each router will be populated with routing engines and switch fabric cards. The design job specifies that the user needs to supply a region for the new site, a site name and an IP prefix. These inputs will be combined in the design context to be used for building out a new site.
