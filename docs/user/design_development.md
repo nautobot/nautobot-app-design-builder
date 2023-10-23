@@ -28,7 +28,7 @@ Designs can be loaded either from local files or from a git repository. Either w
 │   │   ├── jobs.py
 │   │   └── designs
 │   │       └── 0001_design.yaml.j2
-│   ├── designs.py
+│   ├── jobs.py
 │   └── initial_data
 │       ├── __init__.py
 │       ├── context
