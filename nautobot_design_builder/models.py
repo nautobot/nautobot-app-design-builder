@@ -154,7 +154,7 @@ class DesignInstance(PrimaryModel):
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, null=True)
-    first_implemented = models.DateTimeField(blank=True, null=True)
+    first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
 
     objects = DesignInstanceQuerySet.as_manager()

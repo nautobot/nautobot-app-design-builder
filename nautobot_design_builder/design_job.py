@@ -4,7 +4,7 @@ import traceback
 from abc import ABC, abstractmethod
 from os import path
 import yaml
-
+from datetime import datetime
 from django.db import transaction
 
 from jinja2 import TemplateError
@@ -158,14 +158,16 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         try:
             instance = models.DesignInstance.objects.get(name=instance_name)
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
+            instance.last_implemented = datetime.now()
         except models.DesignInstance.DoesNotExist:
             self.log_info(message=f'Implementing new design "{instance_name}".')
             instance = models.DesignInstance(
                 name=instance_name,
                 owner=design_owner,
-                design=self.design_model,
+                design=self.design_model(),
+                last_implemented=datetime.now(),
             )
-            instance.validated_save()
+        instance.validated_save()
 
         journal = models.Journal(
             design_instance=instance,
