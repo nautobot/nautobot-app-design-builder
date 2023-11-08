@@ -1,12 +1,14 @@
 """Filters for the design builder app."""
 from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter
 from nautobot.extras.models import Job, JobResult
+from nautobot.utilities.filters import SearchFilter
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
 
 class DesignFilterSet(NautobotFilterSet):
     """Filter set for the design model."""
+    q = SearchFilter(filter_predicates={})
 
     job = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Job.objects.all(),
@@ -22,6 +24,7 @@ class DesignFilterSet(NautobotFilterSet):
 
 class DesignInstanceFilterSet(NautobotFilterSet):
     """Filter set for the design instance model."""
+    q = SearchFilter(filter_predicates={})
 
     design = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Design.objects.all(),
@@ -37,6 +40,7 @@ class DesignInstanceFilterSet(NautobotFilterSet):
 
 class JournalFilterSet(NautobotFilterSet):
     """Filter set for the journal model."""
+    q = SearchFilter(filter_predicates={})
 
     design_instance = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=DesignInstance.objects.all(),
@@ -57,6 +61,7 @@ class JournalFilterSet(NautobotFilterSet):
 
 class JournalEntryFilterSet(NautobotFilterSet):
     """Filter set for the journal entrymodel."""
+    q = SearchFilter(filter_predicates={})
 
     journal = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Journal.objects.all(),
