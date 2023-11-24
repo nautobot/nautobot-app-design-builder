@@ -265,6 +265,8 @@ class Journal(PrimaryModel):
             entry.changes = model_instance.get_changes(entry.changes["pre_change"])
             entry.save()
         except JournalEntry.DoesNotExist:
+            print("Creating JournalEntry")
+            # print(f"- {model_instance.__dict__}")
             self.entries.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,

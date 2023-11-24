@@ -10,6 +10,7 @@ from nautobot.extras.models import Job, Status
 from .design_job import DesignJob
 from .models import Design, DesignInstance
 from . import choices
+from nautobot.utilities.choices import ColorChoices
 
 import logging
 
@@ -20,16 +21,20 @@ _LOGGER = logging.getLogger(__name__)
 def create_design_instance_statuses(**kwargs):
     """Create a default set of statuses for design instances."""
     content_type = ContentType.objects.get_for_model(DesignInstance)
+    color_mapping = {
+        "Active": ColorChoices.COLOR_GREEN,
+        "Decommissioned": ColorChoices.COLOR_GREY,
+        "Disabled": ColorChoices.COLOR_GREY,
+        "Deployed": ColorChoices.COLOR_GREEN,
+        "Pending": ColorChoices.COLOR_ORANGE,
+        "Rollbacked": ColorChoices.COLOR_RED,
+    }
     for _, status_name in choices.DesignInstanceStatusChoices:
-        status, _ = Status.objects.get_or_create(
-            name=status_name,
-        )
+        status, _ = Status.objects.get_or_create(name=status_name, defaults={"color": color_mapping[status_name]})
         status.content_types.add(content_type)
 
     for _, status_name in choices.DesignInstanceOperStatusChoices:
-        status, _ = Status.objects.get_or_create(
-            name=status_name,
-        )
+        status, _ = Status.objects.get_or_create(name=status_name, defaults={"color": color_mapping[status_name]})
         status.content_types.add(content_type)
 
 

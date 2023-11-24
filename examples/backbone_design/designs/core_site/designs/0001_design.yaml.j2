@@ -1,4 +1,9 @@
 ---
+regions:
+  - "!update:name": "{{ region.name }}"
+    description: "new description for testing"
+
+
 sites:
   - name: "{{ site_name }}"
     region__slug: "{{ region.slug }}"

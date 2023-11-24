@@ -8,6 +8,7 @@ from nautobot_design_builder.models import Design, DesignInstance, Journal, Jour
 
 class DesignFilterSet(NautobotFilterSet):
     """Filter set for the design model."""
+
     q = SearchFilter(filter_predicates={})
 
     job = NaturalKeyOrPKMultipleChoiceFilter(
@@ -24,6 +25,7 @@ class DesignFilterSet(NautobotFilterSet):
 
 class DesignInstanceFilterSet(NautobotFilterSet):
     """Filter set for the design instance model."""
+
     q = SearchFilter(filter_predicates={})
 
     design = NaturalKeyOrPKMultipleChoiceFilter(
@@ -40,6 +42,7 @@ class DesignInstanceFilterSet(NautobotFilterSet):
 
 class JournalFilterSet(NautobotFilterSet):
     """Filter set for the journal model."""
+
     q = SearchFilter(filter_predicates={})
 
     design_instance = NaturalKeyOrPKMultipleChoiceFilter(
@@ -61,6 +64,7 @@ class JournalFilterSet(NautobotFilterSet):
 
 class JournalEntryFilterSet(NautobotFilterSet):
     """Filter set for the journal entrymodel."""
+
     q = SearchFilter(filter_predicates={})
 
     journal = NaturalKeyOrPKMultipleChoiceFilter(
@@ -72,5 +76,4 @@ class JournalEntryFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = JournalEntry
-        # TODO: Support design_object somehow?
         fields = ["id", "journal", "changes", "full_control"]

@@ -339,6 +339,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         elif self.action != "create":
             raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
         self._initial_state = {}
+
+        # TODO: why created is false??
+        if not self.instance:
+            self.created = True
         self.instance = self.model_class()
 
     def _update_fields(self):  # pylint: disable=too-many-branches

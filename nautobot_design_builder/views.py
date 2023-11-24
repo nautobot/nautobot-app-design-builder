@@ -8,9 +8,14 @@ from nautobot.core.views.mixins import (
     ObjectDestroyViewMixin,
     ObjectBulkDestroyViewMixin,
 )
+from rest_framework.response import Response
+from rest_framework import status
+from nautobot.core.views import generic
+from django.shortcuts import redirect
+from django.urls import reverse
 from nautobot.utilities.paginator import EnhancedPaginator, get_paginate_count
 from nautobot.utilities.utils import count_related
-
+from django.core.exceptions import ValidationError
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
     DesignInstanceSerializer,
@@ -67,17 +72,29 @@ class DesignUIViewSet(
         return context
 
 
+from rest_framework.exceptions import ValidationError
+
+
 class DesignInstanceBulkDestroy(ObjectBulkDestroyViewMixin):
     def perform_bulk_destroy(self, request, **kwargs):
         self.pk_list = request.POST.getlist("pk")
         instances = self.get_queryset().filter(pk__in=self.pk_list)
+
+        # TODO: find how to provide proper exception
+        instances_not_ready = []
         for instance in instances:
             if not (
-                instance.status == choices.DesignInstanceStatusChoices.DECOMMISSIONED
-                and instance.oper_status
+                instance.status.name == choices.DesignInstanceStatusChoices.DECOMMISSIONED
+                and instance.oper_status.name
                 in [choices.DesignInstanceOperStatusChoices.PENDING, choices.DesignInstanceOperStatusChoices.ROLLBACKED]
             ):
-                raise Exception(f"{instance} can't be deleted.")
+                instances_not_ready.append(instance)
+        if instances_not_ready:
+            raise ValidationError(["errp1", "errpr"])
+            # return Response(
+            #     {"Error": f"Instances {[instance.name for instance in instances_not_ready]} can't be deleted."},
+            #     status=status.HTTP_400_BAD_REQUEST,
+            # )
         return super(DesignInstanceBulkDestroy, self).perform_bulk_destroy(request, **kwargs)
 
 
@@ -114,6 +131,26 @@ class DesignInstanceUIViewSet(
             RequestConfig(request, paginate).configure(journals_table)
             context["journals_table"] = journals_table
         return context
+
+
+class DecommissionJobView(generic.ObjectView):
+    """Special View to trigger the Job."""
+
+    queryset = DesignInstance.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        """Custom GET to run a the Job."""
+        class_path = "plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning"
+        # TODO: how to pass data to the Job to run
+        data = {"design_instances": [DesignInstance.objects.get(id=kwargs["pk"])]}
+        return redirect(
+            reverse(
+                "extras:job",
+                kwargs={
+                    "class_path": class_path,
+                },
+            )
+        )
 
 
 class JournalUIViewSet(

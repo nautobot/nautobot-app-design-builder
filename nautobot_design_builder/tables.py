@@ -2,9 +2,16 @@
 from django_tables2 import Column
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable, ToggleColumn
-from nautobot.utilities.tables import BooleanColumn
+from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+
+# TODO: make this url point to the proper job from design that we will need to register dynamically
+DESIGNTABLE = """
+<a href="{% url 'plugins:nautobot_design_builder:decommissioning_job' pk=record.pk %}" class="btn btn-xs btn-primary" title="Decommission Instance">
+    <i class="mdi mdi-arrow-right-drop-circle-outline"></i>
+</a>
+"""
 
 
 class DesignTable(BaseTable):
@@ -13,6 +20,7 @@ class DesignTable(BaseTable):
     job = Column(linkify=True)
     name = Column(linkify=True)
     instance_count = Column(accessor=Accessor("instance_count"), verbose_name="Instances")
+    actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
 
     class Meta(BaseTable.Meta):
         """Meta attributes."""
@@ -25,18 +33,43 @@ class DesignTable(BaseTable):
         )
 
 
+DESIGNINSTANCETABLE = """
+<a href="{% url 'plugins:nautobot_design_builder:decommissioning_job' pk=record.pk %}" class="btn btn-xs btn-primary" title="Decommission Instance">
+    <i class="mdi mdi-delete-sweep"></i>
+</a>
+"""
+
+
 class DesignInstanceTable(StatusTableMixin, BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
     design = Column(linkify=True)
     pk = ToggleColumn()
+    oper_status = ColoredLabelColumn()
+    actions = ButtonsColumn(
+        DesignInstance,
+        buttons=(
+            "delete",
+            "changelog",
+        ),
+        prepend_template=DESIGNINSTANCETABLE,
+    )
 
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
         model = DesignInstance
-        fields = ("name", "design", "owner", "first_implemented", "last_implemented", "status", "oper_status")
+        fields = (
+            "name",
+            "design",
+            "owner",
+            "first_implemented",
+            "last_implemented",
+            "status",
+            "oper_status",
+            "actions",
+        )
 
 
 class JournalTable(BaseTable):
