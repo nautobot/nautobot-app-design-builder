@@ -82,6 +82,7 @@ class JournalEntrySerializer(NautobotModelSerializer, TaggedModelSerializerMixin
         model = JournalEntry
         fields = ["id", "url", "journal", "_design_object_type", "design_object", "changes", "full_control"]
 
+    # TODO: why this avoid deletion?
     @extend_schema_field(DictField())
     def get_design_object(self, obj):
         serializer = get_serializer_for_model(obj.design_object, prefix="Nested")

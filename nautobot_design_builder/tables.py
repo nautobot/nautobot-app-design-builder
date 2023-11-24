@@ -1,13 +1,13 @@
 """Tables for design builder."""
 from django_tables2 import Column
 from django_tables2.utils import Accessor
-from nautobot.apps.tables import StatusTableMixin, BaseTable
+from nautobot.apps.tables import StatusTableMixin, BaseTable, ToggleColumn
 from nautobot.utilities.tables import BooleanColumn
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
 
-class DesignTable(StatusTableMixin, BaseTable):
+class DesignTable(BaseTable):
     """Table for list view."""
 
     job = Column(linkify=True)
@@ -18,20 +18,25 @@ class DesignTable(StatusTableMixin, BaseTable):
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "job", "instance_count", "status")
+        fields = (
+            "name",
+            "job",
+            "instance_count",
+        )
 
 
-class DesignInstanceTable(BaseTable):
+class DesignInstanceTable(StatusTableMixin, BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
     design = Column(linkify=True)
+    pk = ToggleColumn()
 
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
         model = DesignInstance
-        fields = ("name", "design", "owner", "first_implemented", "last_implemented")
+        fields = ("name", "design", "owner", "first_implemented", "last_implemented", "status", "oper_status")
 
 
 class JournalTable(BaseTable):

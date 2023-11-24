@@ -10,7 +10,8 @@ from django.db import transaction
 from jinja2 import TemplateError
 
 from nautobot.extras.jobs import Job, StringVar
-
+from django.contrib.contenttypes.models import ContentType
+from nautobot.extras.models import Status
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -18,8 +19,13 @@ from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.design import Builder
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
+from nautobot_design_builder import choices
+
 
 from .util import nautobot_version
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-attributes
@@ -161,11 +167,16 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             instance.last_implemented = datetime.now()
         except models.DesignInstance.DoesNotExist:
             self.log_info(message=f'Implementing new design "{instance_name}".')
+            content_type = ContentType.objects.get_for_model(models.DesignInstance)
             instance = models.DesignInstance(
                 name=instance_name,
                 owner=design_owner,
                 design=self.design_model(),
                 last_implemented=datetime.now(),
+                status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+                oper_status=Status.objects.get(
+                    content_types=content_type, name=choices.DesignInstanceOperStatusChoices.PENDING
+                ),
             )
         instance.validated_save()
 

@@ -8,11 +8,12 @@ from django.urls import reverse
 
 from nautobot.apps.models import PrimaryModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, StatusModel
+from nautobot.extras.models import Job as JobModel, JobResult, StatusModel, StatusField
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 
 from nautobot_design_builder.util import nautobot_version
+from nautobot_design_builder import choices
 
 
 # TODO: this method needs to be put in the custom validators module.
@@ -70,7 +71,7 @@ class DesignQuerySet(RestrictedQuerySet):
             name (str): The `name` of the job associated with the `Design`
 
         Returns:
-            Design: The `Design` model instance associated with the job.
+            Design: The `Design` kermodel instance associated with the job.
         """
         return self.get(job__name=name)
 
@@ -78,8 +79,7 @@ class DesignQuerySet(RestrictedQuerySet):
         return self.get(job=job)
 
 
-@extras_features("statuses")
-class Design(PrimaryModel, StatusModel):
+class Design(PrimaryModel):
     """Design represents a single design job.
 
     Design may or may not have any instances (implementations), but
@@ -139,8 +139,12 @@ DESIGN_NAME_MAX_LENGTH = 100
 
 DESIGN_OWNER_MAX_LENGTH = 100
 
+# TODO: Statuses in DesignInstance should represent if is Ready/Deleted/Planned
+# TODO: Operational Status in DesignInstance should represent if the DesignInstnace has been deployed: Active/Failed/Deleted/Pending
 
-class DesignInstance(PrimaryModel):
+
+@extras_features("statuses")
+class DesignInstance(PrimaryModel, StatusModel):
     """Design instance represents the result of executing a design.
 
     Design instance represents the collection of Nautobot objects
@@ -156,7 +160,7 @@ class DesignInstance(PrimaryModel):
     owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, null=True)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
-
+    oper_status = StatusField(blank=False, null=False, on_delete=models.PROTECT)
     objects = DesignInstanceQuerySet.as_manager()
 
     class Meta:
@@ -173,8 +177,23 @@ class DesignInstance(PrimaryModel):
     def clean(self):
         """Guarantee that the design field cannot be changed."""
         super().clean()
+
         if not self._state.adding:
+            # TODO: redundant with editable
             enforce_managed_fields(self, ["design"], message="is a field that cannot be changed")
+
+    # TODO: this is not called by bulk_destroy
+    def delete(self, *args, **kwargs):
+        """Protect logic to remove Design Instance."""
+        if not (
+            self.status.name == choices.DesignInstanceStatusChoices.DECOMMISSIONED
+            and self.oper_status.name
+            in [choices.DesignInstanceOperStatusChoices.PENDING, choices.DesignInstanceOperStatusChoices.ROLLBACKED]
+        ):
+            raise ValidationError(
+                "A Design Instance can only be delete if it's Decommissioned and not Deployed."
+            )  # or you can throw your custom exception here.
+        return super().delete(*args, **kwargs)
 
     def get_absolute_url(self):
         """Return detail view for design instances."""

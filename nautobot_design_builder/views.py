@@ -5,6 +5,8 @@ from nautobot.core.views.mixins import (
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
+    ObjectDestroyViewMixin,
+    ObjectBulkDestroyViewMixin,
 )
 from nautobot.utilities.paginator import EnhancedPaginator, get_paginate_count
 from nautobot.utilities.utils import count_related
@@ -29,6 +31,7 @@ from nautobot_design_builder.forms import (
 )
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 from nautobot_design_builder.tables import DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
+from nautobot_design_builder import choices
 
 
 class DesignUIViewSet(
@@ -64,11 +67,27 @@ class DesignUIViewSet(
         return context
 
 
+class DesignInstanceBulkDestroy(ObjectBulkDestroyViewMixin):
+    def perform_bulk_destroy(self, request, **kwargs):
+        self.pk_list = request.POST.getlist("pk")
+        instances = self.get_queryset().filter(pk__in=self.pk_list)
+        for instance in instances:
+            if not (
+                instance.status == choices.DesignInstanceStatusChoices.DECOMMISSIONED
+                and instance.oper_status
+                in [choices.DesignInstanceOperStatusChoices.PENDING, choices.DesignInstanceOperStatusChoices.ROLLBACKED]
+            ):
+                raise Exception(f"{instance} can't be deleted.")
+        return super(DesignInstanceBulkDestroy, self).perform_bulk_destroy(request, **kwargs)
+
+
 class DesignInstanceUIViewSet(
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
+    ObjectDestroyViewMixin,
+    DesignInstanceBulkDestroy,
 ):
     """UI views for the design instance model."""
 
@@ -77,7 +96,7 @@ class DesignInstanceUIViewSet(
     queryset = DesignInstance.objects.all()
     serializer_class = DesignInstanceSerializer
     table_class = DesignInstanceTable
-    action_buttons = ()
+    action_buttons = ("delete",)
     lookup_field = "pk"
 
     def get_extra_context(self, request, instance=None):

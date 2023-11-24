@@ -8,7 +8,7 @@ from nautobot.core.signals import nautobot_database_ready
 from nautobot.extras.models import Job, Status
 
 from .design_job import DesignJob
-from .models import Design
+from .models import Design, DesignInstance
 from . import choices
 
 import logging
@@ -17,10 +17,16 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @receiver(nautobot_database_ready, sender=apps.get_app_config("nautobot_design_builder"))
-def create_design_statuses(**kwargs):
-    """Create a default set of statuses for designs."""
-    content_type = ContentType.objects.get_for_model(Design)
-    for _, status_name in choices.DesignStatusChoices:
+def create_design_instance_statuses(**kwargs):
+    """Create a default set of statuses for design instances."""
+    content_type = ContentType.objects.get_for_model(DesignInstance)
+    for _, status_name in choices.DesignInstanceStatusChoices:
+        status, _ = Status.objects.get_or_create(
+            name=status_name,
+        )
+        status.content_types.add(content_type)
+
+    for _, status_name in choices.DesignInstanceOperStatusChoices:
         status, _ = Status.objects.get_or_create(
             name=status_name,
         )
@@ -40,13 +46,13 @@ def create_design_model(sender, instance: Job, **kwargs):
         instance (Job): Job instance that has been created or updated.
     """
     content_type = ContentType.objects.get_for_model(Design)
-    status = Status.objects.get(content_types=content_type, name=choices.DesignStatusChoices.PENDING)
+    # status = Status.objects.get(content_types=content_type, name=choices.DesignStatusChoices.PENDING)
     if instance.job_class and issubclass(instance.job_class, DesignJob):
         _, created = Design.objects.get_or_create(
             job=instance,
-            defaults={
-                "status": status,
-            },
+            # defaults={
+            #     "status": status,
+            # },
         )
         if created:
             _LOGGER.debug("Created design from %s", instance)
