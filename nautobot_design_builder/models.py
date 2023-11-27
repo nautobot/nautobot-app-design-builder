@@ -139,9 +139,6 @@ DESIGN_NAME_MAX_LENGTH = 100
 
 DESIGN_OWNER_MAX_LENGTH = 100
 
-# TODO: Statuses in DesignInstance should represent if is Ready/Deleted/Planned
-# TODO: Operational Status in DesignInstance should represent if the DesignInstnace has been deployed: Active/Failed/Deleted/Pending
-
 
 @extras_features("statuses")
 class DesignInstance(PrimaryModel, StatusModel):
@@ -182,7 +179,7 @@ class DesignInstance(PrimaryModel, StatusModel):
             # TODO: redundant with editable
             enforce_managed_fields(self, ["design"], message="is a field that cannot be changed")
 
-    # TODO: this is not called by bulk_destroy
+    # TODO: this is not called by bulk_destroy, why?
     def delete(self, *args, **kwargs):
         """Protect logic to remove Design Instance."""
         if not (

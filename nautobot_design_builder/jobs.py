@@ -4,7 +4,7 @@ from django.db import transaction
 from nautobot.dcim.models import Device, Site
 from nautobot.extras.choices import ObjectChangeActionChoices
 from nautobot.extras.jobs import IntegerVar, Job, JobHookReceiver, JobButtonReceiver, MultiObjectVar
-from .models import DesignInstance
+from .models import DesignInstance, Journal
 from nautobot.core.graphql import execute_query
 from django.contrib.contenttypes.models import ContentType
 from .choices import DesignInstanceStatusChoices
@@ -12,7 +12,7 @@ from nautobot.extras.models import Status
 import time
 
 
-# TODO: DesignDecommission Job
+# DesignDecommission Job
 # Args:
 #   - designinstance names (many)
 #
@@ -30,23 +30,29 @@ import time
 
 # QUESTIONS
 #   - Why a DesignInstance can have many different Journals?
-#       - Not well defined
+#       - Not well defined, but maybe for supporing updates?
 #   - Why are we using the enforce_managed_fields in our Design and DesignInstance instead of using proper Django constructs?
-#       - IT'S REDUNDANT TODAY with EDITABLE
+#       - it's redundant when using editable
 #   - enforce_managed_fields should take into account the Journal references rather than being absolute
 #       - A Device may have been created by a Design or manually, the second should not be taken into account for dependencies
-#       - WE SHOULD TAKE INTO ACCOUNT THE JOURNAL
+#       - we should take into account the journal
+#   - Should we add a TAG in all the created/updated objects?
+#   - In the journal entry, even for newly created objects, we need to define which fields have been defined to not overwrite them
+#       - If a journal contains a reference to a design_object, I can only change fields not "referenced"
+#       - The journal entry should protect against trying to remove the object from another place
+#   - Remove the warning of missing views
 
 
 class DesignInstanceDecommissioning(Job):
-    # TODO: query_params are not took into account
     design_instances = MultiObjectVar(
-        model=DesignInstance, query_params={"status": "active"}, description="Design Instances to decommission."
+        model=DesignInstance,
+        query_params={"status": "active"},
+        description="Design Instances to decommission.",
     )
 
     class Meta:
-        name = "Design Instance Decommissioning"
-        description = """Job to decommission Design Instances."""
+        name = "Decommission Design Instances."
+        description = """Job to decommission one or many Design Instances from Nautobot."""
 
     def proceed_after_pre_decommission_hook(self, design_instance):
         self.log_info(
@@ -73,10 +79,28 @@ class DesignInstanceDecommissioning(Job):
 
             for journal_entry in reversed(latest_journal.entries.all()):
                 if journal_entry.design_object:
-                    self.log_debug(f"Decommissioning changes for {journal_entry.design_object}...")
+                    object_description = str(journal_entry.design_object)
+                    self.log_debug(f"Decommissioning changes for {object_description}...")
+
                     if journal_entry.full_control:
+                        # TODO: find a better way to validate that the design_object is not referenced by others
+                        for j in Journal.objects.all():
+                            if j.design_instance.status.name == DesignInstanceStatusChoices.DECOMMISSIONED:
+                                continue
+                            if j == latest_journal:
+                                continue
+                            for j_entry in j.entries.all():
+                                if journal_entry.design_object == j_entry.design_object:
+                                    self.log_failure(
+                                        journal_entry.design_object,
+                                        message=f"This object is referenced by other active Journals: {j}",
+                                    )
+                                    raise ValueError("Rollbacking changes.")
+
                         journal_entry.design_object.delete()
-                        self.log_success(obj=journal_entry.design_object, message="Object removed.")
+                        self.log_success(
+                            obj=journal_entry.design_object, message=f"Object {object_description} removed."
+                        )
                     else:
                         for attribute in journal_entry.changes["differences"].get("added", {}):
                             value_added = journal_entry.changes["differences"]["added"][attribute]
@@ -94,7 +118,7 @@ class DesignInstanceDecommissioning(Job):
                             journal_entry.design_object.save()
                         self.log_success(
                             obj=journal_entry.design_object,
-                            message="Because not full control, we have restored previous state.",
+                            message="Because not full control, we have restored ot ot the previous state.",
                         )
 
             content_type = ContentType.objects.get_for_model(DesignInstance)

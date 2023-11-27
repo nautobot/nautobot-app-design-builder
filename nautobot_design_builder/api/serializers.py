@@ -1,7 +1,7 @@
 """Serializers for design builder."""
 from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.utils import extend_schema_field
-from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
+from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin
 from nautobot.core.api import ContentTypeField
 from nautobot.extras.api.nested_serializers import NestedJobResultSerializer
 from nautobot.utilities.api import get_serializer_for_model
@@ -33,12 +33,13 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
         ]
 
 
-class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
+class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin):
     """Serializer for the design instance model."""
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     design = NestedDesignSerializer()
 
+    # TODO: add nested serializer for oper_status
     class Meta:
         """Serializer options for the design model."""
 
@@ -51,6 +52,8 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
             "owner",
             "first_implemented",
             "last_implemented",
+            "status",
+            "oper_status",
         ]
 
 

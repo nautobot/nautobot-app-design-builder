@@ -142,7 +142,8 @@ class DecommissionJobView(generic.ObjectView):
         """Custom GET to run a the Job."""
         class_path = "plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning"
         # TODO: how to pass data to the Job to run
-        data = {"design_instances": [DesignInstance.objects.get(id=kwargs["pk"])]}
+        data = {"design_instances": [str(kwargs["pk"])]}
+        print(data)
         return redirect(
             reverse(
                 "extras:job",
@@ -150,6 +151,7 @@ class DecommissionJobView(generic.ObjectView):
                     "class_path": class_path,
                 },
             )
+            + "?_commit=False",
         )
 
 
