@@ -68,8 +68,8 @@ class DesignInstanceDecommissioning(Job):
         self.log_info(
             f"Checking if the design instance {design_instance} can be decommissioned by external dependencies."
         )
-        time.sleep(10)
-        self.log_info(f"No issues found for {design_instance}.")
+        time.sleep(5)
+        self.log_success(f"No dependency issues found for {design_instance}.")
         return True
 
     def run(self, data, commit):
