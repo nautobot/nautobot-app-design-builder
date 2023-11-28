@@ -37,6 +37,16 @@ def create_design_instance_statuses(**kwargs):
         status, _ = Status.objects.get_or_create(name=status_name, defaults={"color": color_mapping[status_name]})
         status.content_types.add(content_type)
 
+    from nautobot.extras.models import Tag
+
+    Tag.objects.get_or_create(
+        name="Created by Design Builder",
+        defaults={
+            "description": "Object managed by Design Builder",
+            "color": ColorChoices.COLOR_LIGHT_GREEN,
+        },
+    )
+
 
 @receiver(post_save, sender=Job)
 def create_design_model(sender, instance: Job, **kwargs):

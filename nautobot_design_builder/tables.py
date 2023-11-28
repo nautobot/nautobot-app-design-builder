@@ -8,8 +8,8 @@ from nautobot_design_builder.models import Design, DesignInstance, Journal, Jour
 
 # TODO: make this url point to the proper job from design that we will need to register dynamically
 DESIGNTABLE = """
-<a href="{% url 'plugins:nautobot_design_builder:decommissioning_job' pk=record.pk %}" class="btn btn-xs btn-primary" title="Decommission Instance">
-    <i class="mdi mdi-arrow-right-drop-circle-outline"></i>
+<a href="{% url "extras:job" class_path="local/designs/CoreSiteDesign" %}" class="btn btn-xs btn-primary" title="Decommission">
+    <i class="mdi mdi-play"></i>
 </a>
 """
 
@@ -19,22 +19,25 @@ class DesignTable(BaseTable):
 
     job = Column(linkify=True)
     name = Column(linkify=True)
-    instance_count = Column(accessor=Accessor("instance_count"), verbose_name="Instances")
+    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Instances")
+
     actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
 
     class Meta(BaseTable.Meta):
         """Meta attributes."""
 
         model = Design
-        fields = (
-            "name",
-            "job",
-            "instance_count",
-        )
+        fields = ("name", "job", "instance_count")
 
 
+# THis approach is using a custom view for redirect
+# DESIGNINSTANCETABLE = """
+# <a href="{% url 'plugins:nautobot_design_builder:decommissioning_job' pk=record.pk %}" class="btn btn-xs btn-primary" title="Decommission Instance">
+#     <i class="mdi mdi-delete-sweep"></i>
+# </a>
+# """
 DESIGNINSTANCETABLE = """
-<a href="{% url 'plugins:nautobot_design_builder:decommissioning_job' pk=record.pk %}" class="btn btn-xs btn-primary" title="Decommission Instance">
+<a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
 """

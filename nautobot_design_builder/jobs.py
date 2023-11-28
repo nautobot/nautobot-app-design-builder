@@ -31,16 +31,26 @@ import time
 # QUESTIONS
 #   - Why a DesignInstance can have many different Journals?
 #       - Not well defined, but maybe for supporing updates?
+#       - TO COVER AN UPDATE
 #   - Why are we using the enforce_managed_fields in our Design and DesignInstance instead of using proper Django constructs?
 #       - it's redundant when using editable
-#   - enforce_managed_fields should take into account the Journal references rather than being absolute
+#       - I WAS WRONG ABOUT MY IDEA, it's not a full enforcement
+#   - enforce_managed_fields (it's a different approach) should take into account the Journal references rather than being absolute
 #       - A Device may have been created by a Design or manually, the second should not be taken into account for dependencies
 #       - we should take into account the journal
+#       - Custom validator for all object, similar approach for data validation
+#       - Maybe SSOT jobs would skip the validate_save?
 #   - Should we add a TAG in all the created/updated objects?
+#       - Helpful for operator
 #   - In the journal entry, even for newly created objects, we need to define which fields have been defined to not overwrite them
 #       - If a journal contains a reference to a design_object, I can only change fields not "referenced"
 #       - The journal entry should protect against trying to remove the object from another place
-#   - Remove the warning of missing views
+#   - If a Design Instance has to CREATE objects, it can be run twice. It should detect that the objects to be created are there
+#       - WE SHOULD FAIL IF DATA CONFLICTS
+
+# FEEDBACK
+#
+#   - Update works to demo multiple journals
 
 
 class DesignInstanceDecommissioning(Job):
@@ -74,10 +84,11 @@ class DesignInstanceDecommissioning(Job):
                 continue
 
             self.log_info(obj=design_instance, message="Working on resetting objects for this Design Instance...")
+            # TODO: we have to cover all the journals
             latest_journal = design_instance.journal_set.order_by("created").last()
             self.log_info(latest_journal, "Journal to be decommissioned.")
 
-            for journal_entry in reversed(latest_journal.entries.all()):
+            for journal_entry in reversed(latest_journal.entries.all().order_by("last_updated")):
                 if journal_entry.design_object:
                     object_description = str(journal_entry.design_object)
                     self.log_debug(f"Decommissioning changes for {object_description}...")
@@ -95,13 +106,18 @@ class DesignInstanceDecommissioning(Job):
                                         journal_entry.design_object,
                                         message=f"This object is referenced by other active Journals: {j}",
                                     )
-                                    raise ValueError("Rollbacking changes.")
+                                    # TODO: Maybe better to rollback after all analysis is done.
+                                    raise ValueError(
+                                        "Because of cross-references between design instances, decommission has been rollbacked."
+                                    )
 
                         journal_entry.design_object.delete()
                         self.log_success(
                             obj=journal_entry.design_object, message=f"Object {object_description} removed."
                         )
                     else:
+                        # TODO: make Nikos happy
+                        # We have to me it more sophisticated
                         for attribute in journal_entry.changes["differences"].get("added", {}):
                             value_added = journal_entry.changes["differences"]["added"][attribute]
                             old_value = journal_entry.changes["differences"]["removed"][attribute]

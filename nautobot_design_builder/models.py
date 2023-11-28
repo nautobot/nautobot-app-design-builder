@@ -11,6 +11,7 @@ from nautobot.core.celery import NautobotKombuJSONEncoder
 from nautobot.extras.models import Job as JobModel, JobResult, StatusModel, StatusField
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
+from nautobot.extras.models import Tag
 
 from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder import choices
@@ -252,6 +253,16 @@ class Journal(PrimaryModel):
         """
         instance = model_instance.instance
         content_type = ContentType.objects.get_for_model(instance)
+
+        # TODO: add a tag inject into model instance
+        if model_instance.created:
+            try:
+                tag_design_builder = Tag.objects.get(name="Created by Design Builder")
+                instance.tags.add(tag_design_builder)
+                instance.save()
+            except AttributeError:
+                pass
+
         try:
             entry = self.entries.get(
                 _design_object_type=content_type,
@@ -262,8 +273,6 @@ class Journal(PrimaryModel):
             entry.changes = model_instance.get_changes(entry.changes["pre_change"])
             entry.save()
         except JournalEntry.DoesNotExist:
-            print("Creating JournalEntry")
-            # print(f"- {model_instance.__dict__}")
             self.entries.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
