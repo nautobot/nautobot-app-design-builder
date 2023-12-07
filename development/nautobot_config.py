@@ -134,7 +134,7 @@ CACHEOPS_REDIS = parse_redis_connection(redis_database=1)
 #
 
 # Enable installed plugins. Add the name of each plugin to the list.
-PLUGINS = ["design_builder"]
+PLUGINS = ["nautobot_design_builder"]
 
 # TODO: The following is necessary only until BGP models plugin
 # is officially supported in 2.0

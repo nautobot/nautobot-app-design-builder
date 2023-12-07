@@ -1,9 +1,9 @@
 ---
 dev_addr: "127.0.0.1:8001"
 edit_uri: "edit/develop/docs"
-site_dir: "design_builder/static/design_builder/docs"
+site_dir: "nautobot_design_builder/static/nautobot_design_builder/docs"
 site_name: "Design Builder Documentation"
-site_url: "https://docs.nautobot.com/projects/design-builder/en/latest/"
+site_url: "https://docs.nautobot.com/projects/nautobot-design-builder/en/latest/"
 repo_url: "https://github.com/networktocode-llc/nautobot-plugin-design-builder"
 copyright: "Copyright &copy; The Authors"
 theme:
@@ -90,7 +90,7 @@ plugins:
       default_handler: "python"
       handlers:
         python:
-          paths: ["."]
+          paths: ["nautobot_design_builder"]
           options:
             show_root_heading: true
 watch:
@@ -117,9 +117,10 @@ nav:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
       - Development Environment: "dev/dev_environment.md"
-      - Architecture Decision Records: "dev/arch_decision.md"
       - Code Reference:
           - "dev/code_reference/index.md"
+          - Design Job: "dev/code_reference/design_job.md"
+          - Context: "dev/code_reference/context.md"
           - Design Builder: "dev/code_reference/design.md"
           - Jinja Rendering: "dev/code_reference/jinja2.md"
           - Template Extensions: "dev/code_reference/ext.md"

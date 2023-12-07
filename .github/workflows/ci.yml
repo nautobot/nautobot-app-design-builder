@@ -19,7 +19,7 @@ jobs:
   black:
     runs-on: "ubuntu-20.04"
     env:
-      INVOKE_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -30,7 +30,7 @@ jobs:
   bandit:
     runs-on: "ubuntu-20.04"
     env:
-      INVOKE_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -41,7 +41,7 @@ jobs:
   pydocstyle:
     runs-on: "ubuntu-20.04"
     env:
-      INVOKE_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -52,7 +52,7 @@ jobs:
   flake8:
     runs-on: "ubuntu-20.04"
     env:
-      INVOKE_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -63,7 +63,7 @@ jobs:
   yamllint:
     runs-on: "ubuntu-20.04"
     env:
-      INVOKE_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v2"
@@ -83,7 +83,7 @@ jobs:
       fail-fast: true
       matrix:
         python-version: ["3.8"]
-        nautobot-version: ["latest"]
+        nautobot-version: ["1.6"]
     env:
       INVOKE_DESIGN_BUILDER_PYTHON_VER: "${{ matrix.python-version }}"
       INVOKE_DESIGN_BUILDER_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
@@ -107,11 +107,11 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
         db-backend: ["postgresql"]
-        nautobot-version: ["latest", "v2.0.0-beta.1"]
+        nautobot-version: ["1.6", "latest"]
         include:
           - python-version: "3.10"
             db-backend: "mysql"
-            nautobot-version: "latest"
+            nautobot-version: "1.6"
     runs-on: "ubuntu-20.04"
     env:
       INVOKE_DESIGN_BUILDER_PYTHON_VER: "${{ matrix.python-version }}"
@@ -149,6 +149,7 @@ jobs:
           tag: "${{ github.ref }}"
           overwrite: true
           file_glob: true
+# yamllint disable-line rule:comments-indentation
   # publish_pypi:
   #   needs:
   #     - "unittest"

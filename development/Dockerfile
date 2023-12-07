@@ -49,7 +49,4 @@ COPY . /source
 RUN cp /tmp/install/* /source/
 RUN poetry install --no-interaction --no-ansi
 
-# TODO: Remove this when BGP models plugin is supported in 2.0
-RUN case ${NAUTOBOT_VER} in v2* ) echo "Skipping BGP Models for Nautobot 2.0" ;; * ) poetry add nautobot-bgp-models ; esac
-
 COPY development/nautobot_config.py ${NAUTOBOT_ROOT}/nautobot_config.py
