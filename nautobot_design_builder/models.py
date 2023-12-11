@@ -14,8 +14,8 @@ from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
 
 
-from nautobot_design_builder.util import nautobot_version
-from nautobot_design_builder import choices
+from .util import nautobot_version
+from . import choices
 
 
 # TODO: this method needs to be put in the custom validators module.
