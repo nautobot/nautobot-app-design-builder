@@ -65,4 +65,4 @@ class TestDesign(BaseDesignTest):
 
     def test_no_duplicates(self):
         with self.assertRaises(IntegrityError):
-            models.Design.objects.create(job=self.job1, status=self.design1.status)
+            models.Design.objects.create(job=self.job1)
