@@ -30,7 +30,7 @@ class DesignBuilderConfig(PluginConfig):
 
     def ready(self):
         super().ready()
-        from . import signals  # noqa: F401
+        from . import signals  # noqa:F401 pylint:disable=import-outside-toplevel,unused-import
 
     # pylint: disable=no-self-argument
     @classproperty

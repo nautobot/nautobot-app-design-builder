@@ -1,5 +1,5 @@
 """UI Views for design builder."""
-from nautobot.extras.api.views import NautobotModelViewSet
+from nautobot.extras.api.views import NautobotModelViewSet, StatusViewSetMixin
 
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
@@ -24,7 +24,7 @@ class DesignAPIViewSet(NautobotModelViewSet):
     filterset_class = DesignFilterSet
 
 
-class DesignInstanceAPIViewSet(NautobotModelViewSet):
+class DesignInstanceAPIViewSet(NautobotModelViewSet, StatusViewSetMixin):
     """API views for the design instance model."""
 
     queryset = DesignInstance.objects.all()

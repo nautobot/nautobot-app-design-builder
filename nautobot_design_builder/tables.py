@@ -2,36 +2,52 @@
 from django_tables2 import Column
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
-from nautobot.utilities.tables import BooleanColumn
+from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
 
-class DesignTable(StatusTableMixin, BaseTable):
+DESIGNTABLE = """
+<a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
+    <i class="mdi mdi-arrow-right-drop-circle-outline"></i>
+</a>
+"""
+
+
+class DesignTable(BaseTable):
     """Table for list view."""
 
     job = Column(linkify=True)
     name = Column(linkify=True)
     instance_count = Column(accessor=Accessor("instance_count"), verbose_name="Instances")
+    actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
 
-    class Meta(BaseTable.Meta):
+    class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "job", "instance_count", "status")
+        fields = ("name", "job", "instance_count")
 
 
-class DesignInstanceTable(BaseTable):
+class DesignInstanceTable(StatusTableMixin, BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
     design = Column(linkify=True)
+    live_state = ColoredLabelColumn()
+    actions = ButtonsColumn(
+        DesignInstance,
+        buttons=(
+            "delete",
+            "changelog",
+        ),
+    )
 
-    class Meta(BaseTable.Meta):
+    class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = DesignInstance
-        fields = ("name", "design", "owner", "first_implemented", "last_implemented")
+        fields = ("name", "design", "owner", "first_implemented", "last_implemented", "status", "live_state")
 
 
 class JournalTable(BaseTable):
@@ -42,7 +58,7 @@ class JournalTable(BaseTable):
     job_result = Column(linkify=True)
     journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
 
-    class Meta(BaseTable.Meta):
+    class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Journal
@@ -57,7 +73,7 @@ class JournalEntryTable(BaseTable):
     design_object = Column(linkify=True, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
 
-    class Meta(BaseTable.Meta):
+    class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = JournalEntry

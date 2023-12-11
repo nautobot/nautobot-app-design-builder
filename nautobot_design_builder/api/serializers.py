@@ -1,9 +1,9 @@
 """Serializers for design builder."""
 from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.utils import extend_schema_field
-from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
+from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin
 from nautobot.core.api import ContentTypeField
-from nautobot.extras.api.nested_serializers import NestedJobResultSerializer
+from nautobot.extras.api.nested_serializers import NestedJobResultSerializer, NestedStatusSerializer
 from nautobot.utilities.api import get_serializer_for_model
 from rest_framework.fields import SerializerMethodField, DictField
 from rest_framework.relations import HyperlinkedIdentityField
@@ -33,11 +33,12 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
         ]
 
 
-class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
+class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin):
     """Serializer for the design instance model."""
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     design = NestedDesignSerializer()
+    live_state = NestedStatusSerializer()
 
     class Meta:
         """Serializer options for the design model."""
@@ -51,6 +52,8 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
             "owner",
             "first_implemented",
             "last_implemented",
+            "status",
+            "live_state",
         ]
 
 
@@ -84,6 +87,9 @@ class JournalEntrySerializer(NautobotModelSerializer, TaggedModelSerializerMixin
 
     @extend_schema_field(DictField())
     def get_design_object(self, obj):
-        serializer = get_serializer_for_model(obj.design_object, prefix="Nested")
-        context = {"request": self.context["request"]}
-        return serializer(obj.design_object, context=context).data
+        """Get design object serialized."""
+        if obj.design_object:
+            serializer = get_serializer_for_model(obj.design_object, prefix="Nested")
+            context = {"request": self.context["request"]}
+            return serializer(obj.design_object, context=context).data
+        return None

@@ -8,11 +8,12 @@ from django.urls import reverse
 
 from nautobot.apps.models import PrimaryModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, StatusModel
+from nautobot.extras.models import Job as JobModel, JobResult, StatusModel, StatusField
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 
 from nautobot_design_builder.util import nautobot_version
+from nautobot_design_builder import choices
 
 
 # TODO: this method needs to be put in the custom validators module.
@@ -75,11 +76,11 @@ class DesignQuerySet(RestrictedQuerySet):
         return self.get(job__name=name)
 
     def for_design_job(self, job: JobModel):
+        """Get the related job for design."""
         return self.get(job=job)
 
 
-@extras_features("statuses")
-class Design(PrimaryModel, StatusModel):
+class Design(PrimaryModel):
     """Design represents a single design job.
 
     Design may or may not have any instances (implementations), but
@@ -102,6 +103,8 @@ class Design(PrimaryModel, StatusModel):
     objects = DesignQuerySet.as_manager()
 
     class Meta:
+        """Meta class."""
+
         constraints = [
             models.UniqueConstraint(
                 fields=["job"],
@@ -117,6 +120,7 @@ class Design(PrimaryModel, StatusModel):
 
     @property
     def name(self):
+        """Property for job name."""
         return self.job.name
 
     def get_absolute_url(self):
@@ -132,6 +136,7 @@ class DesignInstanceQuerySet(RestrictedQuerySet):
     """Queryset for `DesignInstance` objects."""
 
     def get_by_natural_key(self, design_name, instance_name):
+        """Get Design Instance by natural key."""
         return self.get(design__job__name=design_name, name=instance_name)
 
 
@@ -140,7 +145,8 @@ DESIGN_NAME_MAX_LENGTH = 100
 DESIGN_OWNER_MAX_LENGTH = 100
 
 
-class DesignInstance(PrimaryModel):
+@extras_features("statuses")
+class DesignInstance(PrimaryModel, StatusModel):
     """Design instance represents the result of executing a design.
 
     Design instance represents the collection of Nautobot objects
@@ -156,10 +162,13 @@ class DesignInstance(PrimaryModel):
     owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, null=True)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
+    live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
 
     objects = DesignInstanceQuerySet.as_manager()
 
     class Meta:
+        """Meta class."""
+
         constraints = [
             models.UniqueConstraint(
                 fields=["design", "name"],
@@ -183,6 +192,15 @@ class DesignInstance(PrimaryModel):
     def __str__(self):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
+
+    def delete(self, *args, **kwargs):
+        """Protect logic to remove Design Instance."""
+        if not (
+            self.status.name == choices.DesignInstanceStatusChoices.DECOMMISSIONED
+            and self.live_state.name != choices.DesignInstanceLiveStateChoices.DEPLOYED
+        ):
+            raise ValidationError("A Design Instance can only be delete if it's Decommissioned and not Deployed.")
+        return super().delete(*args, **kwargs)
 
 
 class Journal(PrimaryModel):

@@ -3,12 +3,14 @@ import sys
 import traceback
 from abc import ABC, abstractmethod
 from os import path
-import yaml
 from datetime import datetime
+import yaml
 from django.db import transaction
+from django.contrib.contenttypes.models import ContentType
 
 from jinja2 import TemplateError
 
+from nautobot.extras.models import Status
 from nautobot.extras.jobs import Job, StringVar
 
 
@@ -18,6 +20,7 @@ from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.design import Builder
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
+from nautobot_design_builder import choices
 
 from .util import nautobot_version
 
@@ -54,6 +57,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         super().__init__(*args, **kwargs)
 
     def design_model(self):
+        """Get the related Job."""
         return models.Design.objects.for_design_job(self.job_result.job_model)
 
     def post_implementation(self, context: Context, builder: Builder):
@@ -161,11 +165,16 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             instance.last_implemented = datetime.now()
         except models.DesignInstance.DoesNotExist:
             self.log_info(message=f'Implementing new design "{instance_name}".')
+            content_type = ContentType.objects.get_for_model(models.DesignInstance)
             instance = models.DesignInstance(
                 name=instance_name,
                 owner=design_owner,
                 design=self.design_model(),
                 last_implemented=datetime.now(),
+                status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+                live_state=Status.objects.get(
+                    content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
+                ),
             )
         instance.validated_save()
 
@@ -179,7 +188,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     @transaction.atomic
     def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
         """Render the design and implement it with a Builder object."""
-
         if nautobot_version < "2.0.0":
             commit = kwargs["commit"]
             data = kwargs["data"]

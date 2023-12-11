@@ -2,17 +2,29 @@
 from nautobot.utilities.choices import ChoiceSet
 
 
-class DesignStatusChoices(ChoiceSet):
-    """Status choices for Designs."""
+class DesignInstanceStatusChoices(ChoiceSet):
+    """Status choices for Designs Instances."""
 
-    PENDING = "Pending"
     ACTIVE = "Active"
     DISABLED = "Disabled"
     DECOMMISSIONED = "Decommissioned"
 
     CHOICES = (
-        (PENDING, PENDING),
         (ACTIVE, ACTIVE),
         (DISABLED, DISABLED),
         (DECOMMISSIONED, DECOMMISSIONED),
+    )
+
+
+class DesignInstanceLiveStateChoices(ChoiceSet):
+    """Status choices for Live State Designs Instance."""
+
+    DEPLOYED = "Deployed"
+    PENDING = "Pending"
+    ROLLBACKED = "Rollbacked"
+
+    CHOICES = (
+        (DEPLOYED, DEPLOYED),
+        (PENDING, PENDING),
+        (ROLLBACKED, ROLLBACKED),
     )

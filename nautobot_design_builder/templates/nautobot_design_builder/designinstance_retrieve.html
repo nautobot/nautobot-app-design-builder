@@ -27,6 +27,18 @@
                     <td>Design</td>
                     <td>{{ object.design|hyperlinked_object }}</td>
                 </tr>
+                <tr>
+                    <td>Status</td>
+                    <td>
+                        <span class="label" style="color: {{ object.status.color|fgcolor }}; background-color: #{{ object.status.color }}">{{ object.get_status_display }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Live State</td>
+                    <td>
+                        <span class="label" style="color: {{ object.live_state.color|fgcolor }}; background-color: #{{ object.live_state.color }}">{{ object.live_state }}</span>
+                    </td>
+                </tr>
             </table>
         </div>
 {% endblock content_left_page %}
