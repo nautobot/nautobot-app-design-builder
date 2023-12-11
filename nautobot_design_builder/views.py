@@ -32,7 +32,7 @@ from nautobot_design_builder.models import Design, DesignInstance, Journal, Jour
 from nautobot_design_builder.tables import DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
 
 
-class DesignUIViewSet(
+class DesignUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
@@ -66,7 +66,7 @@ class DesignUIViewSet(
         return context
 
 
-class DesignInstanceUIViewSet(
+class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
@@ -101,7 +101,7 @@ class DesignInstanceUIViewSet(
         return context
 
 
-class JournalUIViewSet(
+class JournalUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
@@ -135,7 +135,7 @@ class JournalUIViewSet(
         return context
 
 
-class JournalEntryUIViewSet(
+class JournalEntryUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,

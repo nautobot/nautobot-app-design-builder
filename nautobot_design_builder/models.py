@@ -238,7 +238,7 @@ class Journal(PrimaryModel):
         if nautobot_version < "2.0":
             user_input = self.job_result.job_kwargs.get("data", {}).copy()
         else:
-            user_input = self.job_result.task_kwargs.copy()
+            user_input = self.job_result.task_kwargs.copy()  # pylint: disable=no-member
         job = self.design_instance.design.job
         return job.job_class.deserialize_data(user_input)
 

@@ -21,7 +21,7 @@ class BaseDesignTest(TestCase):
             "grouping": "Designs",
             "source": "local",
             "installed": True,
-            "module_name": test_designs.__name__.split(".")[-1],
+            "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
         }
 
         self.job1 = JobModel(
