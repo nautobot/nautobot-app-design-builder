@@ -8,9 +8,11 @@ from django.urls import reverse
 
 from nautobot.apps.models import PrimaryModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, StatusModel, StatusField
+from nautobot.extras.models import Job as JobModel, JobResult, StatusModel, StatusField, Tag
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
+from nautobot.utilities.choices import ColorChoices
+
 
 from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder import choices
@@ -254,6 +256,21 @@ class Journal(PrimaryModel):
         """
         instance = model_instance.instance
         content_type = ContentType.objects.get_for_model(instance)
+
+        if model_instance.created:
+            try:
+                tag_design_builder, _ = Tag.objects.get_or_create(
+                    name=f"Managed by {self.design_instance}",
+                    defaults={
+                        "description": f"Managed by Design Builder: {self.design_instance}",
+                        "color": ColorChoices.COLOR_LIGHT_GREEN,
+                    },
+                )
+                instance.tags.add(tag_design_builder)
+                instance.save()
+            except AttributeError:
+                pass
+
         try:
             entry = self.entries.get(
                 _design_object_type=content_type,
