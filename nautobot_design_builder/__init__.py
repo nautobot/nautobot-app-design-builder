@@ -1,14 +1,9 @@
 """Plugin declaration for design_builder."""
+from importlib import metadata
+
 from django.conf import settings
 from django.utils.functional import classproperty
 from nautobot.extras.plugins import PluginConfig
-
-# Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
-try:
-    from importlib import metadata
-except ImportError:
-    # Python version < 3.8
-    import importlib_metadata as metadata
 
 __version__ = metadata.version(__name__)
 
@@ -30,7 +25,7 @@ class DesignBuilderConfig(PluginConfig):
 
     def ready(self):
         super().ready()
-        from . import signals  # noqa: F401
+        from . import signals  # noqa:F401 pylint:disable=import-outside-toplevel,unused-import,cyclic-import
 
     # pylint: disable=no-self-argument
     @classproperty

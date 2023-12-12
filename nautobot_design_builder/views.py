@@ -5,6 +5,7 @@ from nautobot.core.views.mixins import (
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
+    ObjectDestroyViewMixin,
 )
 from nautobot.utilities.paginator import EnhancedPaginator, get_paginate_count
 from nautobot.utilities.utils import count_related
@@ -31,7 +32,7 @@ from nautobot_design_builder.models import Design, DesignInstance, Journal, Jour
 from nautobot_design_builder.tables import DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
 
 
-class DesignUIViewSet(
+class DesignUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
@@ -48,6 +49,7 @@ class DesignUIViewSet(
     lookup_field = "pk"
 
     def get_extra_context(self, request, instance=None):
+        """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
             design_instances = DesignInstance.objects.restrict(request.user, "view").filter(design=instance)
@@ -64,11 +66,12 @@ class DesignUIViewSet(
         return context
 
 
-class DesignInstanceUIViewSet(
+class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
+    ObjectDestroyViewMixin,
 ):
     """UI views for the design instance model."""
 
@@ -81,6 +84,7 @@ class DesignInstanceUIViewSet(
     lookup_field = "pk"
 
     def get_extra_context(self, request, instance=None):
+        """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
             journals = Journal.objects.restrict(request.user, "view").filter(design_instance=instance)
@@ -97,7 +101,7 @@ class DesignInstanceUIViewSet(
         return context
 
 
-class JournalUIViewSet(
+class JournalUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
@@ -114,6 +118,7 @@ class JournalUIViewSet(
     lookup_field = "pk"
 
     def get_extra_context(self, request, instance=None):
+        """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
             entries = JournalEntry.objects.restrict(request.user, "view").filter(journal=instance)
@@ -130,7 +135,7 @@ class JournalUIViewSet(
         return context
 
 
-class JournalEntryUIViewSet(
+class JournalEntryUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,

@@ -17,8 +17,6 @@ from nautobot.extras.models import GitRepository
 
 from packaging.version import Version
 
-from nautobot_design_builder import metadata
-
 if TYPE_CHECKING:
     from nautobot_design_builder.design_job import DesignJob
 
@@ -303,7 +301,7 @@ class _NautobotVersion:
     """Utility for comparing Nautobot versions."""
 
     def __init__(self):
-        self.version = Version(metadata.version(nautobot.__name__))
+        self.version = Version(importlib.metadata.version(nautobot.__name__))
         # This includes alpha/beta as version numbers
         self.version = Version(self.version.base_version)
 

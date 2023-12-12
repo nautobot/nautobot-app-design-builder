@@ -38,7 +38,7 @@ namespace = Collection("nautobot_design_builder")
 namespace.configure(
     {
         "nautobot_design_builder": {
-            "nautobot_ver": "1.6",
+            "nautobot_ver": "1.6.5",
             "project_name": "nautobot_design_builder",
             "python_ver": "3.8",
             "local": False,

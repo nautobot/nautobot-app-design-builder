@@ -1,13 +1,15 @@
 """Filters for the design builder app."""
-from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter
+from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, StatusModelFilterSetMixin
 from nautobot.extras.models import Job, JobResult
 from nautobot.utilities.filters import SearchFilter
+from nautobot.extras.filters.mixins import StatusFilter
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
 
 class DesignFilterSet(NautobotFilterSet):
     """Filter set for the design model."""
+
     q = SearchFilter(filter_predicates={})
 
     job = NaturalKeyOrPKMultipleChoiceFilter(
@@ -22,9 +24,11 @@ class DesignFilterSet(NautobotFilterSet):
         fields = ["id", "job"]
 
 
-class DesignInstanceFilterSet(NautobotFilterSet):
+class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
     """Filter set for the design instance model."""
+
     q = SearchFilter(filter_predicates={})
+    live_state = StatusFilter()
 
     design = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Design.objects.all(),
@@ -35,11 +39,12 @@ class DesignInstanceFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = DesignInstance
-        fields = ["id", "design", "name", "owner", "first_implemented", "last_implemented"]
+        fields = ["id", "design", "name", "owner", "first_implemented", "last_implemented", "status", "live_state"]
 
 
 class JournalFilterSet(NautobotFilterSet):
     """Filter set for the journal model."""
+
     q = SearchFilter(filter_predicates={})
 
     design_instance = NaturalKeyOrPKMultipleChoiceFilter(
@@ -61,6 +66,7 @@ class JournalFilterSet(NautobotFilterSet):
 
 class JournalEntryFilterSet(NautobotFilterSet):
     """Filter set for the journal entrymodel."""
+
     q = SearchFilter(filter_predicates={})
 
     journal = NaturalKeyOrPKMultipleChoiceFilter(

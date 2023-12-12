@@ -21,7 +21,7 @@ class BaseDesignTest(TestCase):
             "grouping": "Designs",
             "source": "local",
             "installed": True,
-            "module_name": test_designs.__name__.split(".")[-1],
+            "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
         }
 
         self.job1 = JobModel(
@@ -65,4 +65,4 @@ class TestDesign(BaseDesignTest):
 
     def test_no_duplicates(self):
         with self.assertRaises(IntegrityError):
-            models.Design.objects.create(job=self.job1, status=self.design1.status)
+            models.Design.objects.create(job=self.job1)

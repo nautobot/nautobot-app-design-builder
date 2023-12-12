@@ -1,10 +1,11 @@
+"""Test Views."""
 from nautobot.utilities.testing import ViewTestCases
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 from nautobot_design_builder.tests.util import create_test_view_data
 
 
-class DesignTestCase(
+class TestCaseDesign(
     ViewTestCases.GetObjectViewTestCase,
     ViewTestCases.GetObjectChangelogViewTestCase,
     ViewTestCases.GetObjectNotesViewTestCase,
@@ -17,7 +18,7 @@ class DesignTestCase(
         create_test_view_data()
 
 
-class DesignInstanceTestCase(
+class TestCaseDesignInstance(
     ViewTestCases.GetObjectViewTestCase,
     ViewTestCases.GetObjectChangelogViewTestCase,
     ViewTestCases.GetObjectNotesViewTestCase,
@@ -30,7 +31,7 @@ class DesignInstanceTestCase(
         create_test_view_data()
 
 
-class JournalTestCase(
+class TestCaseJournal(
     ViewTestCases.GetObjectViewTestCase,
     ViewTestCases.GetObjectChangelogViewTestCase,
     ViewTestCases.GetObjectNotesViewTestCase,
@@ -43,7 +44,7 @@ class JournalTestCase(
         create_test_view_data()
 
 
-class JournalEntryTestCase(
+class TestCaseJournalEntry(
     ViewTestCases.GetObjectViewTestCase,
     ViewTestCases.GetObjectChangelogViewTestCase,
     ViewTestCases.GetObjectNotesViewTestCase,

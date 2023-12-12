@@ -2,9 +2,13 @@
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.contrib.contenttypes.models import ContentType
+
+from nautobot.extras.models import Status
+
 
 from .test_model_design import BaseDesignTest
-from .. import models
+from .. import models, choices
 
 
 class BaseDesignInstanceTest(BaseDesignTest):
@@ -13,7 +17,15 @@ class BaseDesignInstanceTest(BaseDesignTest):
     def setUp(self):
         super().setUp()
         self.design_name = "My Design"
-        self.design_instance = models.DesignInstance(design=self.design1, name=self.design_name)
+        content_type = ContentType.objects.get_for_model(models.DesignInstance)
+        self.design_instance = models.DesignInstance(
+            design=self.design1,
+            name=self.design_name,
+            status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+            live_state=Status.objects.get(
+                content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
+            ),
+        )
         self.design_instance.validated_save()
 
 
