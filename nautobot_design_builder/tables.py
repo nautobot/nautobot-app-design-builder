@@ -19,7 +19,7 @@ class DesignTable(BaseTable):
 
     job = Column(linkify=True)
     name = Column(linkify=True)
-    instance_count = Column(accessor=Accessor("instance_count"), verbose_name="Instances")
+    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Instances")
     actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
@@ -27,6 +27,13 @@ class DesignTable(BaseTable):
 
         model = Design
         fields = ("name", "job", "instance_count")
+
+
+DESIGNINSTANCETABLE = """
+<a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
+    <i class="mdi mdi-delete-sweep"></i>
+</a>
+"""
 
 
 class DesignInstanceTable(StatusTableMixin, BaseTable):
@@ -41,6 +48,7 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
             "delete",
             "changelog",
         ),
+        prepend_template=DESIGNINSTANCETABLE,
     )
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
