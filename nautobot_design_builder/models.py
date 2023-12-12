@@ -269,6 +269,7 @@ class Journal(PrimaryModel):
                 instance.tags.add(tag_design_builder)
                 instance.save()
             except AttributeError:
+                # This happens when the instance doesn't support Tags, for example Region
                 pass
 
         try:
