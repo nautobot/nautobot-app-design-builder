@@ -21,7 +21,7 @@ class DesignInstanceLiveStateChoices(ChoiceSet):
 
     DEPLOYED = "Deployed"
     PENDING = "Pending"
-    ROLLBACKED = "Rollbacked"
+    ROLLBACKED = "Rolled back"
 
     CHOICES = (
         (DEPLOYED, DEPLOYED),

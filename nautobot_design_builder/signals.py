@@ -28,7 +28,7 @@ def create_design_instance_statuses(**kwargs):
         "Disabled": ColorChoices.COLOR_GREY,
         "Deployed": ColorChoices.COLOR_GREEN,
         "Pending": ColorChoices.COLOR_ORANGE,
-        "Rollbacked": ColorChoices.COLOR_RED,
+        "Rolled back": ColorChoices.COLOR_RED,
     }
     for _, status_name in chain(choices.DesignInstanceStatusChoices, choices.DesignInstanceLiveStateChoices):
         status, _ = Status.objects.get_or_create(name=status_name, defaults={"color": color_mapping[status_name]})
