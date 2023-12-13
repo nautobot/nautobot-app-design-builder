@@ -83,7 +83,7 @@ class DesignInstanceDecommissioning(Job):
 
         self.log_success(
             obj=journal_entry.design_object,
-            message="Because not full control, we have restored ot ot the previous state.",
+            message="Because full control is not given, we have restored the object to its previous state.",
         )
 
         return True
@@ -108,10 +108,7 @@ class DesignInstanceDecommissioning(Job):
             latest_journal = design_instance.journal_set.order_by("created").last()
             self.log_info(latest_journal, "Journal to be decommissioned.")
 
-            for journal_entry in reversed(
-                latest_journal.entries.exclude(_design_object_id=None).order_by("last_updated")
-            ):
-                # if journal_entry.design_object:
+            for journal_entry in latest_journal.entries.exclude(_design_object_id=None).order_by("-last_updated"):
                 self.log_debug(f"Decommissioning changes for {journal_entry.design_object}.")
 
                 if journal_entry.full_control:
