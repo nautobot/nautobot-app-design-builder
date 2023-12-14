@@ -33,5 +33,11 @@ class DesignBuilderConfig(PluginConfig):
         """Retrieve the Git Repository slug that has been configured for the Design Builder."""
         return settings.PLUGINS_CONFIG[cls.name]["context_repository"]
 
+    # pylint: disable=no-self-argument
+    @classproperty
+    def pre_decommission_hook(cls) -> str:
+        """Retrieve the pre decommission hook callable for the Design Builder, if configured."""
+        return settings.PLUGINS_CONFIG[cls.name].get("pre_decommission_hook", "")
+
 
 config = DesignBuilderConfig  # pylint:disable=invalid-name

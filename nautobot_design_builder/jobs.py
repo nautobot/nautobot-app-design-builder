@@ -1,11 +1,13 @@
 """Generic Design Builder Jobs."""
 from django.contrib.contenttypes.models import ContentType
+from django.utils.module_loading import import_string
 
 from nautobot.extras.models import Status
 from nautobot.extras.jobs import Job, MultiObjectVar
 
-from .models import DesignInstance, JournalEntry
-from .choices import DesignInstanceStatusChoices
+from nautobot_design_builder import DesignBuilderConfig
+from nautobot_design_builder.models import DesignInstance, JournalEntry
+from nautobot_design_builder.choices import DesignInstanceStatusChoices
 
 
 class DesignInstanceDecommissioning(Job):
@@ -24,16 +26,42 @@ class DesignInstanceDecommissioning(Job):
         description = """Job to decommission one or many Design Instances from Nautobot."""
 
     def _proceed_after_pre_decommission_hook(self, design_instance):
-        # TODO: how to make this more decoupled?
+        """If configured, run a pre decomission hook.
+
+        It should return True if it's good to go, or False and the reason of the failure.
+        """
+        pre_decommission_hook = DesignBuilderConfig.pre_decommission_hook
+        if not pre_decommission_hook:
+            return True
+
         self.log_info(
             f"Checking if the design instance {design_instance} can be decommissioned by external dependencies."
         )
+
+        try:
+            func = import_string(pre_decommission_hook)
+        except ImportError as error:
+            msg = (
+                "There was an issue attempting to import the pre decommission hook "
+                f"{pre_decommission_hook}, this is expected with a local configuration issue and not related to"
+                " the Design Builder App, please contact your system admin for further details.\n"
+            )
+            raise ValueError(msg + str(error)) from error
+
+        result, reason = func(design_instance)
+
+        if not result:
+            self.log_failure(f"The pre hook validation failed due to: {reason}")
+            return False
+
         self.log_success(f"No dependency issues found for {design_instance}.")
         return True
 
     def _process_journal_entry_with_full_control(self, journal_entry):
-        # With full control, we can delete the design_object is there are no active references
-        # by other Journals
+        """It takes care of decommission changes for objects with full control.
+
+        Returns True if the decommissioning was successful.
+        """
         other_journal_entries = (
             JournalEntry.objects.filter(_design_object_id=journal_entry.design_object.id)
             .exclude(id=journal_entry.id)
@@ -57,8 +85,10 @@ class DesignInstanceDecommissioning(Job):
         return True
 
     def _process_journal_entry_without_full_control(self, journal_entry):
-        # If we don't have full control, we recover the value of the items changed to the
-        # previous value
+        """It takes care of decommission changes for objects without full control.
+
+        Returns True if the decommissioning was successful.
+        """
         for attribute in journal_entry.changes["differences"].get("added", {}):
             value_changed = journal_entry.changes["differences"]["added"][attribute]
             old_value = journal_entry.changes["differences"]["removed"][attribute]
@@ -112,9 +142,11 @@ class DesignInstanceDecommissioning(Job):
                 self.log_debug(f"Decommissioning changes for {journal_entry.design_object}.")
 
                 if journal_entry.full_control:
+                    # With full control, we can delete the design_object is there are no active references by other Journals
                     if not self._process_journal_entry_with_full_control(journal_entry):
                         found_cross_references = True
                 else:
+                    # If we don't have full control, we recover the value of the items changed to the previous value
                     self._process_journal_entry_without_full_control(journal_entry)
 
             content_type = ContentType.objects.get_for_model(DesignInstance)
