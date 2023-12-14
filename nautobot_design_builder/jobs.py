@@ -1,6 +1,5 @@
 """Generic Design Builder Jobs."""
 from django.contrib.contenttypes.models import ContentType
-from django.utils.module_loading import import_string
 
 from nautobot.extras.models import Status
 from nautobot.extras.jobs import Job, MultiObjectVar
@@ -30,25 +29,14 @@ class DesignInstanceDecommissioning(Job):
 
         It should return True if it's good to go, or False and the reason of the failure.
         """
-        pre_decommission_hook = DesignBuilderConfig.pre_decommission_hook
-        if not pre_decommission_hook:
+        if not DesignBuilderConfig.pre_decommission_hook:
             return True
 
         self.log_info(
             f"Checking if the design instance {design_instance} can be decommissioned by external dependencies."
         )
 
-        try:
-            func = import_string(pre_decommission_hook)
-        except ImportError as error:
-            msg = (
-                "There was an issue attempting to import the pre decommission hook "
-                f"{pre_decommission_hook}, this is expected with a local configuration issue and not related to"
-                " the Design Builder App, please contact your system admin for further details.\n"
-            )
-            raise ValueError(msg + str(error)) from error
-
-        result, reason = func(design_instance)
+        result, reason = DesignBuilderConfig.pre_decommission_hook(design_instance)
 
         if not result:
             self.log_failure(f"The pre hook validation failed due to: {reason}")

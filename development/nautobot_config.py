@@ -143,6 +143,16 @@ nautobot_version = Version(Version(metadata.version("nautobot")).base_version)
 if nautobot_version < Version("2.0"):
     PLUGINS.append("nautobot_bgp_models")
 
-PLUGINS_CONFIG = {"design_builder": {"context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None)}}
+
+def pre_decommission_hook_example(design_instance):
+    return True, "Everything good!"
+
+
+PLUGINS_CONFIG = {
+    "nautobot_design_builder": {
+        "context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None),
+        "pre_decommission_hook": pre_decommission_hook_example,
+    }
+}
 
 STRICT_FILTERING = False
