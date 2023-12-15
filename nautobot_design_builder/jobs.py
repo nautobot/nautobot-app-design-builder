@@ -94,8 +94,8 @@ class DesignInstanceDecommissioning(Job):
                 keys_to_remove = []
                 for key in current_value:
                     if key in value_changed:
-                        if old_value:
-                            current_value = old_value[key]
+                        if key in old_value:
+                            current_value[key] = old_value[key]
                         else:
                             keys_to_remove.append(key)
                 for key in keys_to_remove:
