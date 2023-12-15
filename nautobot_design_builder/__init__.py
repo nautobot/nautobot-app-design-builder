@@ -35,9 +35,15 @@ class DesignBuilderConfig(PluginConfig):
 
     # pylint: disable=no-self-argument
     @classproperty
-    def pre_decommission_hook(cls) -> str:
+    def pre_decommission_hook(cls):
         """Retrieve the pre decommission hook callable for the Design Builder, if configured."""
         return settings.PLUGINS_CONFIG[cls.name].get("pre_decommission_hook", "")
+
+    # pylint: disable=no-self-argument
+    @classproperty
+    def post_decommission_hook(cls):
+        """Retrieve the post decommission hook callable for the Design Builder, if configured."""
+        return settings.PLUGINS_CONFIG[cls.name].get("post_decommission_hook", "")
 
 
 config = DesignBuilderConfig  # pylint:disable=invalid-name
