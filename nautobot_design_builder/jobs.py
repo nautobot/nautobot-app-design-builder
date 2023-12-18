@@ -52,10 +52,12 @@ class DesignInstanceDecommissioning(Job):
 
         self.log_success(f"No dependency issues found for {design_instance}.")
 
+    # TODO: code into the Journal Entry as a revert method depending on the full control
+
     def _process_journal_entry_with_full_control(self, journal_entry):
         """It takes care of decommission changes for objects with full control.
 
-        Returns True if the decommissioning was successful.
+        Returns True if the decommissioning was successful or False if there are cross-references.
         """
         other_journal_entries = (
             JournalEntry.objects.filter(_design_object_id=journal_entry.design_object.id)

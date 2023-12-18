@@ -1,6 +1,7 @@
 """Decommissioning Tests."""
 import uuid
 
+
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
@@ -14,6 +15,7 @@ from nautobot.extras.models import Secret
 from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder.jobs import DesignInstanceDecommissioning
 from nautobot_design_builder import models, choices
+
 from .designs import test_designs
 
 
@@ -31,10 +33,6 @@ class DecommissionJobTestCase(TransactionTestCase):  # pylint: disable=too-many-
     """Test the DecommissionJobTestCase class."""
 
     job_class = DesignInstanceDecommissioning
-    databases = (
-        "default",
-        "job_logs",
-    )
 
     def setUp(self):
         """Per-test setup."""
@@ -49,6 +47,7 @@ class DecommissionJobTestCase(TransactionTestCase):  # pylint: disable=too-many-
             job_id=uuid.uuid4(),
         )
 
+        # Design Builder Job
         defaults = {
             "grouping": "Designs",
             "source": "local",
@@ -56,7 +55,6 @@ class DecommissionJobTestCase(TransactionTestCase):  # pylint: disable=too-many-
             "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
         }
 
-        # Design Builder Job
         self.job1 = JobModel(
             **defaults.copy(),
             name="Simple Design",
@@ -64,7 +62,7 @@ class DecommissionJobTestCase(TransactionTestCase):  # pylint: disable=too-many-
         )
         self.job1.validated_save()
 
-        self.design1 = models.Design.objects.create(job=self.job1)
+        self.design1, _ = models.Design.objects.get_or_create(job=self.job1)
         self.content_type = ContentType.objects.get_for_model(models.DesignInstance)
         self.design_instance = models.DesignInstance(
             design=self.design1,

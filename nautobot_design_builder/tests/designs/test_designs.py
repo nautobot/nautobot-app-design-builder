@@ -30,7 +30,7 @@ class MultiDesignJob(DesignJob):
     """Design job that is implemented from multiple design files."""
 
     class Meta:  # pylint: disable=too-few-public-methods
-        name = "Simple Design"
+        name = "Multi Design"
         design_files = [
             "templates/simple_design.yaml.j2",
             "templates/simple_design_2.yaml.j2",
@@ -41,7 +41,7 @@ class MultiDesignJobWithError(DesignJob):
     """Design job that includes an error (for unit testing)."""
 
     class Meta:  # pylint: disable=too-few-public-methods
-        name = "Simple Design"
+        name = "Multi Design Job with Error"
         design_files = [
             "templates/simple_design.yaml.j2",
             "templates/simple_design.yaml.j2",
