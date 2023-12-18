@@ -1,4 +1,5 @@
 """Decommissioning Tests."""
+from unittest import mock
 import uuid
 
 
@@ -8,9 +9,9 @@ from django.test import override_settings
 
 from nautobot.extras.models import JobResult
 from nautobot.extras.models import Job as JobModel
-from nautobot.utilities.testing import TransactionTestCase
 from nautobot.extras.models import Status
 from nautobot.extras.models import Secret
+from nautobot_design_builder.tests import DesignTestCase
 
 from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder.jobs import DesignInstanceDecommissioning
@@ -29,7 +30,7 @@ def fake_ko(design_instance):  # pylint: disable=unused-argument
     return False, "reason"
 
 
-class DecommissionJobTestCase(TransactionTestCase):  # pylint: disable=too-many-instance-attributes
+class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-instance-attributes
     """Test the DecommissionJobTestCase class."""
 
     job_class = DesignInstanceDecommissioning
@@ -39,13 +40,14 @@ class DecommissionJobTestCase(TransactionTestCase):  # pylint: disable=too-many-
         super().setUp()
 
         # Decommissioning Job
-        self.job = self.job_class()
+        self.job = self.get_mocked_job(self.job_class)
 
         self.job.job_result = JobResult.objects.create(
             name="fake job",
             obj_type=ContentType.objects.get(app_label="extras", model="job"),
             job_id=uuid.uuid4(),
         )
+        self.job.job_result.log = mock.Mock()
 
         # Design Builder Job
         defaults = {
