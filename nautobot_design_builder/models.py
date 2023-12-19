@@ -349,7 +349,14 @@ class JournalEntry(PrimaryModel):
         if not self.design_object:
             raise ValidationError("No reference object found for this JournalEntry.")
 
-        # TODO: why do we need this? I had to add to get the actual values changed from the tests
+        # It is possible that the journal entry contains a stale copy of the
+        # design object. Consider this example: A journal entry is create and
+        # kept in memory. The object it represents is changed in another area
+        # of code, but using a different in-memory object. The in-memory copy
+        # of the journal entry's `design_object` is now no-longer representative
+        # of the actual database state. Since we need to know the current state
+        # of the design object, the only way to be sure of this is to
+        # refresh our copy.
         self.design_object.refresh_from_db()
 
         if self.full_control:
