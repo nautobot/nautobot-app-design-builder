@@ -14,19 +14,23 @@ from .. import models, choices
 class BaseDesignInstanceTest(BaseDesignTest):
     """Base fixtures for tests using design instances."""
 
-    def setUp(self):
-        super().setUp()
-        self.design_name = "My Design"
+    def create_design_instance(self, design_name, design):
         content_type = ContentType.objects.get_for_model(models.DesignInstance)
-        self.design_instance = models.DesignInstance(
-            design=self.design1,
-            name=self.design_name,
+        design_instance = models.DesignInstance(
+            design=design,
+            name=design_name,
             status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
             live_state=Status.objects.get(
                 content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
             ),
         )
-        self.design_instance.validated_save()
+        design_instance.validated_save()
+        return design_instance
+
+    def setUp(self):
+        super().setUp()
+        self.design_name = "My Design"
+        self.design_instance = self.create_design_instance(self.design_name, self.design1)
 
 
 class TestDesignInstance(BaseDesignInstanceTest):

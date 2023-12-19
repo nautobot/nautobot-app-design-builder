@@ -107,6 +107,54 @@ def _map_query_values(query: Mapping) -> Mapping:
     return retval
 
 
+def calculate_changes(current_state, initial_state=None, created=False, pre_change=False):
+    """Determine the differences between the original instance and the current.
+
+    This will calculate the changes between the instance's initial state
+    and its current state. If pre_change is supplied it will use this
+    dictionary as the initial state rather than the current ModelInstance
+    initial state.
+
+    Args:
+        pre_change (dict, optional): Initial state for comparison. If not
+        supplied then the initial state from this instance is used.
+
+    Returns:
+        Return a dictionary with the changed object's serialized data compared
+        with either the model instance initial state, or the supplied pre_change
+        state. The dicionary has the following values:
+
+        dict: {
+            "prechange": dict(),
+            "postchange": dict(),
+            "differences": {
+                "removed": dict(),
+                "added": dict(),
+            }
+        }
+    """
+    post_change = serialize_object_v2(current_state)
+
+    if not created and not pre_change:
+        pre_change = initial_state
+
+    if pre_change and post_change:
+        diff_added = shallow_compare_dict(pre_change, post_change, exclude=["last_updated"])
+        diff_removed = {x: pre_change.get(x) for x in diff_added}
+    elif pre_change and not post_change:
+        diff_added, diff_removed = None, pre_change
+    else:
+        diff_added, diff_removed = post_change, None
+
+    return {
+        "pre_change": pre_change,
+        "post_change": post_change,
+        "differences": {
+            "added": diff_added,
+            "removed": diff_removed,
+        },
+    }
+
 class ModelInstance:  # pylint: disable=too-many-instance-attributes
     """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file."""
 
@@ -173,50 +221,15 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     def get_changes(self, pre_change=None):
         """Determine the differences between the original instance and the current.
 
-        This will calculate the changes between the ModelInstance initial state
-        and its current state. If pre_change is supplied it will use this
-        dictionary as the initial state rather than the current ModelInstance
-        initial state.
-
-        Args:
-            pre_change (dict, optional): Initial state for comparison. If not
-            supplied then the initial state from this instance is used.
-
-        Returns:
-            Return a dictionary with the changed object's serialized data compared
-            with either the model instance initial state, or the supplied pre_change
-            state. The dicionary has the following values:
-
-            dict: {
-                "prechange": dict(),
-                "postchange": dict(),
-                "differences": {
-                    "removed": dict(),
-                    "added": dict(),
-                }
-            }
+        This uses `calculate_changes` to determine the change dictionary. See that
+        method for details.
         """
-        post_change = serialize_object_v2(self.instance)
-
-        if not self.created and not pre_change:
-            pre_change = self._initial_state
-
-        if pre_change and post_change:
-            diff_added = shallow_compare_dict(pre_change, post_change, exclude=["last_updated"])
-            diff_removed = {x: pre_change.get(x) for x in diff_added}
-        elif pre_change and not post_change:
-            diff_added, diff_removed = None, pre_change
-        else:
-            diff_added, diff_removed = post_change, None
-
-        return {
-            "pre_change": pre_change,
-            "post_change": post_change,
-            "differences": {
-                "added": diff_added,
-                "removed": diff_removed,
-            },
-        }
+        return calculate_changes(
+            self.instance,
+            initial_state=self._initial_state,
+            created=self.created,
+            pre_change=pre_change,
+        )
 
     def create_child(
         self,

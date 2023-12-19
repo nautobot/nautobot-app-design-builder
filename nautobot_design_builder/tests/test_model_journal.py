@@ -1,11 +1,14 @@
 """Test Journal."""
 
+from typing import Type
+from unittest import mock
 import uuid
 
 from django.contrib.contenttypes.models import ContentType
 
 from nautobot.dcim.models import Manufacturer
 from nautobot.extras.models import JobResult, Job
+from nautobot_design_builder.design_job import DesignJob
 
 from nautobot_design_builder.util import nautobot_version
 
@@ -13,30 +16,38 @@ from .test_model_design_instance import BaseDesignInstanceTest
 from .. import models
 
 
-class TestJournal(BaseDesignInstanceTest):
-    """Test Journal."""
+class BaseJournalTest(BaseDesignInstanceTest):
+    def create_journal(self, job, design_instance, kwargs):
+        job_result = JobResult(
+            job_model=self.job1,
+            name=job.class_path,
+            job_id=uuid.uuid4(),
+            obj_type=ContentType.objects.get_for_model(Job),
+        )
+        job_result.log = mock.Mock()
+        if nautobot_version < "2.0":
+            job_result.job_kwargs = {"data": kwargs}
+        else:
+            job_result.task_kwargs = kwargs
+        job_result.validated_save()
+        journal = models.Journal(design_instance=design_instance, job_result=job_result)
+        journal.validated_save()
+        return journal
 
     def setUp(self):
         super().setUp()
-        self.manufacturer = Manufacturer.objects.create(name="manufacturer")
-        kwargs = {
+        self.original_name = "original equipment manufacturer"
+        self.manufacturer = Manufacturer.objects.create(name=self.original_name)
+        self.job_kwargs = {
             "manufacturer": f"{self.manufacturer.pk}",
             "instance": "my instance",
         }
 
-        self.job_result = JobResult(
-            job_model=self.job1,
-            name=self.job1.class_path,
-            job_id=uuid.uuid4(),
-            obj_type=ContentType.objects.get_for_model(Job),
-        )
-        if nautobot_version < "2.0":
-            self.job_result.job_kwargs = {"data": kwargs}
-        else:
-            self.job_result.task_kwargs = kwargs
-        self.job_result.validated_save()
-        self.journal = models.Journal(design_instance=self.design_instance, job_result=self.job_result)
-        self.journal.validated_save()
+        self.journal = self.create_journal(self.job1, self.design_instance, self.job_kwargs)
+
+
+class TestJournal(BaseJournalTest):
+    """Test Journal."""
 
     def test_user_input(self):
         user_input = self.journal.user_input

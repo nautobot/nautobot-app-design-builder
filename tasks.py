@@ -396,7 +396,7 @@ def unittest(context, keepdb=False, label="nautobot_design_builder", failfast=Fa
     if buffer:
         command += " --buffer"
     run_command(context, command)
-
+    run_command(context, "coverage lcov --include 'nautobot_design_builder/*' -o lcov.info")
 
 @task
 def unittest_coverage(context):

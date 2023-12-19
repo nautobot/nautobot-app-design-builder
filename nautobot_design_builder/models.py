@@ -282,12 +282,23 @@ class Journal(PrimaryModel):
             entry.changes = model_instance.get_changes(entry.changes["pre_change"])
             entry.save()
         except JournalEntry.DoesNotExist:
-            self.entries.create(
+            entry = self.entries.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
                 changes=model_instance.get_changes(),
                 full_control=model_instance.created,
             )
+        return entry
+
+
+class JournalEntryQuerySet(RestrictedQuerySet):
+    def exclude_decommissioned(self):
+        return self.exclude(
+            journal__design_instance__status__name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
+        )
+    
+    def filter_related(self, entry: "JournalEntry"):
+        return self.filter(_design_object_id=entry._design_object_id).exclude(id=entry.id)
 
 
 class JournalEntry(PrimaryModel):
@@ -303,6 +314,8 @@ class JournalEntry(PrimaryModel):
     Args:
         PrimaryModel (_type_): _description_
     """
+
+    objects = JournalEntryQuerySet.as_manager()
 
     journal = models.ForeignKey(
         to=Journal,
@@ -324,3 +337,40 @@ class JournalEntry(PrimaryModel):
     def get_absolute_url(self):
         """Return detail view for design instances."""
         return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
+
+    def revert(self):
+        """Revert the changes that are represented in this journal entry"""
+
+        if self.full_control:
+            related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
+            if related_entries:
+                # TODO: Should this be a DesignValidationError?
+                raise ValidationError("This object is referenced by other active Journals")
+
+            self.design_object.delete()
+        else:
+            for attribute in self.changes["differences"].get("added", {}):
+                value_changed = self.changes["differences"]["added"][attribute]
+                old_value = self.changes["differences"]["removed"][attribute]
+                if isinstance(value_changed, dict):
+                    # If the value is a dictionary (e.g., config context), we only update the
+                    # keys changed, honouring the current value of the attribute
+                    current_value = getattr(self.design_object, attribute)
+                    keys_to_remove = []
+                    for key in current_value:
+                        if key in value_changed:
+                            if key in old_value:
+                                current_value[key] = old_value[key]
+                            # TODO: I don't think this works. Keys that were
+                            # added won't ever be in `current_value` at least
+                            # I can't seem to write a test that actually
+                            # executes the next two lines or the subsequent
+                            # `for` loop
+                            else:
+                                keys_to_remove.append(key)
+                    for key in keys_to_remove:
+                        del current_value[key]
+                    setattr(self.design_object, attribute, current_value)
+                else:
+                    setattr(self.design_object, attribute, old_value)
+                self.design_object.save()

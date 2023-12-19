@@ -17,6 +17,17 @@ class SimpleDesign(DesignJob):
         design_file = "templates/simple_design.yaml.j2"
 
 
+class SimpleDesignWithInput(DesignJob):
+    """Simple design job with input."""
+
+    instance = StringVar()
+    secret = StringVar()
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design With Input"
+        design_file = "templates/simple_design_with_input.yaml.j2"
+
+
 class SimpleDesignReport(DesignJob):
     """Simple design job that includes a post-implementation report."""
 

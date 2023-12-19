@@ -145,6 +145,8 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         journal_entry_2.validated_save()
 
+        # TODO: my refactoring caused this test to now fail. Need to
+        # investigate.
         self.assertRaises(
             ValueError,
             self.job.run,

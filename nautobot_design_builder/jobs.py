@@ -1,11 +1,12 @@
 """Generic Design Builder Jobs."""
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 
 from nautobot.extras.models import Status
 from nautobot.extras.jobs import Job, MultiObjectVar
 
 from nautobot_design_builder import DesignBuilderConfig
-from nautobot_design_builder.models import DesignInstance, JournalEntry
+from nautobot_design_builder.models import DesignInstance
 from nautobot_design_builder.choices import DesignInstanceStatusChoices
 
 
@@ -52,69 +53,6 @@ class DesignInstanceDecommissioning(Job):
 
         self.log_success(f"No dependency issues found for {design_instance}.")
 
-    # TODO: code into the Journal Entry as a revert method depending on the full control
-
-    def _process_journal_entry_with_full_control(self, journal_entry):
-        """It takes care of decommission changes for objects with full control.
-
-        Returns True if the decommissioning was successful or False if there are cross-references.
-        """
-        other_journal_entries = (
-            JournalEntry.objects.filter(_design_object_id=journal_entry.design_object.id)
-            .exclude(id=journal_entry.id)
-            .exclude(journal__design_instance__status__name=DesignInstanceStatusChoices.DECOMMISSIONED)
-        )
-
-        if other_journal_entries:
-            self.log_failure(
-                journal_entry.design_object,
-                message=(
-                    "This object is referenced by other active Journals: ",
-                    f"{list(other_journal_entries.values_list('id', flat=True))}",
-                ),
-            )
-            return False
-
-        journal_entry.design_object.delete()
-
-        self.log_success(obj=journal_entry.design_object, message=f"Object {journal_entry.design_object} removed.")
-
-        return True
-
-    def _process_journal_entry_without_full_control(self, journal_entry):
-        """It takes care of decommission changes for objects without full control.
-
-        Returns True if the decommissioning was successful.
-        """
-        for attribute in journal_entry.changes["differences"].get("added", {}):
-            value_changed = journal_entry.changes["differences"]["added"][attribute]
-            old_value = journal_entry.changes["differences"]["removed"][attribute]
-            if isinstance(value_changed, dict):
-                # If the value is a dictionary (e.g., config context), we only update the
-                # keys changed, honouring the current value of the attribute
-                current_value = getattr(journal_entry.design_object, attribute)
-                keys_to_remove = []
-                for key in current_value:
-                    if key in value_changed:
-                        if key in old_value:
-                            current_value[key] = old_value[key]
-                        else:
-                            keys_to_remove.append(key)
-                for key in keys_to_remove:
-                    del current_value[key]
-                setattr(journal_entry.design_object, attribute, current_value)
-            else:
-                setattr(journal_entry.design_object, attribute, old_value)
-
-            journal_entry.design_object.save()
-
-        self.log_success(
-            obj=journal_entry.design_object,
-            message="Because full control is not given, we have restored the object to its previous state.",
-        )
-
-        return True
-
     def run(self, data, commit):
         """Execute Decommissioning job."""
         design_instances = data["design_instances"]
@@ -132,16 +70,24 @@ class DesignInstanceDecommissioning(Job):
             latest_journal = design_instance.journal_set.order_by("created").last()
             self.log_info(latest_journal, "Journal to be decommissioned.")
 
+            # TODO: we refactored the reversion of journal entries into the `JournalEntry` model.
+            # We should do the same here and refactor this into the `Journal` model.
             for journal_entry in latest_journal.entries.exclude(_design_object_id=None).order_by("-last_updated"):
                 self.log_debug(f"Decommissioning changes for {journal_entry.design_object}.")
 
-                if journal_entry.full_control:
-                    # With full control, we can delete the design_object is there are no active references by other Journals
-                    if not self._process_journal_entry_with_full_control(journal_entry):
-                        found_cross_references = True
-                else:
-                    # If we don't have full control, we recover the value of the items changed to the previous value
-                    self._process_journal_entry_without_full_control(journal_entry)
+                try:
+                    # TODO: possibly return a value that indicates updated/deleted?
+                    # it is really only helpful for the log message
+                    journal_entry.revert()
+                    self.log_success(
+                        obj=journal_entry.design_object,
+                        message="Restored the object to its previous state.",
+                    )
+                except ValidationError as ex:
+                    self.log_failure(
+                        journal_entry.design_object,
+                        message=str(ex)
+                    )
 
             content_type = ContentType.objects.get_for_model(DesignInstance)
             design_instance.status = Status.objects.get(

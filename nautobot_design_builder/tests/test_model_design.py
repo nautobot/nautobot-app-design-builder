@@ -4,14 +4,15 @@ from os import path
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.test import TestCase
 from nautobot.extras.models import Job as JobModel
+
+from nautobot_design_builder.tests import DesignTestCase
 
 from .designs import test_designs
 from .. import models
 
 
-class BaseDesignTest(TestCase):
+class BaseDesignTest(DesignTestCase):
     """Common fixtures for design builder model testing."""
 
     def setUp(self):
