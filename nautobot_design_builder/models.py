@@ -349,6 +349,9 @@ class JournalEntry(PrimaryModel):
         if not self.design_object:
             raise ValidationError("No reference object found for this JournalEntry.")
 
+        # TODO: why do we need this? I had to add to get the actual values changed from the tests
+        self.design_object.refresh_from_db()
+
         if self.full_control:
             related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
             if related_entries:
@@ -359,9 +362,15 @@ class JournalEntry(PrimaryModel):
         else:
             if not self.changes:
                 raise ValidationError("No changes found in the Journal Entry.")
-            for attribute in self.changes["differences"].get("added", {}):
-                value_changed = self.changes["differences"]["added"][attribute]
-                old_value = self.changes["differences"]["removed"][attribute]
+
+            if "differences" not in self.changes:
+                raise ValidationError("`differences` key not present.")
+
+            differences = self.changes["differences"]
+
+            for attribute in differences.get("added", {}):
+                value_changed = differences["added"][attribute]
+                old_value = differences["removed"][attribute]
                 if isinstance(value_changed, dict):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
@@ -371,16 +380,18 @@ class JournalEntry(PrimaryModel):
                         if key in value_changed:
                             if key in old_value:
                                 current_value[key] = old_value[key]
-                            # TODO: I don't think this works. Keys that were
-                            # added won't ever be in `current_value` at least
-                            # I can't seem to write a test that actually
-                            # executes the next two lines or the subsequent
-                            # `for` loop
                             else:
                                 keys_to_remove.append(key)
+
+                    # Recovering old values that the JournalEntry deleted.
+                    for key in old_value:
+                        if key not in value_changed:
+                            current_value[key] = old_value[key]
+
                     for key in keys_to_remove:
                         del current_value[key]
                     setattr(self.design_object, attribute, current_value)
                 else:
                     setattr(self.design_object, attribute, old_value)
+
                 self.design_object.save()

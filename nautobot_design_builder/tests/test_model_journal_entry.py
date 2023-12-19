@@ -129,3 +129,29 @@ class TestJournalEntry(TestCase):
                 "key1": "initial-value",
             },
         )
+
+    def test_new_key_reverted_without_original_and_with_a_new_one(self):
+        secret = Secret.objects.get(id=self.secret.id)
+        secret.parameters["key2"] = "changed-value"
+        secret.save()
+        entry = self.get_entry(secret)
+        secret.refresh_from_db()
+        self.assertDictEqual(
+            secret.parameters,
+            {"key1": "initial-value", "key2": "changed-value"},
+        )
+
+        # Delete the initial value and add a new one
+        del secret.parameters["key1"]
+        secret.parameters["key3"] = "changed-value"
+        secret.save()
+
+        entry.revert()
+        secret.refresh_from_db()
+
+        self.assertDictEqual(
+            self.secret.parameters,
+            {
+                "key3": "changed-value",
+            },
+        )

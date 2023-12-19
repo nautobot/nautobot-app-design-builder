@@ -249,6 +249,31 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
 
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
+    def test_decommission_run_without_full_control_dict_value_with_new_values_and_old_deleted(self):
+        """This test validates that an original dictionary with `initial_params`, that gets added
+        new values, and later another `new_value` out of control, and removing the `initial_params`works as expected.
+        """
+        new_params = {"key3": "value3"}
+        self.secret.parameters = {**self.changed_params, **new_params}
+        self.secret.validated_save()
+
+        journal_entry = models.JournalEntry.objects.create(
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=False,
+            changes={
+                "differences": {
+                    "added": {"parameters": self.changed_params},
+                    "removed": {"parameters": self.initial_params},
+                }
+            },
+        )
+        journal_entry.validated_save()
+
+        self.job.run(data={"design_instances": [self.design_instance]}, commit=True)
+
+        self.assertEqual({**self.initial_params, **new_params}, Secret.objects.first().parameters)
+
     @override_settings(PLUGINS_CONFIG={"nautobot_design_builder": {"pre_decommission_hook": fake_ok}})
     def test_decommission_run_with_pre_hook_pass(self):
         self.assertEqual(1, Secret.objects.count())
