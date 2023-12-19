@@ -1,13 +1,13 @@
 """Generic Design Builder Jobs."""
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
 
 from nautobot.extras.models import Status
 from nautobot.extras.jobs import Job, MultiObjectVar
 
-from nautobot_design_builder import DesignBuilderConfig
-from nautobot_design_builder.models import DesignInstance
-from nautobot_design_builder.choices import DesignInstanceStatusChoices
+from . import DesignBuilderConfig
+from .logging import get_logger
+from .models import DesignInstance
+from .choices import DesignInstanceStatusChoices
 
 
 class DesignInstanceDecommissioning(Job):
@@ -68,32 +68,22 @@ class DesignInstanceDecommissioning(Job):
             self.log_info(obj=design_instance, message="Working on resetting objects for this Design Instance...")
 
             # TODO: When update mode is available, this should cover the journals stacked
+            # Also, I feel like decommissioning a design instance can be extracted into
+            # the `DesignInstance` class, much like we've done for `Journal.revert` and 
+            # `JournalEntry.revert`. I think this would also make it easier to unit test
+            # the functionality.
             latest_journal = design_instance.journal_set.order_by("created").last()
             self.log_info(latest_journal, "Journal to be decommissioned.")
 
-            # TODO: we refactored the reversion of journal entries into the `JournalEntry` model.
-            # We should do the same here and refactor this into the `Journal` model.
-            for journal_entry in latest_journal.entries.exclude(_design_object_id=None).order_by("-last_updated"):
-                self.log_debug(f"Decommissioning changes for {journal_entry.design_object}.")
-
-                try:
-                    # TODO: possibly return a value that indicates updated/deleted?
-                    # it is really only helpful for the log message
-                    journal_entry.revert()
-                    self.log_success(
-                        obj=journal_entry.design_object,
-                        message="Restored the object to its previous state.",
-                    )
-                except ValidationError as ex:
-                    self.log_failure(journal_entry.design_object, message=str(ex))
-                    raise ValueError(ex)
-
+            latest_journal.revert(local_logger=get_logger(__name__, self.job_result))
             content_type = ContentType.objects.get_for_model(DesignInstance)
             design_instance.status = Status.objects.get(
                 content_types=content_type, name=DesignInstanceStatusChoices.DECOMMISSIONED
             )
             design_instance.save()
-
+            # TODO: At the moment this is always `False` so we need to figure
+            # out what the original intent was. I believe that this is handled
+            # now with exceptions from the two `revert` methods.
             if found_cross_references:
                 raise ValueError(
                     "Because of cross-references between design instances, decommissioning has been cancelled."

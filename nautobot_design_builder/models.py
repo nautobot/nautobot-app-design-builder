@@ -1,4 +1,5 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
+import logging
 from typing import List
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
@@ -13,9 +14,10 @@ from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
 
-
 from .util import nautobot_version
 from . import choices
+
+logger = logging.getLogger(__name__)
 
 
 # TODO: this method needs to be put in the custom validators module.
@@ -290,6 +292,28 @@ class Journal(PrimaryModel):
             )
         return entry
 
+    def revert(self, local_logger: logging.Logger = logger):
+        """Revert the changes represented in this Journal.
+
+        Raises:
+            ValidationError: _description_
+
+        Returns:
+            _type_: _description_
+        """
+        # TODO: In what case is _design_object_id not set? I know we have `blank=True`
+        # in the foreign key constraints, but I don't know when that would ever
+        # happen and whether or not we should perhaps always require a design_object.
+        # Without a design object we cannot have changes, right? I suppose if the
+        # object has been deleted since the change was made then it wouldn't exist,
+        # but I think we need to discuss the implications of this further.
+        for journal_entry in self.entries.exclude(_design_object_id=None).order_by("-last_updated"):
+            try:
+                journal_entry.revert(local_logger=local_logger)
+            except ValidationError as ex:
+                local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
+                raise ValueError(ex)
+
 
 class JournalEntryQuerySet(RestrictedQuerySet):
     """Queryset for `JournalEntry` objects."""
@@ -344,7 +368,7 @@ class JournalEntry(PrimaryModel):
 
     # TODO: adding to refactor later
     # pylint: disable=too-many-nested-blocks,too-many-branches
-    def revert(self):
+    def revert(self, local_logger: logging.Logger = logger):
         """Revert the changes that are represented in this journal entry."""
         if not self.design_object:
             raise ValidationError("No reference object found for this JournalEntry.")
@@ -358,19 +382,34 @@ class JournalEntry(PrimaryModel):
         # of the design object, the only way to be sure of this is to
         # refresh our copy.
         self.design_object.refresh_from_db()
-
+        object_type = self.design_object._meta.verbose_name.title()
+        object_str = str(self.design_object)
         if self.full_control:
             related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
             if related_entries:
-                # TODO: Should this be a DesignValidationError?
+                # TODO: Should this be a `DesignValidationError` or even a more specific
+                # error, such as `CrossReferenceError`?
                 raise ValidationError("This object is referenced by other active Journals")
 
             self.design_object.delete()
+            local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:
+            # TODO: Is this really an error condition? Nothing can be done, but
+            # also, nothing needs to be done. If nothing was changed then reverting
+            # means nothing will change... it's like a NOOP, but is that an error?
             if not self.changes:
                 raise ValidationError("No changes found in the Journal Entry.")
 
             if "differences" not in self.changes:
+                # TODO: This error message is going to have very little
+                # meaning to an end user. If we get to this point then
+                # there is actually a programming error, since we always
+                # set the `differences` key in the changes dictionary (at least
+                # I think that's the case)
+                #
+                # We should probably change the `changes` dictionary to
+                # a concrete class so that our static analysis tools can catch
+                # problems like this.
                 raise ValidationError("`differences` key not present.")
 
             differences = self.changes["differences"]
@@ -402,3 +441,9 @@ class JournalEntry(PrimaryModel):
                     setattr(self.design_object, attribute, old_value)
 
                 self.design_object.save()
+                local_logger.info(
+                    "%s %s has been reverted to its previous state.",
+                    object_type,
+                    object_str,
+                    extra={"obj": self.design_object},
+                )
