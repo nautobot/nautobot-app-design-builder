@@ -29,12 +29,13 @@ class TestJournalEntry(TestCase):
         )
 
     def get_entry(self, updated_secret):
+        """Generate a JournalEntry."""
         return JournalEntry(
             design_object=self.secret,
             changes=calculate_changes(
                 updated_secret,
                 initial_state=self.initial_state,
-            )
+            ),
         )
 
     @patch("nautobot_design_builder.models.JournalEntry.objects")
@@ -58,7 +59,7 @@ class TestJournalEntry(TestCase):
 
     def test_updated_scalar(self):
         updated_secret = Secret.objects.get(id=self.secret.id)
-        updated_secret.name="new name"
+        updated_secret.name = "new name"
         updated_secret.save()
         entry = self.get_entry(updated_secret)
         entry.revert()
@@ -71,15 +72,21 @@ class TestJournalEntry(TestCase):
         secret.save()
         entry = self.get_entry(secret)
         secret.refresh_from_db()
-        self.assertDictEqual(secret.parameters, {
-            "key1": "initial-value",
-            "key2": "new-value",
-        })
+        self.assertDictEqual(
+            secret.parameters,
+            {
+                "key1": "initial-value",
+                "key2": "new-value",
+            },
+        )
         entry.revert()
         secret.refresh_from_db()
-        self.assertDictEqual(secret.parameters, {
-            "key1": "initial-value",
-        })
+        self.assertDictEqual(
+            secret.parameters,
+            {
+                "key1": "initial-value",
+            },
+        )
 
     def test_change_dictionary_key(self):
         secret = Secret.objects.get(id=self.secret.id)
@@ -87,14 +94,20 @@ class TestJournalEntry(TestCase):
         secret.save()
         entry = self.get_entry(secret)
         secret.refresh_from_db()
-        self.assertDictEqual(secret.parameters, {
-            "key1": "new-value",
-        })
+        self.assertDictEqual(
+            secret.parameters,
+            {
+                "key1": "new-value",
+            },
+        )
         entry.revert()
         secret.refresh_from_db()
-        self.assertDictEqual(self.secret.parameters, {
-            "key1": "initial-value",
-        })
+        self.assertDictEqual(
+            self.secret.parameters,
+            {
+                "key1": "initial-value",
+            },
+        )
 
     def test_remove_dictionary_key(self):
         secret = Secret.objects.get(id=self.secret.id)
@@ -102,11 +115,17 @@ class TestJournalEntry(TestCase):
         secret.save()
         entry = self.get_entry(secret)
         secret.refresh_from_db()
-        self.assertDictEqual(secret.parameters, {
-            "key2": "new-value",
-        })
+        self.assertDictEqual(
+            secret.parameters,
+            {
+                "key2": "new-value",
+            },
+        )
         entry.revert()
         secret.refresh_from_db()
-        self.assertDictEqual(self.secret.parameters, {
-            "key1": "initial-value",
-        })
+        self.assertDictEqual(
+            self.secret.parameters,
+            {
+                "key1": "initial-value",
+            },
+        )

@@ -6,7 +6,6 @@ import uuid
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
-
 from nautobot.extras.models import JobResult
 from nautobot.extras.models import Job as JobModel
 from nautobot.extras.models import Status
@@ -145,8 +144,6 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         journal_entry_2.validated_save()
 
-        # TODO: my refactoring caused this test to now fail. Need to
-        # investigate.
         self.assertRaises(
             ValueError,
             self.job.run,

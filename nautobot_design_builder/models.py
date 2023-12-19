@@ -292,13 +292,17 @@ class Journal(PrimaryModel):
 
 
 class JournalEntryQuerySet(RestrictedQuerySet):
+    """Queryset for `JournalEntry` objects."""
+
     def exclude_decommissioned(self):
-        return self.exclude(
-            journal__design_instance__status__name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
-        )
-    
+        """Returns JournalEntry which the related DesignInstance is not decommissioned."""
+        return self.exclude(journal__design_instance__status__name=choices.DesignInstanceStatusChoices.DECOMMISSIONED)
+
     def filter_related(self, entry: "JournalEntry"):
-        return self.filter(_design_object_id=entry._design_object_id).exclude(id=entry.id)
+        """Returns JournalEntries which have the same object ID but excluding itself."""
+        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
+            id=entry.id
+        )
 
 
 class JournalEntry(PrimaryModel):
@@ -338,8 +342,12 @@ class JournalEntry(PrimaryModel):
         """Return detail view for design instances."""
         return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
 
+    # TODO: adding to refactor later
+    # pylint: disable=too-many-nested-blocks,too-many-branches
     def revert(self):
-        """Revert the changes that are represented in this journal entry"""
+        """Revert the changes that are represented in this journal entry."""
+        if not self.design_object:
+            raise ValidationError("No reference object found for this JournalEntry.")
 
         if self.full_control:
             related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
@@ -349,6 +357,8 @@ class JournalEntry(PrimaryModel):
 
             self.design_object.delete()
         else:
+            if not self.changes:
+                raise ValidationError("No changes found in the Journal Entry.")
             for attribute in self.changes["differences"].get("added", {}):
                 value_changed = self.changes["differences"]["added"][attribute]
                 old_value = self.changes["differences"]["removed"][attribute]

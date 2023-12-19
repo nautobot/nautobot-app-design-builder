@@ -1,6 +1,5 @@
 """Test Journal."""
 
-from typing import Type
 from unittest import mock
 import uuid
 
@@ -8,7 +7,6 @@ from django.contrib.contenttypes.models import ContentType
 
 from nautobot.dcim.models import Manufacturer
 from nautobot.extras.models import JobResult, Job
-from nautobot_design_builder.design_job import DesignJob
 
 from nautobot_design_builder.util import nautobot_version
 
@@ -17,7 +15,10 @@ from .. import models
 
 
 class BaseJournalTest(BaseDesignInstanceTest):
+    """Base Journal Test."""
+
     def create_journal(self, job, design_instance, kwargs):
+        """Creates a Journal."""
         job_result = JobResult(
             job_model=self.job1,
             name=job.class_path,

@@ -14,7 +14,9 @@ from .. import models, choices
 class BaseDesignInstanceTest(BaseDesignTest):
     """Base fixtures for tests using design instances."""
 
-    def create_design_instance(self, design_name, design):
+    @staticmethod
+    def create_design_instance(design_name, design):
+        """Generate a DesignInstance."""
         content_type = ContentType.objects.get_for_model(models.DesignInstance)
         design_instance = models.DesignInstance(
             design=design,

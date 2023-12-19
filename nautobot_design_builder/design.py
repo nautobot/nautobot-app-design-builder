@@ -155,6 +155,7 @@ def calculate_changes(current_state, initial_state=None, created=False, pre_chan
         },
     }
 
+
 class ModelInstance:  # pylint: disable=too-many-instance-attributes
     """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file."""
 

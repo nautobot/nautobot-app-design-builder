@@ -25,6 +25,7 @@ class DesignInstanceDecommissioning(Job):
         name = "Decommission Design Instances."
         description = """Job to decommission one or many Design Instances from Nautobot."""
 
+    # TODO: check if we could use Django Signals for hooks
     def _check_hook(self, design_instance, hook_type):
         """If configured, run a pre/post hook.
 
@@ -84,10 +85,8 @@ class DesignInstanceDecommissioning(Job):
                         message="Restored the object to its previous state.",
                     )
                 except ValidationError as ex:
-                    self.log_failure(
-                        journal_entry.design_object,
-                        message=str(ex)
-                    )
+                    self.log_failure(journal_entry.design_object, message=str(ex))
+                    raise ValueError(ex)
 
             content_type = ContentType.objects.get_for_model(DesignInstance)
             design_instance.status = Status.objects.get(
