@@ -36,7 +36,8 @@ pytest = "*"
 yamllint = "*"
 Markdown = "*"
 toml = "*"
-nautobot-bgp-models= "*"
+# Pining the version. The newer versions break unittests.
+nautobot-bgp-models= "0.7.1"
 
 # Rendering docs to HTML
 mkdocs = "1.5.2"
