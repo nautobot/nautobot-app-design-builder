@@ -7,6 +7,8 @@ This document provides an overview of the App including critical information and
 
 ## Description
 
+Design Builder provides a system where standardized network designs can be developed to produce collections of objects within Nautobot. These designs are text based templates that can create and update hierarchical data structures within Nautobot.
+
 ## Audience (User Personas) - Who should use this App?
 
 - Network engineers who want to have reproducible sets of Nautobot objects based on some standard design.

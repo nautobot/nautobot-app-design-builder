@@ -44,7 +44,3 @@ Unit tests for designs can be easily developed. The example design includes a si
 ```
 
 Design unit tests should inherit from `nautobot_design_builder.tests.DesignTestCase` and use the `get_mocked_job(<design class>)` to get a callable for testing. Simply call the returned mock job and supply any necessary inputs for the `data` argument (these inputs should match whatever job vars are defined on the design job). Be careful with the `commit` argument, if you expect objects to be available after the job runs then it must be set to `True`. Each unit test should run a design job and then test for changes to the database using standard Django ORM model queries.
-
-## Config Contexts
-
-Testing designs that include config context generation for a git repository can be done with a local git repository. An invoke task is included with the example design that will create a local repo and make it available in Nautobot. Call `invoke create-local-repo <repo name>` and the task will create the repo, check it out to the `repos/` directory and make it available in Nautobot.

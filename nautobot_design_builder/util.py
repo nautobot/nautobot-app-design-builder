@@ -1,4 +1,4 @@
-"""Main design builder plugin module, contains DesignJob and base plugin methods and functions."""
+"""Main design builder app module, contains DesignJob and base methods and functions."""
 import functools
 import importlib
 import inspect
