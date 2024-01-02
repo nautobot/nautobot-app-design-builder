@@ -1,8 +1,4 @@
 ---
-regions:
-  - "!update:name": "{{ region.name }}"
-    description: "new description for testing"
-
 sites:
   - name: "{{ site_name }}"
     region__slug: "{{ region.slug }}"
@@ -55,15 +51,8 @@ racks:
           status__name: "Reserved"
 {% endmacro %}
 
-{% macro device_edit(device_name) -%}
-  - "!update:name": "{{ device_name }}"
-    local_context_data: {
-      "snmp-location": "some-cool-place",
-    }
-
 {% endmacro %}
 
 devices:
   {{ device("core01", "rack1", core_1_loopback) }}
   {{ device("core02", "rack2", core_2_loopback) }}
-  {{ device_edit("core02.iad5") }}
