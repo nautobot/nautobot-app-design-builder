@@ -298,52 +298,6 @@ devices:
 
 The path to the included template is relative to the directory where the design class is defined for the particular design job. Using the example layout defined above, this path would be `designs/design_files/templates/switch_template.yaml.j2`.
 
-#### The `{%+ indent %}block{% endindent %}` statement
-
-The `indent` expression is an extension that design builder provides to the Jinja parser. This expression will parse the wrapped content and prepend the same amount of space that precedes the `indent` tag itself. This is useful when including templates, allowing the included templates to be without indentation and to then be appropriately indented for the YAML document. For example if you included a template and needed to make sure there are 8 spaces before every line instead of padding every line in the included template with 8 spaces you could just put 8 spaces before the `{%+ indent $}{% include ... %}` statement in the parent template and every line of the rendered included template will be padded with 8 spaces.
-
-Note that the `+` in the left brace of `{%+ indent %}` is necessary for the `indent` expression to correctly preserve leading whitespace. This is only needed where indicated on the starting block. `{%+ indent %}` must be closed with `{% endindent %}`
-
-The following illustrates the `indent` usage:
-
-```jinja
-# parent.yaml.j2
----
-devices:
-    {%+ indent %}{% include child.yaml.j2 %}{% endindent %}
-```
-
-```jinja
-# child.yaml.j2
----
-- name: "bb-rtr-1"
-  status__name: "Active"
-  site__name: "IAD1"
-  device_role__name: "gateway"
-  device_type__model: "DCS 7060PX4-32"
-  platform__name: "Arista EOS"
-  interfaces:
-  - "!create_or_update:name": "Ethernet1/1"
-    type: "400gbase-x-osfp"
-```
-
-When the design builder renders `parent.yaml.j2` it will result in the following content:
-
-```jinja
-devices:
-    - name: "bb-rtr-1"
-      status__name: "Active"
-      site__name: "IAD1"
-      device_role__name: "gateway"
-      device_type__model: "DCS 7060PX4-32"
-      platform__name: "Arista EOS"
-      interfaces:
-      - "!create_or_update:name": "Ethernet1/1"
-        type: "400gbase-x-osfp"
-```
-
-As you can see, the device block for `bb-rtr-1` is correctly indented for the `devices` section.
-
 ### Extensions
 
 Custom action tags can be created using template extensions. If a design needs custom functionality implemented as an action tag, the design developer can simply create a new tag (see the [extension](../dev/template_extensions.md) documentation). The new tag class can be added to the design using the extensions attribute in the design Meta class:

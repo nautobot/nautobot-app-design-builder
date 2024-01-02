@@ -3,11 +3,10 @@ design_builder:
   project_name: "design-builder"
   nautobot_ver: "latest"
   local: false
-  python_ver: "3.7"
+  python_ver: "3.8"
   compose_dir: "development"
   compose_files:
     - "docker-compose.base.yml"
     - "docker-compose.redis.yml"
     - "docker-compose.postgres.yml"
-    - "docker-compose.git-server.yml"
     - "docker-compose.dev.yml"

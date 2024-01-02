@@ -5,11 +5,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import models
+from django.dispatch import Signal
 from django.urls import reverse
 
 from nautobot.apps.models import PrimaryModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, StatusModel, StatusField, Tag
+from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusModel, StatusField, Tag
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
@@ -159,6 +160,10 @@ class DesignInstance(PrimaryModel, StatusModel):
     be updated or removed at a later time.
     """
 
+    pre_decommission = Signal()
+
+    post_decommission = Signal()
+
     # TODO: add version field to indicate which version of a design
     #       this instance is on. (future feature)
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
@@ -197,6 +202,25 @@ class DesignInstance(PrimaryModel, StatusModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
+    def decommission(self, local_logger=logger):
+        """Decommission a design instance.
+
+        This will reverse the journal entries for the design instance and
+        reset associated objects to their pre-design state.
+        """
+
+        self.__class__.pre_decommission.send(self.__class__, design_instance=self)
+        # Iterate the journals in reverse order (most recent first) and
+        # revert each journal.
+        for journal in self.journals.all().order_by("created"):
+            journal.revert(local_logger=local_logger)
+        content_type = ContentType.objects.get_for_model(DesignInstance)
+        self.status = Status.objects.get(
+            content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
+        )
+        self.save()
+        self.__class__.post_decommission.send(self.__class__, design_instance=self)
+
     def delete(self, *args, **kwargs):
         """Protect logic to remove Design Instance."""
         if not (
@@ -221,7 +245,12 @@ class Journal(PrimaryModel):
     for every object within a design before that can happen.
     """
 
-    design_instance = models.ForeignKey(to=DesignInstance, on_delete=models.CASCADE, editable=False)
+    design_instance = models.ForeignKey(
+        to=DesignInstance,
+        on_delete=models.CASCADE,
+        editable=False,
+        related_name="journals",
+    )
     job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
 
     def get_absolute_url(self):

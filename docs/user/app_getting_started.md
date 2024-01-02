@@ -13,6 +13,7 @@ The easiest way to experience Design Builder is to run it in a local environment
 ## What are the next steps?
 
 The Design Builder application ships with some sample designs to demonstrate capabilities. Once the application stack is ready, you should have two designs listed under the "Jobs" -> "Jobs" menu item.
+
 ![Jobs list](../images/screenshots/sample-design-jobs-list.png)
 
 Note that both jobs are disabled. Nautobot automatically marks jobs as disabled when they are first loaded. In order to run these jobs, click the edit button ![edit button](../images/screenshots/edit-button.png) and check the "enabled" checkbox:
