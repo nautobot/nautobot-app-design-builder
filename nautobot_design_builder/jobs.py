@@ -4,6 +4,7 @@ from nautobot.extras.jobs import Job, MultiObjectVar
 from .logging import get_logger
 from .models import DesignInstance
 
+
 class DesignInstanceDecommissioning(Job):
     """Job to decommission Design Instances."""
 

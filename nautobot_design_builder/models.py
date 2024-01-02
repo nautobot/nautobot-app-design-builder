@@ -247,7 +247,7 @@ class Journal(PrimaryModel):
 
     design_instance = models.ForeignKey(
         to=DesignInstance,
-        on_delete=models.CASCADE, 
+        on_delete=models.CASCADE,
         editable=False,
         related_name="journals",
     )
