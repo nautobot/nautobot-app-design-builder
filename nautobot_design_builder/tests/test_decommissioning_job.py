@@ -10,6 +10,7 @@ from nautobot.extras.models import JobResult
 from nautobot.extras.models import Job as JobModel
 from nautobot.extras.models import Status
 from nautobot.extras.models import Secret
+from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 
 from nautobot_design_builder.util import nautobot_version
@@ -19,14 +20,14 @@ from nautobot_design_builder import models, choices
 from .designs import test_designs
 
 
-def fake_ok(design_instance):  # pylint: disable=unused-argument
+def fake_ok(sender, design_instance, **kwargs):  # pylint: disable=unused-argument
     """Fake function to return a pass for a hook."""
     return True, None
 
 
-def fake_ko(design_instance):  # pylint: disable=unused-argument
+def fake_ko(sender, design_instance, **kwargs):  # pylint: disable=unused-argument
     """Fake function to return a fail for a hook."""
-    return False, "reason"
+    raise DesignValidationError("reason")
 
 
 class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-instance-attributes
@@ -274,8 +275,9 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
 
         self.assertEqual({**self.initial_params, **new_params}, Secret.objects.first().parameters)
 
-    @override_settings(PLUGINS_CONFIG={"nautobot_design_builder": {"pre_decommission_hook": fake_ok}})
+    # @override_settings(PLUGINS_CONFIG={"nautobot_design_builder": {"pre_decommission_hook": fake_ok}})
     def test_decommission_run_with_pre_hook_pass(self):
+        models.DesignInstance.pre_decommission.connect(fake_ok)
         self.assertEqual(1, Secret.objects.count())
 
         journal_entry_1 = models.JournalEntry.objects.create(
@@ -286,24 +288,25 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.job.run(data={"design_instances": [self.design_instance]}, commit=True)
 
         self.assertEqual(0, Secret.objects.count())
+        models.DesignInstance.pre_decommission.disconnect(fake_ok)
 
-    @override_settings(PLUGINS_CONFIG={"nautobot_design_builder": {"pre_decommission_hook": fake_ko}})
     def test_decommission_run_with_pre_hook_fail(self):
+        models.DesignInstance.pre_decommission.connect(fake_ko)
         self.assertEqual(1, Secret.objects.count())
-
         journal_entry_1 = models.JournalEntry.objects.create(
             journal=self.journal1, design_object=self.secret, full_control=True
         )
         journal_entry_1.validated_save()
 
         self.assertRaises(
-            ValueError,
+            DesignValidationError,
             self.job.run,
             {"design_instances": [self.design_instance]},
             True,
         )
 
         self.assertEqual(1, Secret.objects.count())
+        models.DesignInstance.pre_decommission.disconnect(fake_ko)
 
     def test_decommission_run_multiple_design_instance(self):
         journal_entry = models.JournalEntry.objects.create(
