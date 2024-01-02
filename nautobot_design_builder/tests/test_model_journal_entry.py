@@ -28,13 +28,19 @@ class TestJournalEntry(TestCase):
             changes=calculate_changes(self.secret),
         )
 
-    def get_entry(self, updated_secret):
+    def get_entry(self, updated_secret, design_object=None, initial_state=None):
         """Generate a JournalEntry."""
+        if design_object is None:
+            design_object = self.secret
+
+        if initial_state is None:
+            initial_state = self.initial_state
+
         return JournalEntry(
-            design_object=self.secret,
+            design_object=design_object,
             changes=calculate_changes(
                 updated_secret,
-                initial_state=self.initial_state,
+                initial_state=initial_state,
             ),
         )
 
@@ -134,7 +140,6 @@ class TestJournalEntry(TestCase):
         secret = Secret.objects.get(id=self.secret.id)
         secret.parameters["key2"] = "changed-value"
         secret.save()
-        entry = self.get_entry(secret)
         secret.refresh_from_db()
         self.assertDictEqual(
             secret.parameters,
@@ -145,13 +150,50 @@ class TestJournalEntry(TestCase):
         del secret.parameters["key1"]
         secret.parameters["key3"] = "changed-value"
         secret.save()
-
-        entry.revert()
-        secret.refresh_from_db()
-
         self.assertDictEqual(
-            self.secret.parameters,
+            secret.parameters,
             {
+                "key2": "changed-value",
                 "key3": "changed-value",
             },
         )
+
+        entry = self.get_entry(secret)
+        entry.revert()
+        secret.refresh_from_db()
+        self.assertDictEqual(self.secret.parameters, secret.parameters)
+
+    @patch("nautobot.extras.models.Secret.save")
+    def test_reverting_without_old_value(self, save_mock: Mock):
+        with patch("nautobot.extras.models.Secret.refresh_from_db"):
+            secret = Secret(
+                name="test secret 1",
+                provider="environment-variable",
+                description="Description",
+                parameters=None,
+            )
+            initial_state = serialize_object_v2(secret)
+            secret.parameters = {"key1": "value1"}
+            entry = self.get_entry(secret, secret, initial_state)
+            self.assertEqual(entry.design_object.parameters, {"key1": "value1"})
+            entry.revert()
+            self.assertEqual(entry.design_object.parameters, None)
+            save_mock.assert_called()
+
+
+    @patch("nautobot.extras.models.Secret.save")
+    def test_reverting_without_new_value(self, save_mock: Mock):
+        with patch("nautobot.extras.models.Secret.refresh_from_db"):
+            secret = Secret(
+                name="test secret 1",
+                provider="environment-variable",
+                description="Description",
+                parameters={"key1": "value1"},
+            )
+            initial_state = serialize_object_v2(secret)
+            secret.parameters = None
+            entry = self.get_entry(secret, secret, initial_state)
+            self.assertEqual(entry.design_object.parameters, None)
+            entry.revert()
+            self.assertEqual(entry.design_object.parameters, {"key1": "value1"})
+            save_mock.assert_called()

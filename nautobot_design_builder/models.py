@@ -1,6 +1,7 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
+from dataclasses import field, dataclass
 import logging
-from typing import List
+from typing import Any, Dict, List
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -8,12 +9,13 @@ from django.db import models
 from django.dispatch import Signal
 from django.urls import reverse
 
-from nautobot.apps.models import PrimaryModel
+from nautobot.apps.models import PrimaryModel, BaseModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
 from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusModel, StatusField, Tag
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
+from nautobot.utilities.utils import serialize_object_v2, shallow_compare_dict
 
 from .util import nautobot_version
 from . import choices
@@ -358,7 +360,7 @@ class JournalEntryQuerySet(RestrictedQuerySet):
         )
 
 
-class JournalEntry(PrimaryModel):
+class JournalEntry(BaseModel):
     """A single entry in the journal for exactly 1 object.
 
     The journal entry represents the changes that design builder
@@ -373,6 +375,10 @@ class JournalEntry(PrimaryModel):
     """
 
     objects = JournalEntryQuerySet.as_manager()
+
+    created = models.DateField(auto_now_add=True, null=True)
+
+    last_updated = models.DateTimeField(auto_now=True, null=True)
 
     journal = models.ForeignKey(
         to=Journal,
@@ -446,26 +452,26 @@ class JournalEntry(PrimaryModel):
             for attribute in differences.get("added", {}):
                 value_changed = differences["added"][attribute]
                 old_value = differences["removed"][attribute]
-                if isinstance(value_changed, dict):
+                if isinstance(value_changed, dict) and isinstance(old_value, dict):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
                     current_value = getattr(self.design_object, attribute)
                     keys_to_remove = []
                     for key in current_value:
                         if key in value_changed:
-                            if old_value and key in old_value:
+                            if key in old_value:
                                 current_value[key] = old_value[key]
                             else:
                                 keys_to_remove.append(key)
 
-                    # Recovering old values that the JournalEntry deleted.
-                    if old_value:
-                        for key in old_value:
-                            if key not in value_changed:
-                                current_value[key] = old_value[key]
-
                     for key in keys_to_remove:
                         del current_value[key]
+
+                    # Recovering old values that the JournalEntry deleted.
+                    for key in old_value:
+                        if key not in value_changed:
+                            current_value[key] = old_value[key]
+
                     setattr(self.design_object, attribute, current_value)
                 else:
                     setattr(self.design_object, attribute, old_value)

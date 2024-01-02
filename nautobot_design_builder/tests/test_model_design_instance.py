@@ -55,3 +55,9 @@ class TestDesignInstance(BaseDesignInstanceTest):
     def test_uniqueness(self):
         with self.assertRaises(IntegrityError):
             models.DesignInstance.objects.create(design=self.design1, name=self.design_name)
+
+    def test_decommission_single_journal(self):
+        """TODO"""
+
+    def test_decommission_multiple_journal(self):
+        """TODO"""
