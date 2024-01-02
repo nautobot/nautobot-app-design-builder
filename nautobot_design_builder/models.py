@@ -424,15 +424,16 @@ class JournalEntry(PrimaryModel):
                     keys_to_remove = []
                     for key in current_value:
                         if key in value_changed:
-                            if key in old_value:
+                            if old_value and key in old_value:
                                 current_value[key] = old_value[key]
                             else:
                                 keys_to_remove.append(key)
 
                     # Recovering old values that the JournalEntry deleted.
-                    for key in old_value:
-                        if key not in value_changed:
-                            current_value[key] = old_value[key]
+                    if old_value:
+                        for key in old_value:
+                            if key not in value_changed:
+                                current_value[key] = old_value[key]
 
                     for key in keys_to_remove:
                         del current_value[key]
