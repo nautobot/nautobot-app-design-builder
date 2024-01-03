@@ -17,6 +17,7 @@ from nautobot.utilities.choices import ColorChoices
 
 from .util import nautobot_version
 from . import choices
+from .errors import DesignValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -399,8 +400,25 @@ class JournalEntry(BaseModel):
         """Return detail view for design instances."""
         return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
 
-    # TODO: adding to refactor later
-    # pylint: disable=too-many-nested-blocks,too-many-branches
+    @staticmethod
+    def update_current_value_from_dict(current_value, value_changed, old_value):
+        """Update current value if it's a dictionary."""
+        keys_to_remove = []
+        for key in current_value:
+            if key in value_changed:
+                if key in old_value:
+                    current_value[key] = old_value[key]
+                else:
+                    keys_to_remove.append(key)
+
+        for key in keys_to_remove:
+            del current_value[key]
+
+        # Recovering old values that the JournalEntry deleted.
+        for key in old_value:
+            if key not in value_changed:
+                current_value[key] = old_value[key]
+
     def revert(self, local_logger: logging.Logger = logger):
         """Revert the changes that are represented in this journal entry."""
         if not self.design_object:
@@ -420,30 +438,21 @@ class JournalEntry(BaseModel):
         if self.full_control:
             related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
             if related_entries:
-                # TODO: Should this be a `DesignValidationError` or even a more specific
-                # error, such as `CrossReferenceError`?
-                raise ValidationError("This object is referenced by other active Journals")
+                raise DesignValidationError("This object is referenced by other active Journals")
 
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:
-            # TODO: Is this really an error condition? Nothing can be done, but
-            # also, nothing needs to be done. If nothing was changed then reverting
-            # means nothing will change... it's like a NOOP, but is that an error?
             if not self.changes:
-                raise ValidationError("No changes found in the Journal Entry.")
+                local_logger.info("No changes found in the Journal Entry.")
+                return
 
             if "differences" not in self.changes:
-                # TODO: This error message is going to have very little
-                # meaning to an end user. If we get to this point then
-                # there is actually a programming error, since we always
-                # set the `differences` key in the changes dictionary (at least
-                # I think that's the case)
-                #
-                # We should probably change the `changes` dictionary to
+                # TODO: We should probably change the `changes` dictionary to
                 # a concrete class so that our static analysis tools can catch
                 # problems like this.
-                raise ValidationError("`differences` key not present.")
+                local_logger.error("`differences` key not present.")
+                return
 
             differences = self.changes["differences"]
 
@@ -454,21 +463,11 @@ class JournalEntry(BaseModel):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
                     current_value = getattr(self.design_object, attribute)
-                    keys_to_remove = []
-                    for key in current_value:
-                        if key in value_changed:
-                            if key in old_value:
-                                current_value[key] = old_value[key]
-                            else:
-                                keys_to_remove.append(key)
-
-                    for key in keys_to_remove:
-                        del current_value[key]
-
-                    # Recovering old values that the JournalEntry deleted.
-                    for key in old_value:
-                        if key not in value_changed:
-                            current_value[key] = old_value[key]
+                    self.update_current_value_from_dict(
+                        current_value=current_value,
+                        value_changed=value_changed,
+                        old_value=old_value,
+                    )
 
                     setattr(self.design_object, attribute, current_value)
                 else:

@@ -145,7 +145,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         journal_entry_2.validated_save()
 
         self.assertRaises(
-            ValueError,
+            DesignValidationError,
             self.job.run,
             {"design_instances": [self.design_instance]},
             True,

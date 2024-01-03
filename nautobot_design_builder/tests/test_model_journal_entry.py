@@ -1,11 +1,11 @@
 """Test Journal."""
 from unittest.mock import patch, Mock
-from django.core.exceptions import ValidationError
 from django.test import TestCase
 from nautobot.extras.models import Secret
 from nautobot.utilities.utils import serialize_object_v2
 
 from nautobot_design_builder.design import calculate_changes
+from nautobot_design_builder.errors import DesignValidationError
 
 from ..models import JournalEntry
 
@@ -60,7 +60,7 @@ class TestJournalEntry(TestCase):
         self.assertEqual(1, Secret.objects.count())
         entry2 = JournalEntry()
         objects.exclude_decommissioned.return_value = [entry2]
-        self.assertRaises(ValidationError, self.initial_entry.revert)
+        self.assertRaises(DesignValidationError, self.initial_entry.revert)
         objects.exclude_decommissioned.assert_called()
 
     def test_updated_scalar(self):
