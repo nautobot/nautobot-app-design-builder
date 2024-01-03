@@ -209,6 +209,7 @@ class DesignInstance(PrimaryModel, StatusModel):
         This will reverse the journal entries for the design instance and
         reset associated objects to their pre-design state.
         """
+        local_logger.info("Decommissioning design", extra={"obj": self})
         self.__class__.pre_decommission.send(self.__class__, design_instance=self)
         # Iterate the journals in reverse order (most recent first) and
         # revert each journal.
@@ -337,6 +338,7 @@ class Journal(PrimaryModel):
         # Without a design object we cannot have changes, right? I suppose if the
         # object has been deleted since the change was made then it wouldn't exist,
         # but I think we need to discuss the implications of this further.
+        local_logger.info("Reverting journal", extra={"obj": self})
         for journal_entry in self.entries.exclude(_design_object_id=None).order_by("-last_updated"):
             try:
                 journal_entry.revert(local_logger=local_logger)
