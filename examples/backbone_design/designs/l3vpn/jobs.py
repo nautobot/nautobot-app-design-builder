@@ -1,4 +1,6 @@
 """Design to create a l3vpn site."""
+from django.core.exceptions import ValidationError
+
 from nautobot.dcim.models import Device
 from nautobot.extras.jobs import ObjectVar, StringVar
 
@@ -10,7 +12,7 @@ from .context import L3VPNContext
 class L3vpnDesign(DesignJob):
     """Create a l3vpn connection."""
 
-    customer_name = StringVar(regex=r"\w{3}\d+")
+    customer_name = StringVar()
 
     pe = ObjectVar(
         label="PE device",
@@ -31,3 +33,9 @@ class L3vpnDesign(DesignJob):
         commit_default = False
         design_file = "designs/0001_design.yaml.j2"
         context_class = L3VPNContext
+
+    @staticmethod
+    def validate_data(data):
+        """Validate the L3VPN Design data."""
+        if data["ce"] == data["pe"]:
+            raise ValidationError("Both routers can't be the same.")
