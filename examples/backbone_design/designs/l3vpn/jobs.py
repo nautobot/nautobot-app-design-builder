@@ -35,7 +35,7 @@ class L3vpnDesign(DesignJob):
         context_class = L3VPNContext
 
     @staticmethod
-    def validate_data(data):
+    def validate_data_logic(data):
         """Validate the L3VPN Design data."""
         if data["ce"] == data["pe"]:
             raise ValidationError("Both routers can't be the same.")
