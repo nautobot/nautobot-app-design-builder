@@ -1,7 +1,6 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
-from dataclasses import field, dataclass
 import logging
-from typing import Any, Dict, List
+from typing import List
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -15,7 +14,6 @@ from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusMod
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
-from nautobot.utilities.utils import serialize_object_v2, shallow_compare_dict
 
 from .util import nautobot_version
 from . import choices
@@ -210,12 +208,12 @@ class DesignInstance(PrimaryModel, StatusModel):
         This will reverse the journal entries for the design instance and
         reset associated objects to their pre-design state.
         """
-
         self.__class__.pre_decommission.send(self.__class__, design_instance=self)
         # Iterate the journals in reverse order (most recent first) and
         # revert each journal.
         for journal in self.journals.all().order_by("created"):
             journal.revert(local_logger=local_logger)
+
         content_type = ContentType.objects.get_for_model(DesignInstance)
         self.status = Status.objects.get(
             content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED

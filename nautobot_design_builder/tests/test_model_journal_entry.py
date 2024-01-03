@@ -180,7 +180,6 @@ class TestJournalEntry(TestCase):
             self.assertEqual(entry.design_object.parameters, None)
             save_mock.assert_called()
 
-
     @patch("nautobot.extras.models.Secret.save")
     def test_reverting_without_new_value(self, save_mock: Mock):
         with patch("nautobot.extras.models.Secret.refresh_from_db"):

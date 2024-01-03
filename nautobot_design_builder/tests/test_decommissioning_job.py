@@ -4,7 +4,6 @@ import uuid
 
 
 from django.contrib.contenttypes.models import ContentType
-from django.test import override_settings
 
 from nautobot.extras.models import JobResult
 from nautobot.extras.models import Job as JobModel
@@ -275,7 +274,6 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
 
         self.assertEqual({**self.initial_params, **new_params}, Secret.objects.first().parameters)
 
-    # @override_settings(PLUGINS_CONFIG={"nautobot_design_builder": {"pre_decommission_hook": fake_ok}})
     def test_decommission_run_with_pre_hook_pass(self):
         models.DesignInstance.pre_decommission.connect(fake_ok)
         self.assertEqual(1, Secret.objects.count())
