@@ -186,9 +186,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         return journal
 
     @staticmethod
-    def validate_data(data):
-        """Method to validate the input data."""
-        pass
+    def validate_data_logic(data):
+        """Method to validate the input data logic that is already valid as a form by the `validate_data` method."""
 
     @transaction.atomic
     def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
@@ -200,7 +199,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             commit = kwargs.pop("dryrun", False)
             data = kwargs
 
-        self.validate_data(data)
+        self.validate_data_logic(data)
 
         journal = self._setup_journal(data.pop("instance_name"), data.pop("owner"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
