@@ -447,7 +447,7 @@ class ChildPrefixExtension(AttributeExtension):
 
 
 class BGPPeeringExtension(AttributeExtension):
-    """Create BGP peerings in the BGP Models Plugin."""
+    """Create BGP peerings in the BGP Models App."""
 
     tag = "bgp_peering"
 
@@ -455,10 +455,10 @@ class BGPPeeringExtension(AttributeExtension):
         """Initialize the BGPPeeringExtension.
 
         This initializer will import the necessary BGP models. If the
-        BGP models plugin is not installed then it raises a DesignImplementationError.
+        BGP models app is not installed then it raises a DesignImplementationError.
 
         Raises:
-            DesignImplementationError: Raised when the BGP Models Plugin is not installed.
+            DesignImplementationError: Raised when the BGP Models App is not installed.
         """
         super().__init__(builder)
         try:
@@ -468,7 +468,7 @@ class BGPPeeringExtension(AttributeExtension):
             self.Peering = Peering  # pylint:disable=invalid-name
         except ModuleNotFoundError:
             raise DesignImplementationError(
-                "the `bgp_peering` tag can only be used when the bgp models plugin is installed."
+                "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
 
     @staticmethod

@@ -1,4 +1,4 @@
-"""Unit tests for design_builder plugin."""
+"""Unit tests for design_builder app."""
 
 import logging
 import shutil

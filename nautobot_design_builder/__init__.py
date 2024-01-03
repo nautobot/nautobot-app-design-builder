@@ -1,4 +1,4 @@
-"""Plugin declaration for design_builder."""
+"""App declaration for Nautobot Design Builder."""
 from django.conf import settings
 from django.utils.functional import classproperty
 
@@ -15,7 +15,7 @@ __version__ = metadata.version(__name__)
 
 
 class DesignBuilderConfig(NautobotAppConfig):
-    """Plugin configuration for the design_builder plugin."""
+    """App configuration for the nautobot_design_builder app."""
 
     name = "nautobot_design_builder"
     verbose_name = "Design Builder"
