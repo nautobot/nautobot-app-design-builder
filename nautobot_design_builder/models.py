@@ -401,13 +401,13 @@ class JournalEntry(BaseModel):
         return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
 
     @staticmethod
-    def update_current_value_from_dict(current_value, value_changed, old_value):
+    def update_current_value_from_dict(current_value, added_value, removed_value):
         """Update current value if it's a dictionary."""
         keys_to_remove = []
         for key in current_value:
-            if key in value_changed:
-                if key in old_value:
-                    current_value[key] = old_value[key]
+            if key in added_value:
+                if key in removed_value:
+                    current_value[key] = removed_value[key]
                 else:
                     keys_to_remove.append(key)
 
@@ -415,9 +415,9 @@ class JournalEntry(BaseModel):
             del current_value[key]
 
         # Recovering old values that the JournalEntry deleted.
-        for key in old_value:
-            if key not in value_changed:
-                current_value[key] = old_value[key]
+        for key in removed_value:
+            if key not in added_value:
+                current_value[key] = removed_value[key]
 
     def revert(self, local_logger: logging.Logger = logger):
         """Revert the changes that are represented in this journal entry."""
@@ -457,21 +457,21 @@ class JournalEntry(BaseModel):
             differences = self.changes["differences"]
 
             for attribute in differences.get("added", {}):
-                value_changed = differences["added"][attribute]
-                old_value = differences["removed"][attribute]
-                if isinstance(value_changed, dict) and isinstance(old_value, dict):
+                added_value = differences["added"][attribute]
+                removed_value = differences["removed"][attribute]
+                if isinstance(added_value, dict) and isinstance(removed_value, dict):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
                     current_value = getattr(self.design_object, attribute)
                     self.update_current_value_from_dict(
                         current_value=current_value,
-                        value_changed=value_changed,
-                        old_value=old_value,
+                        added_value=added_value,
+                        removed_value=removed_value,
                     )
 
                     setattr(self.design_object, attribute, current_value)
                 else:
-                    setattr(self.design_object, attribute, old_value)
+                    setattr(self.design_object, attribute, removed_value)
 
                 self.design_object.save()
                 local_logger.info(
