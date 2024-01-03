@@ -1,0 +1,31 @@
+---
+sites:
+  - name: "{{ site_name }}"
+    status__name: "Staging"
+    prefixes:
+      - prefix: "{{ site_prefix }}"
+        status__name: "Reserved"
+    devices:
+    {% for i in range(2) %}
+      - name: "{{ site_name }}-LR{{ i }}"
+        status__name: "Planned"
+        device_type__model: "C8300-1N1S-6T"
+        device_role__name: "Edge Router"
+        interfaces:
+          - name: "GigabitEthernet0/0"
+            type: "1000base-t"
+            description: "Uplink to backbone"
+            status__name: "Planned"
+    {% endfor %}
+circuits:
+  {% for i in range(2) %}
+  - cid: "{{ site_name }}-CKT-{{ i }}"
+    status__name: "Planned"
+    provider__name: "NTC"
+    type__name: "Ethernet"
+    terminations:
+      - term_side: "A"
+        site__name: "{{ site_name }}"
+      - term_side: "Z"
+        provider_network__name: "NTC-WAN"
+  {% endfor %}
