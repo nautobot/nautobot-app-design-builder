@@ -327,10 +327,7 @@ class Journal(PrimaryModel):
         """Revert the changes represented in this Journal.
 
         Raises:
-            ValidationError: _description_
-
-        Returns:
-            _type_: _description_
+            ValueError: the error will include the trace from the original exception.
         """
         # TODO: In what case is _design_object_id not set? I know we have `blank=True`
         # in the foreign key constraints, but I don't know when that would ever
@@ -342,7 +339,7 @@ class Journal(PrimaryModel):
         for journal_entry in self.entries.exclude(_design_object_id=None).order_by("-last_updated"):
             try:
                 journal_entry.revert(local_logger=local_logger)
-            except ValidationError as ex:
+            except (ValidationError, DesignValidationError) as ex:
                 local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
                 raise ValueError(ex)
 
@@ -370,9 +367,6 @@ class JournalEntry(BaseModel):
     accessed via the `design_object` attribute.If `full_control` is
     `True` then design builder created this object, otherwise
     design builder only updated the object.
-
-    Args:
-        PrimaryModel (_type_): _description_
     """
 
     objects = JournalEntryQuerySet.as_manager()
@@ -422,9 +416,16 @@ class JournalEntry(BaseModel):
                 current_value[key] = removed_value[key]
 
     def revert(self, local_logger: logging.Logger = logger):
-        """Revert the changes that are represented in this journal entry."""
+        """Revert the changes that are represented in this journal entry.
+
+        Raises:
+            ValidationError: the error will include all of the managed fields that have
+            changed.
+            DesignValidationError: when the design object is referenced by other active Journals.
+
+        """
         if not self.design_object:
-            raise ValidationError(f"No reference object found for this JournalEntry: {self.id}")
+            raise ValidationError(f"No reference object found for this JournalEntry: {str(self.id)}")
 
         # It is possible that the journal entry contains a stale copy of the
         # design object. Consider this example: A journal entry is create and
