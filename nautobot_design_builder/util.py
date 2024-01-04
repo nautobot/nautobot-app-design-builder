@@ -8,19 +8,20 @@ import pkgutil
 import sys
 from importlib.machinery import ModuleSpec
 from types import ModuleType
-from typing import Dict, Iterator, List, Tuple, Type, TYPE_CHECKING
-
+from typing import Iterator, Tuple, Type, TYPE_CHECKING
+from packaging.version import Version
 import yaml
+
 from django.conf import settings
 import nautobot
 from nautobot.extras.models import GitRepository
 
-from packaging.version import Version
 
 from nautobot_design_builder import metadata
 
 if TYPE_CHECKING:
     from nautobot_design_builder.design_job import DesignJob
+    from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def get_class_dir(cls) -> str:
     return os.path.dirname(inspect.getfile(cls))
 
 
-def load_design_yaml(cls, resource) -> List | Dict:
+def load_design_yaml(cls, resource) -> "List | Dict":
     """Loads data from a YAML design file.
 
     Args:

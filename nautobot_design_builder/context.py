@@ -57,7 +57,7 @@ class ContextNodeMixin:
             return repr(getattr(self, "data"))
         return super().__repr__()
 
-    def __setitem__(self, key: int | str, value: Any) -> "ContextNodeMixin":
+    def __setitem__(self, key: "int | str", value: Any) -> "ContextNodeMixin":
         """Store a new value within the node.
 
         Args:

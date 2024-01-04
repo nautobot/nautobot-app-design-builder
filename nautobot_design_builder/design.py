@@ -1,6 +1,6 @@
 """Provides ORM interaction for design builder."""
 from types import FunctionType
-from typing import Any, Dict, List, Mapping, Type, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
 from django.db.models import Model, Manager
@@ -17,9 +17,6 @@ from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
-
-if TYPE_CHECKING:
-    from nautobot_design_builder.design import ModelInstance, Builder
 
 
 class Journal:
@@ -118,7 +115,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     def __init__(
         self,
-        creator: Builder,
+        creator: "Builder",
         model_class: Type[Model],
         attributes: dict,
         relationship_manager=None,
@@ -169,7 +166,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         model_class: Type[Model],
         attributes: Dict,
         relationship_manager: Manager = None,
-    ) -> ModelInstance:
+    ) -> "ModelInstance":
         """Create a new ModelInstance that is linked to the current instance.
 
         Args:

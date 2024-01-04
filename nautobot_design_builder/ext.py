@@ -2,12 +2,11 @@
 import os
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, List
 
 import inspect
 import sys
 from types import ModuleType
-from typing import List
 import yaml
 
 from nautobot_design_builder import DesignBuilderConfig
