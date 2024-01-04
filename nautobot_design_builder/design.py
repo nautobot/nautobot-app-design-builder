@@ -17,6 +17,7 @@ from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
+
 if TYPE_CHECKING:
     from nautobot_design_builder.design import ModelInstance, Builder
 
@@ -117,7 +118,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     def __init__(
         self,
-        creator: "Builder",
+        creator: Builder,
         model_class: Type[Model],
         attributes: dict,
         relationship_manager=None,
@@ -167,7 +168,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self,
         model_class: Type[Model],
         attributes: Dict,
-        relationship_manager: Manager=None,
+        relationship_manager: Manager = None,
     ) -> ModelInstance:
         """Create a new ModelInstance that is linked to the current instance.
 
@@ -443,7 +444,7 @@ class Builder(LoggingMixin):
         return extn["object"]
 
     @transaction.atomic
-    def implement_design(self, design: Dict, commit: bool=False):
+    def implement_design(self, design: Dict, commit: bool = False):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -488,7 +489,7 @@ class Builder(LoggingMixin):
             value = value.instance
         return value
 
-    def resolve_values(self, value: Union[list,dict,str], unwrap_model_instances: bool=False) -> Any:
+    def resolve_values(self, value: Union[list, dict, str], unwrap_model_instances: bool = False) -> Any:
         """Resolve a value, or values, using extensions.
 
         Args:

@@ -23,7 +23,7 @@ def is_extension(cls):
     return inspect.isclass(cls) and issubclass(cls, Extension) and cls is not Extension
 
 
-def extensions(module: ModuleType=None) -> List["Extension"]:
+def extensions(module: ModuleType = None) -> List["Extension"]:
     """Get all the extensions defined in a module.
 
     Args:

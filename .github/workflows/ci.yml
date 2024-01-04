@@ -52,7 +52,7 @@ jobs:
   check-docs-build:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_{{cookiecutter.app_name.upper()}}_LOCAL: "True"
+      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
