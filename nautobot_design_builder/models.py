@@ -423,7 +423,6 @@ class JournalEntry(BaseModel):
 
     def revert(self, local_logger: logging.Logger = logger):
         """Revert the changes that are represented in this journal entry."""
-        local_logger.info("Reverting journal entry", extra={"obj": self})
         if not self.design_object:
             raise ValidationError("No reference object found for this JournalEntry.")
 
@@ -438,11 +437,14 @@ class JournalEntry(BaseModel):
         self.design_object.refresh_from_db()
         object_type = self.design_object._meta.verbose_name.title()
         object_str = str(self.design_object)
+
+        local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
+
         if self.full_control:
             related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
             if related_entries:
                 active_journal_ids = ",".join([str(j.id) for j in related_entries])
-                raise DesignValidationError(f"This object is referenced by other active Journals:{active_journal_ids}")
+                raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
 
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
