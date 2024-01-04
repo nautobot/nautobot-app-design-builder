@@ -46,4 +46,3 @@ class JournalEntryFilterForm(NautobotFilterForm):
         label="Does the design have full control over the object?",
         widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
     )
-    tag = TagFilterField(model)

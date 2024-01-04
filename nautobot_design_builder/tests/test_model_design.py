@@ -4,14 +4,15 @@ from os import path
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.test import TestCase
-
 from nautobot.extras.models import Job as JobModel
+
+from nautobot_design_builder.tests import DesignTestCase
+
 from .designs import test_designs
 from .. import models
 
 
-class BaseDesignTest(TestCase):
+class BaseDesignTest(DesignTestCase):
     """Common fixtures for design builder model testing."""
 
     def setUp(self):
@@ -45,7 +46,8 @@ class TestDesign(BaseDesignTest):
     """Test Design."""
 
     def test_create_from_signal(self):
-        self.assertEqual(2, models.Design.objects.all().count())
+        # TODO: this is getting the 3 example designs on top of the two from the tests
+        self.assertEqual(5, models.Design.objects.all().count())
         self.assertEqual(self.design1.job_id, self.job1.id)
         self.assertEqual(self.design2.job_id, self.job2.id)
         self.assertEqual(str(self.design1), self.design1.name)

@@ -1,4 +1,4 @@
-"""Management command to bootstrap development data for design builder plugin."""
+"""Management command to bootstrap development data for design builder app."""
 import sys
 import yaml
 

@@ -1,21 +1,25 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
+import logging
 from typing import List
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import models
+from django.dispatch import Signal
 from django.urls import reverse
 
-from nautobot.apps.models import PrimaryModel
+from nautobot.apps.models import PrimaryModel, BaseModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, StatusModel, StatusField, Tag
+from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusModel, StatusField, Tag
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
 
-
 from .util import nautobot_version
 from . import choices
+from .errors import DesignValidationError
+
+logger = logging.getLogger(__name__)
 
 
 # TODO: this method needs to be put in the custom validators module.
@@ -157,6 +161,10 @@ class DesignInstance(PrimaryModel, StatusModel):
     be updated or removed at a later time.
     """
 
+    pre_decommission = Signal()
+
+    post_decommission = Signal()
+
     # TODO: add version field to indicate which version of a design
     #       this instance is on. (future feature)
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
@@ -195,6 +203,26 @@ class DesignInstance(PrimaryModel, StatusModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
+    def decommission(self, local_logger=logger):
+        """Decommission a design instance.
+
+        This will reverse the journal entries for the design instance and
+        reset associated objects to their pre-design state.
+        """
+        local_logger.info("Decommissioning design", extra={"obj": self})
+        self.__class__.pre_decommission.send(self.__class__, design_instance=self)
+        # Iterate the journals in reverse order (most recent first) and
+        # revert each journal.
+        for journal in self.journals.all().order_by("created"):
+            journal.revert(local_logger=local_logger)
+
+        content_type = ContentType.objects.get_for_model(DesignInstance)
+        self.status = Status.objects.get(
+            content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
+        )
+        self.save()
+        self.__class__.post_decommission.send(self.__class__, design_instance=self)
+
     def delete(self, *args, **kwargs):
         """Protect logic to remove Design Instance."""
         if not (
@@ -219,7 +247,12 @@ class Journal(PrimaryModel):
     for every object within a design before that can happen.
     """
 
-    design_instance = models.ForeignKey(to=DesignInstance, on_delete=models.CASCADE, editable=False)
+    design_instance = models.ForeignKey(
+        to=DesignInstance,
+        on_delete=models.CASCADE,
+        editable=False,
+        related_name="journals",
+    )
     job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
 
     def get_absolute_url(self):
@@ -282,15 +315,50 @@ class Journal(PrimaryModel):
             entry.changes = model_instance.get_changes(entry.changes["pre_change"])
             entry.save()
         except JournalEntry.DoesNotExist:
-            self.entries.create(
+            entry = self.entries.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
                 changes=model_instance.get_changes(),
                 full_control=model_instance.created,
             )
+        return entry
+
+    def revert(self, local_logger: logging.Logger = logger):
+        """Revert the changes represented in this Journal.
+
+        Raises:
+            ValueError: the error will include the trace from the original exception.
+        """
+        # TODO: In what case is _design_object_id not set? I know we have `blank=True`
+        # in the foreign key constraints, but I don't know when that would ever
+        # happen and whether or not we should perhaps always require a design_object.
+        # Without a design object we cannot have changes, right? I suppose if the
+        # object has been deleted since the change was made then it wouldn't exist,
+        # but I think we need to discuss the implications of this further.
+        local_logger.info("Reverting journal", extra={"obj": self})
+        for journal_entry in self.entries.exclude(_design_object_id=None).order_by("-last_updated"):
+            try:
+                journal_entry.revert(local_logger=local_logger)
+            except (ValidationError, DesignValidationError) as ex:
+                local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
+                raise ValueError(ex)
 
 
-class JournalEntry(PrimaryModel):
+class JournalEntryQuerySet(RestrictedQuerySet):
+    """Queryset for `JournalEntry` objects."""
+
+    def exclude_decommissioned(self):
+        """Returns JournalEntry which the related DesignInstance is not decommissioned."""
+        return self.exclude(journal__design_instance__status__name=choices.DesignInstanceStatusChoices.DECOMMISSIONED)
+
+    def filter_related(self, entry: "JournalEntry"):
+        """Returns JournalEntries which have the same object ID but excluding itself."""
+        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
+            id=entry.id
+        )
+
+
+class JournalEntry(BaseModel):
     """A single entry in the journal for exactly 1 object.
 
     The journal entry represents the changes that design builder
@@ -299,10 +367,13 @@ class JournalEntry(PrimaryModel):
     accessed via the `design_object` attribute.If `full_control` is
     `True` then design builder created this object, otherwise
     design builder only updated the object.
-
-    Args:
-        PrimaryModel (_type_): _description_
     """
+
+    objects = JournalEntryQuerySet.as_manager()
+
+    created = models.DateField(auto_now_add=True, null=True)
+
+    last_updated = models.DateTimeField(auto_now=True, null=True)
 
     journal = models.ForeignKey(
         to=Journal,
@@ -324,3 +395,95 @@ class JournalEntry(PrimaryModel):
     def get_absolute_url(self):
         """Return detail view for design instances."""
         return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
+
+    @staticmethod
+    def update_current_value_from_dict(current_value, added_value, removed_value):
+        """Update current value if it's a dictionary."""
+        keys_to_remove = []
+        for key in current_value:
+            if key in added_value:
+                if key in removed_value:
+                    current_value[key] = removed_value[key]
+                else:
+                    keys_to_remove.append(key)
+
+        for key in keys_to_remove:
+            del current_value[key]
+
+        # Recovering old values that the JournalEntry deleted.
+        for key in removed_value:
+            if key not in added_value:
+                current_value[key] = removed_value[key]
+
+    def revert(self, local_logger: logging.Logger = logger):
+        """Revert the changes that are represented in this journal entry.
+
+        Raises:
+            ValidationError: the error will include all of the managed fields that have
+            changed.
+            DesignValidationError: when the design object is referenced by other active Journals.
+
+        """
+        if not self.design_object:
+            raise ValidationError(f"No reference object found for this JournalEntry: {str(self.id)}")
+
+        # It is possible that the journal entry contains a stale copy of the
+        # design object. Consider this example: A journal entry is create and
+        # kept in memory. The object it represents is changed in another area
+        # of code, but using a different in-memory object. The in-memory copy
+        # of the journal entry's `design_object` is now no-longer representative
+        # of the actual database state. Since we need to know the current state
+        # of the design object, the only way to be sure of this is to
+        # refresh our copy.
+        self.design_object.refresh_from_db()
+        object_type = self.design_object._meta.verbose_name.title()
+        object_str = str(self.design_object)
+
+        local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
+
+        if self.full_control:
+            related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
+            if related_entries:
+                active_journal_ids = ",".join([str(j.id) for j in related_entries])
+                raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
+
+            self.design_object.delete()
+            local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
+        else:
+            if not self.changes:
+                local_logger.info("No changes found in the Journal Entry.")
+                return
+
+            if "differences" not in self.changes:
+                # TODO: We should probably change the `changes` dictionary to
+                # a concrete class so that our static analysis tools can catch
+                # problems like this.
+                local_logger.error("`differences` key not present.")
+                return
+
+            differences = self.changes["differences"]
+
+            for attribute in differences.get("added", {}):
+                added_value = differences["added"][attribute]
+                removed_value = differences["removed"][attribute]
+                if isinstance(added_value, dict) and isinstance(removed_value, dict):
+                    # If the value is a dictionary (e.g., config context), we only update the
+                    # keys changed, honouring the current value of the attribute
+                    current_value = getattr(self.design_object, attribute)
+                    self.update_current_value_from_dict(
+                        current_value=current_value,
+                        added_value=added_value,
+                        removed_value=removed_value,
+                    )
+
+                    setattr(self.design_object, attribute, current_value)
+                else:
+                    setattr(self.design_object, attribute, removed_value)
+
+                self.design_object.save()
+                local_logger.info(
+                    "%s %s has been reverted to its previous state.",
+                    object_type,
+                    object_str,
+                    extra={"obj": self.design_object},
+                )

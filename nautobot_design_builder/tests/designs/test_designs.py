@@ -17,6 +17,17 @@ class SimpleDesign(DesignJob):
         design_file = "templates/simple_design.yaml.j2"
 
 
+class SimpleDesignWithInput(DesignJob):
+    """Simple design job with input."""
+
+    instance = StringVar()
+    secret = StringVar()
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design With Input"
+        design_file = "templates/simple_design_with_input.yaml.j2"
+
+
 class SimpleDesignReport(DesignJob):
     """Simple design job that includes a post-implementation report."""
 
@@ -30,7 +41,7 @@ class MultiDesignJob(DesignJob):
     """Design job that is implemented from multiple design files."""
 
     class Meta:  # pylint: disable=too-few-public-methods
-        name = "Simple Design"
+        name = "Multi Design"
         design_files = [
             "templates/simple_design.yaml.j2",
             "templates/simple_design_2.yaml.j2",
@@ -41,7 +52,7 @@ class MultiDesignJobWithError(DesignJob):
     """Design job that includes an error (for unit testing)."""
 
     class Meta:  # pylint: disable=too-few-public-methods
-        name = "Simple Design"
+        name = "Multi Design Job with Error"
         design_files = [
             "templates/simple_design.yaml.j2",
             "templates/simple_design.yaml.j2",

@@ -1,24 +1,25 @@
-"""Plugin declaration for design_builder."""
-from importlib import metadata
-
+"""App declaration for Nautobot Design Builder."""
 from django.conf import settings
 from django.utils.functional import classproperty
-from nautobot.extras.plugins import PluginConfig
+
+from nautobot.apps import NautobotAppConfig
+
+import importlib_metadata as metadata
 
 __version__ = metadata.version(__name__)
 
 
-class DesignBuilderConfig(PluginConfig):
-    """Plugin configuration for the design_builder plugin."""
+class DesignBuilderConfig(NautobotAppConfig):
+    """App configuration for the nautobot_design_builder app."""
 
     name = "nautobot_design_builder"
     verbose_name = "Design Builder"
     version = __version__
     author = "Network to Code, LLC"
     description = "Design Builder."
-    base_url = "nautobot-design-builder"
+    base_url = "design-builder"
     required_settings = []
-    min_version = "1.5.0"
+    min_version = "1.6.0"
     max_version = "2.9999"
     default_settings = {}
     caching_config = {}

@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "0.4.5"
-description = "A plugin that uses design templates to easily create data objects in Nautobot with minimal input from a user."
+version = "0.5.0"
+description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user."
 authors = ["Network to Code, LLC <info@networktocode.com>"]
 readme = "README.md"
-homepage = "https://github.com/networktocode-llc/nautobot-plugin-design-builder"
-repository = "https://github.com/networktocode-llc/nautobot-plugin-design-builder"
+homepage = "https://github.com/nautobot/nautobot-app-design-builder"
+repository = "https://github.com/nautobot/nautobot-app-design-builder"
 keywords = ["nautobot", "nautobot-plugin"]
 include = [
     "README.md",
@@ -15,7 +15,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.8,<3.12"
 # Used for local development
 nautobot = { version = ">=1.5.0", optional = true }
 
@@ -76,12 +76,12 @@ exclude = '''
 
 [tool.pylint.master]
 # Include the pylint_django plugin to avoid spurious warnings about Django patterns
-load-plugins="pylint_django"
-ignore=".venv"
+load-plugins = "pylint_django"
+ignore = ".venv"
 
 [tool.pylint.basic]
 # No docstrings required for private methods (Pylint default), or for test_ functions, or for inner Meta classes.
-no-docstring-rgx="^(_|test_|Test|Meta$)"
+no-docstring-rgx = "^(_|test_|Test|Meta$)"
 
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
@@ -118,7 +118,5 @@ requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]
 addopts = "-vv --doctest-modules"

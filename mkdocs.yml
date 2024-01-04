@@ -4,7 +4,7 @@ edit_uri: "edit/develop/docs"
 site_dir: "nautobot_design_builder/static/nautobot_design_builder/docs"
 site_name: "Design Builder Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-design-builder/en/latest/"
-repo_url: "https://github.com/networktocode-llc/nautobot-plugin-design-builder"
+repo_url: "https://github.com/nautobot/nautobot-app-design-builder"
 copyright: "Copyright &copy; The Authors"
 theme:
   name: "material"

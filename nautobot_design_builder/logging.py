@@ -56,18 +56,19 @@ class JobResultHandler(logging.Handler):
         """
         level = _logger_to_level_choices[record.levelno]
         msg = self.format(record)
-        self.job_result.log(level_choice=level, message=msg)
+        obj = getattr(record, "obj", None)
+        self.job_result.log(level_choice=level, message=msg, obj=obj)
 
 
-def get_logger(name, job_result: JobResult):
+def get_logger(name, job_result: JobResult) -> logging.Logger:
     """Retrieve the named logger and add a JobResultHandler to it.
 
     Args:
-        name (_type_): _description_
-        job_result (JobResult): _description_
+        name (str): The name of the logger.
+        job_result (JobResult): The job result to log messages to.
 
     Returns:
-        _type_: _description_
+        logging.Logger: The named logger.
     """
     logger = logging.getLogger(name)
     logger.addHandler(JobResultHandler(job_result))
