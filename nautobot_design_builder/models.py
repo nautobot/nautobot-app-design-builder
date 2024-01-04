@@ -424,7 +424,7 @@ class JournalEntry(BaseModel):
     def revert(self, local_logger: logging.Logger = logger):
         """Revert the changes that are represented in this journal entry."""
         if not self.design_object:
-            raise ValidationError("No reference object found for this JournalEntry.")
+            raise ValidationError(f"No reference object found for this JournalEntry: {self.id}")
 
         # It is possible that the journal entry contains a stale copy of the
         # design object. Consider this example: A journal entry is create and
