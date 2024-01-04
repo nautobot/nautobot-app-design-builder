@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 @receiver(nautobot_database_ready, sender=apps.get_app_config("nautobot_design_builder"))
 def create_design_model_for_existing(sender, **kwargs):
     """When the plugin is first installed, make sure each design job has a corresponding Design model.
-    
+
     This is necessary if an older version of Design Builder was installed. In that case
     the design jobs exist, but not any design models. Since post-upgrade
     doesn't re-install those jobs, they aren't created in the database yet.
