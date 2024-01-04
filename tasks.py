@@ -301,6 +301,25 @@ def docs(context):
         print("Only used when developing locally (i.e. context.nautobot_design_builder.local=True)!")
 
 
+@task
+def build_and_check_docs(context):
+    """Build documentation to be available within Nautobot."""
+    command = "mkdocs build --no-directory-urls --strict"
+    run_command(context, command)
+
+
+@task(name="help")
+def help_task(context):
+    """Print the help of available tasks."""
+    import tasks  # pylint: disable=all
+
+    root = Collection.from_module(tasks)
+    for task_name in sorted(root.task_names):
+        print(50 * "-")
+        print(f"invoke {task_name} --help")
+        context.run(f"invoke {task_name} --help")
+
+
 # ------------------------------------------------------------------------------
 # TESTS
 # ------------------------------------------------------------------------------

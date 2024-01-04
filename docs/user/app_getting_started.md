@@ -33,5 +33,3 @@ If you run the job you should see output in the job result that shows the variou
 ![design job result](../images/screenshots/design-job-result.png)
 
 Once the initial data job has been run, try enabling and running the "Backbone Site Design" job to create a new site with racks and routers.
-
-For more information on the composition of designs and design templates, check out the [design development](design_development.md) section. You can also check out the [Use Cases](app_use_cases.md) section for more examples.

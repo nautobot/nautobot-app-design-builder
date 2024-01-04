@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import inspect
 import sys
+from types import ModuleType
+from typing import List
 import yaml
 
 from nautobot_design_builder import DesignBuilderConfig
@@ -21,12 +23,11 @@ def is_extension(cls):
     return inspect.isclass(cls) and issubclass(cls, Extension) and cls is not Extension
 
 
-def extensions(module=None):
+def extensions(module: ModuleType=None) -> List["Extension"]:
     """Get all the extensions defined in a module.
 
     Args:
-        module: Module to search for extensions. If left as `None` then
-        the ext.py module is searched.
+        module (ModuleType): Module to search for extensions. If left as `None` then the ext.py module is searched.
 
     Returns:
         List[Extension]: List of extensions found in the module.

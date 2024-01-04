@@ -300,7 +300,7 @@ The path to the included template is relative to the directory where the design 
 
 ### Extensions
 
-Custom action tags can be created using template extensions. If a design needs custom functionality implemented as an action tag, the design developer can simply create a new tag (see the [extension](../dev/template_extensions.md) documentation). The new tag class can be added to the design using the extensions attribute in the design Meta class:
+Custom action tags can be created using template extensions. If a design needs custom functionality implemented as an action tag, the design developer can simply create a new tag (see the [extension](../dev/extending.md) documentation). The new tag class can be added to the design using the extensions attribute in the design Meta class:
 
 ```python
 class DesignJobWithExtensions(DesignJob):

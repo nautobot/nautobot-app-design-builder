@@ -8,7 +8,7 @@ import pkgutil
 import sys
 from importlib.machinery import ModuleSpec
 from types import ModuleType
-from typing import Iterator, Tuple, Type, TYPE_CHECKING
+from typing import Dict, Iterator, List, Tuple, Type, TYPE_CHECKING
 
 import yaml
 from django.conf import settings
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 DESIGN_BUILDER_ROOT_MODULE = "design_builder_designs"
 
 
-def get_class_dir(cls):
+def get_class_dir(cls) -> str:
     """Function to return the directory where a given path is stored.
 
     Returns:
@@ -36,7 +36,7 @@ def get_class_dir(cls):
     return os.path.dirname(inspect.getfile(cls))
 
 
-def load_design_yaml(cls, resource):
+def load_design_yaml(cls, resource) -> List | Dict:
     """Loads data from a YAML design file.
 
     Args:
@@ -48,7 +48,7 @@ def load_design_yaml(cls, resource):
     return yaml.safe_load(load_design_file(cls, resource))
 
 
-def load_design_file(cls, resource):
+def load_design_file(cls, resource) -> str:
     """Reads data from a file and returns it as string.
 
     Args:
@@ -61,7 +61,7 @@ def load_design_file(cls, resource):
         return file.read()
 
 
-def load_design_package(path: str, package_name: str):
+def load_design_package(path: str, package_name: str) -> Type[ModuleType]:
     """Load the package (__init__.py) from the path and assign it package_name.
 
     Args:
