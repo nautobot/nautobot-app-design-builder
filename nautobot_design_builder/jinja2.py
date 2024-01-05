@@ -45,7 +45,7 @@ def ip_network(input_str: str) -> IPNetwork:
     """Jinja2 filter to convert a string to an IPNetwork object.
 
     Args:
-        input (str): String correctly formatted as an IP Address
+        input_str (str): String correctly formatted as an IP Address
 
     Returns:
         IPNetwork: object that represents the input string
@@ -115,15 +115,15 @@ def to_yaml(value: "ContextNodeMixin", *args, **kwargs):
     return yaml.dump(json.loads(to_json(value)), allow_unicode=True, default_flow_style=default_flow_style, **kwargs)
 
 
-def new_template_environment(root_context, base_dir=None, native_environment=False):
+def new_template_environment(root_context, base_dir=None, native_environment=False) -> NativeEnvironment:
     """Create a new template environment that will resolve identifiers using the supplied root_context.
 
     If base_dir is supplied, templates will be matched from the base directory provided.
 
     Args:
-        root_context (design_builder.context.Context): Context object
-        to use when resolving missing identifiers in the rendering process
+        root_context (design_builder.context.Context): Context object to use when resolving missing identifiers in the rendering process
         base_dir (str): Path, or list of paths, to use as search paths for finding templates.
+        native_environment (bool): To use native JinjaEnvironment
 
     Returns:
         NativeEnvironment: Jinja native environment

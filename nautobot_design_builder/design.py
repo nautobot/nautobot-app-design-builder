@@ -1,8 +1,9 @@
 """Provides ORM interaction for design builder."""
-from typing import Dict, List, Mapping, Type
+from types import FunctionType
+from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
-from django.db.models import Model
+from django.db.models import Model, Manager
 from django.db.models.fields import Field as DjangoField
 from django.dispatch.dispatcher import Signal
 from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
@@ -163,15 +164,15 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     def create_child(
         self,
         model_class: Type[Model],
-        attributes: dict,
-        relationship_manager=None,
-    ):
+        attributes: Dict,
+        relationship_manager: Manager = None,
+    ) -> "ModelInstance":
         """Create a new ModelInstance that is linked to the current instance.
 
         Args:
-            model_class: Class of the child model.
-            attributes: Design attributes for the child.
-            relationship_manager: Database relationship manager to use for the new instance.
+            model_class (Type[Model]): Class of the child model.
+            attributes (Dict): Design attributes for the child.
+            relationship_manager (Manager): Database relationship manager to use for the new instance.
 
         Returns:
             ModelInstance: Model instance that has its parent correctly set.
@@ -231,12 +232,12 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         if self.action not in self.ACTION_CHOICES:
             raise errors.DesignImplementationError(f"Unknown action {self.action}", self.model_class)
 
-    def connect(self, signal: Signal, handler):
+    def connect(self, signal: Signal, handler: FunctionType):
         """Connect a handler between this model instance (as sender) and signal.
 
         Args:
-            signal: Signal to listen for.
-            handler: Callback function
+            signal (Signal): Signal to listen for.
+            handler (FunctionType): Callback function
         """
         self.signals[signal].connect(handler, self)
 
@@ -421,7 +422,7 @@ class Builder(LoggingMixin):
 
         self.journal = Journal()
 
-    def get_extension(self, ext_type, tag):
+    def get_extension(self, ext_type: str, tag: str) -> ext.Extension:
         """Looks up an extension based on its tag name and returns an instance of that Extension type.
 
         Args:
@@ -440,7 +441,7 @@ class Builder(LoggingMixin):
         return extn["object"]
 
     @transaction.atomic
-    def implement_design(self, design, commit=False):
+    def implement_design(self, design: Dict, commit: bool = False):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -449,8 +450,8 @@ class Builder(LoggingMixin):
         database state should represent the changes provided in the design.
 
         Args:
-            design: An iterable mapping of design changes.
-            commit: Whether or not to commit the transaction. Defaults to False.
+            design (Dict): An iterable mapping of design changes.
+            commit (bool): Whether or not to commit the transaction. Defaults to False.
 
         Raises:
             DesignImplementationError: if the model is not in the model map
@@ -485,7 +486,7 @@ class Builder(LoggingMixin):
             value = value.instance
         return value
 
-    def resolve_values(self, value, unwrap_model_instances=False):
+    def resolve_values(self, value: Union[list, dict, str], unwrap_model_instances: bool = False) -> Any:
         """Resolve a value, or values, using extensions.
 
         Args:
