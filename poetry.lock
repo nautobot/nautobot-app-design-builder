@@ -3712,4 +3712,4 @@ nautobot = ["nautobot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "6874439eb164adb8d4480dd3012a27b82fdc463f7e81df9e217d258e6df039f4"
+content-hash = "8ec4ecf63625568afcbfb1ff021f998969cf00efa320323c380084253a5323f3"
