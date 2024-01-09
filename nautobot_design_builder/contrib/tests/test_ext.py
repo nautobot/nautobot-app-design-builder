@@ -21,6 +21,8 @@ from nautobot_design_builder.util import nautobot_version
 
 
 class TestLookupExtension(TestCase):
+    """Test Lookup Extension."""
+
     def test_lookup_by_dict(self):
         design_template = """
         manufacturers:
@@ -54,6 +56,8 @@ class TestLookupExtension(TestCase):
 
 
 class TestCableConnectionExtension(TestCase):
+    """Test Cable Connection Extension."""
+
     def test_connect_cable(self):
         design_template_v1 = """
         sites:
@@ -191,6 +195,8 @@ class PrefixExtensionTests(TestCase):
 
 
 class TestNextPrefixExtension(PrefixExtensionTests):
+    """Test Next Prefix Extension."""
+
     def test_next_prefix_lookup(self):
         extension = NextPrefixExtension(None)
         want = "10.0.4.0/24"
@@ -263,6 +269,8 @@ class TestNextPrefixExtension(PrefixExtensionTests):
 
 
 class TestChildPrefixExtension(PrefixExtensionTests):
+    """Test Child Prefix Extension."""
+
     def test_creation(self):
         design_template = """
         prefixes:
@@ -290,6 +298,8 @@ class TestChildPrefixExtension(PrefixExtensionTests):
 
 
 class TestBGPExtension(TestCase):
+    """Test BGP extension."""
+
     def setUp(self):
         # TODO: Remove this when BGP models is migrated to 2.0
         if nautobot_version >= "2.0.0":

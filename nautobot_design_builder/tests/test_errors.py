@@ -7,7 +7,11 @@ from nautobot_design_builder.errors import DesignModelError, DesignValidationErr
 
 
 class TestDesignModelError(unittest.TestCase):
+    """Test DesignModelError."""
+
     class TestModel:  # pylint:disable=too-few-public-methods
+        """A test model."""
+
         def __init__(self, title="", parent=None):
             self.title = title
             self.instance = self
@@ -64,6 +68,8 @@ class TestDesignModelError(unittest.TestCase):
 
 
 class TestDesignValidationError(unittest.TestCase):
+    """Test DesignValidationError."""
+
     def test_single_string(self):
         want = "Error Message failed validation"
         got = str(DesignValidationError("Error Message"))

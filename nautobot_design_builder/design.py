@@ -277,6 +277,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 return
             except ObjectDoesNotExist:
                 if self.action == "update":
+                    # pylint: disable=raise-missing-from
                     raise errors.DesignImplementationError(f"No match with {query_filter}", self.model_class)
                 self.created = True
                 # since the object was not found, we need to

@@ -60,6 +60,8 @@ def _create_module(path, content=""):
 
 
 class TestBase(TestCase):
+    """Base class for tests."""
+
     def setUp(self) -> None:
         super().setUp()
         self.repo_class = namedtuple("GitRepository", "provided_contents current_head filesystem_path slug")
@@ -95,6 +97,8 @@ class TestBase(TestCase):
 
 
 class TestModuleLoading(TestBase):
+    """Test that designs are loaded correctly."""
+
     def test_load_design_package(self):
         package_name = "design_builder_designs.module_loading"
         repo = self.get_repo(DATASOURCE_IDENTIFIER, "module-loading")
@@ -149,6 +153,8 @@ class TestModuleLoading(TestBase):
 
 
 class TestDesignDiscovery(TestBase):
+    """Test that designs are discovered correctly."""
+
     def test_single_design_in_one_file(self):
         repo = self.get_repo(DATASOURCE_IDENTIFIER, "single-design-one-file")
         _create_file(os.path.join(repo.filesystem_path, "designs", "single_design_one_file.py"), DESIGN_FILE_1)

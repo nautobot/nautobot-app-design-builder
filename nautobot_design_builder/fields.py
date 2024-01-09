@@ -153,11 +153,13 @@ class ManyToOneField(RelationshipField):
                     value.save()
                 value = value.instance.pk
             except MultipleObjectsReturned:
+                # pylint: disable=raise-missing-from
                 raise DesignImplementationError(
                     f"Expected exactly 1 object for {self.model.__name__}({value}) but got more than one"
                 )
             except ObjectDoesNotExist:
                 query = ",".join([f'{k}="{v}"' for k, v in value.items()])
+                # pylint: disable=raise-missing-from
                 raise DesignImplementationError(f"Could not find {self.model.__name__}: {query}")
         elif hasattr(value, "instance"):
             value = value.instance.pk
