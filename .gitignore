@@ -303,7 +303,7 @@ development/*.txt
 invoke.yml
 
 # Docs
-docs/README.md
-docs/CHANGELOG.md
 public
-nautobot_design_builder/static/nautobot_design_builder/docs
+/compose.yaml
+/dump.sql
+/my_plugin/static/my_plugin/docs

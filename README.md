@@ -1,29 +1,57 @@
-# Design Builder
+# Nautobot Design Builder
+
+<!--
+Developer Note - Remove Me!
+
+The README will have certain links/images broken until the PR is merged into `develop`. Update the GitHub links with whichever branch you're using (main etc.) if different.
+
+The logo of the project is a placeholder (docs/images/icon-my-plugin.png) - please replace it with your app icon, making sure it's at least 200x200px and has a transparent background!
+
+To avoid extra work and temporary links, make sure that publishing docs (or merging a PR) is done at the same time as setting up the docs site on RTD, then test everything.
+-->
 
 <p align="center">
-  <img src="/docs/images/icon-design-builder.png" class="logo" height="200px">
+  <img src="https://raw.githubusercontent.com/nautobot/nautobot-app-design-builder/develop/docs/images/icon-my-plugin.png" class="logo" height="200px">
   <br>
   <a href="https://github.com/nautobot/nautobot-app-design-builder/actions"><img src="https://github.com/nautobot/nautobot-app-design-builder/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="https://docs.nautobot.com/projects/design-builder/en/latest"><img src="https://readthedocs.org/projects/nautobot-app-design-builder/badge/"></a>
-  <a href="https://pypi.org/project/design-builder/"><img src="https://img.shields.io/pypi/v/design-builder"></a>
-  <a href="https://pypi.org/project/design-builder/"><img src="https://img.shields.io/pypi/dm/design-builder"></a>
+  <a href="https://pypi.org/project/my-plugin/"><img src="https://img.shields.io/pypi/v/my-plugin"></a>
+  <a href="https://pypi.org/project/my-plugin/"><img src="https://img.shields.io/pypi/dm/my-plugin"></a>
   <br>
   An <a href="https://www.networktocode.com/nautobot/apps/">App</a> for <a href="https://nautobot.com/">Nautobot</a>.
 </p>
 
 ## Overview
 
-Design Builder is a Nautobot application for easily populating data within Nautobot using standardized design files. These design files are just Jinja templates that describe the Nautobot objects to be created or updated.
+> Developer Note: Add a long (2-3 paragraphs) description of what the App does, what problems it solves, what functionality it adds to Nautobot, what external systems it works with etc.
+
+### Screenshots
+
+> Developer Note: Add any representative screenshots of the App in action. These images should also be added to the `docs/user/app_use_cases.md` section.
+
+> Developer Note: Place the files in the `docs/images/` folder and link them using only full URLs from GitHub, for example: `![Overview](https://raw.githubusercontent.com/nautobot/nautobot-app-design-builder/develop/docs/images/plugin-overview.png)`. This absolute static linking is required to ensure the README renders properly in GitHub, the docs site, and any other external sites like PyPI.
+
+More screenshots can be found in the [Using the App](https://docs.nautobot.com/projects/design-builder/en/latest/user/app_use_cases/) page in the documentation. Here's a quick overview of some of the plugin's added functionality:
+
+![](https://raw.githubusercontent.com/nautobot/nautobot-app-design-builder/develop/docs/images/placeholder.png)
+
+## Try it out!
+
+> Developer Note: Only keep this section if appropriate. Update link to correct sandbox.
+
+This App is installed in the Nautobot Community Sandbox found over at [demo.nautobot.com](https://demo.nautobot.com/)!
+
+> For a full list of all the available always-on sandbox environments, head over to the main page on [networktocode.com](https://www.networktocode.com/nautobot/sandbox-environments/).
 
 ## Documentation
 
 Full documentation for this App can be found over on the [Nautobot Docs](https://docs.nautobot.com) website:
 
-- [User Guide](user/app_overview.md) - Overview, Using the App, Getting Started.
-- [Administrator Guide](admin/install.md) - How to Install, Configure, Upgrade, or Uninstall the App.
-- [Developer Guide](dev/contributing.md) - Extending the App, Code Reference, Contribution Guide.
-- [Release Notes / Changelog](admin/release_notes/).
-- [Frequently Asked Questions](user/faq.md).
+- [User Guide](https://docs.nautobot.com/projects/design-builder/en/latest/user/app_overview/) - Overview, Using the App, Getting Started.
+- [Administrator Guide](https://docs.nautobot.com/projects/design-builder/en/latest/admin/install/) - How to Install, Configure, Upgrade, or Uninstall the App.
+- [Developer Guide](https://docs.nautobot.com/projects/design-builder/en/latest/dev/contributing/) - Extending the App, Code Reference, Contribution Guide.
+- [Release Notes / Changelog](https://docs.nautobot.com/projects/design-builder/en/latest/admin/release_notes/).
+- [Frequently Asked Questions](https://docs.nautobot.com/projects/design-builder/en/latest/user/faq/).
 
 ### Contributing to the Documentation
 

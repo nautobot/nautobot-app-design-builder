@@ -1,12 +1,12 @@
 ---
 name: 🐛 Bug Report
-about: Report a reproducible bug in the current release of design-builder
+about: Report a reproducible bug in the current release of my-plugin
 ---
 
 ### Environment
-* Python version:  <!-- Example: 3.7.7 -->
-* Nautobot version:  <!-- Example: 1.2.0 -->
-* design-builder version:  <!-- Example: 0.1.0 -->
+* Python version:  <!-- Example: 3.11.4 -->
+* Nautobot version:  <!-- Example: 1.6.8 -->
+* my-plugin version:  <!-- Example: 1.0.0 -->
 
 <!-- What did you expect to happen? -->
 ### Expected Behavior

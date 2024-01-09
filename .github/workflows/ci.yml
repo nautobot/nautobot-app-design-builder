@@ -13,16 +13,16 @@ on: # yamllint disable-line rule:truthy rule:comments
   pull_request: ~
 
 env:
-  PLUGIN_NAME: "nautobot-plugin-design-builder"
+  PLUGIN_NAME: "nautobot-app-design-builder"
 
 jobs:
   black:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_MY_PLUGIN_LOCAL: "True"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
         uses: "networktocode/gh-action-setup-poetry-environment@v4"
       - name: "Linting: black"
@@ -30,10 +30,10 @@ jobs:
   bandit:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_MY_PLUGIN_LOCAL: "True"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
         uses: "networktocode/gh-action-setup-poetry-environment@v4"
       - name: "Linting: bandit"
@@ -41,43 +41,43 @@ jobs:
   pydocstyle:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v2"
-      - name: "Setup environment"
-        uses: "networktocode/gh-action-setup-poetry-environment@v4"
-      - name: "Linting: pydocstyle"
-        run: "poetry run invoke pydocstyle"
-  check-docs-build:
-    runs-on: "ubuntu-22.04"
-    env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_MY_PLUGIN_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
       - name: "Setup environment"
         uses: "networktocode/gh-action-setup-poetry-environment@v4"
-      - name: "Check Docs Build"
-        run: "poetry run invoke build-and-check-docs"
+      - name: "Linting: pydocstyle"
+        run: "poetry run invoke pydocstyle"
   flake8:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_MY_PLUGIN_LOCAL: "True"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
         uses: "networktocode/gh-action-setup-poetry-environment@v4"
       - name: "Linting: flake8"
         run: "poetry run invoke flake8"
+  poetry:
+    runs-on: "ubuntu-22.04"
+    env:
+      INVOKE_MY_PLUGIN_LOCAL: "True"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Setup environment"
+        uses: "networktocode/gh-action-setup-poetry-environment@v4"
+      - name: "Checking: poetry lock file"
+        run: "poetry run invoke lock --check"
   yamllint:
     runs-on: "ubuntu-22.04"
     env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
+      INVOKE_MY_PLUGIN_LOCAL: "True"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
         uses: "networktocode/gh-action-setup-poetry-environment@v4"
       - name: "Linting: yamllint"
@@ -87,6 +87,7 @@ jobs:
       - "bandit"
       - "pydocstyle"
       - "flake8"
+      - "poetry"
       - "yamllint"
       - "black"
     runs-on: "ubuntu-22.04"
@@ -94,44 +95,122 @@ jobs:
       fail-fast: true
       matrix:
         python-version: ["3.11"]
-        nautobot-version: ["1.6"]
+        nautobot-version: ["1.6.8"]
     env:
-      INVOKE_DESIGN_BUILDER_PYTHON_VER: "${{ matrix.python-version }}"
-      INVOKE_DESIGN_BUILDER_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
+      INVOKE_MY_PLUGIN_PYTHON_VER: "${{ matrix.python-version }}"
+      INVOKE_MY_PLUGIN_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
         uses: "networktocode/gh-action-setup-poetry-environment@v4"
       - name: "Set up Docker Buildx"
         id: "buildx"
-        uses: "docker/setup-buildx-action@v1"
+        uses: "docker/setup-buildx-action@v3"
+      - name: "Build"
+        uses: "docker/build-push-action@v5"
+        with:
+          builder: "${{ steps.buildx.outputs.name }}"
+          context: "./"
+          push: false
+          load: true
+          tags: "${{ env.PLUGIN_NAME }}/nautobot:${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          file: "./development/Dockerfile"
+          cache-from: "type=gha,scope=${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          cache-to: "type=gha,scope=${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          build-args: |
+            NAUTOBOT_VER=${{ matrix.nautobot-version }}
+            PYTHON_VER=${{ matrix.python-version }}
       - name: "Copy credentials"
         run: "cp development/creds.example.env development/creds.env"
       - name: "Linting: pylint"
         run: "poetry run invoke pylint"
-  unittest:
+  check-migrations:
     needs:
-      - "pylint"
+      - "bandit"
+      - "pydocstyle"
+      - "flake8"
+      - "poetry"
+      - "yamllint"
+      - "black"
+    runs-on: "ubuntu-22.04"
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
-        db-backend: ["postgresql"]
-        nautobot-version: ["1.6", "latest"]
-        include:
-          - python-version: "3.10"
-            db-backend: "mysql"
-            nautobot-version: "1.6"
-    runs-on: "ubuntu-22.04"
+        python-version: ["3.11"]
+        nautobot-version: ["1.6.8"]
     env:
-      INVOKE_DESIGN_BUILDER_PYTHON_VER: "${{ matrix.python-version }}"
-      INVOKE_DESIGN_BUILDER_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
+      INVOKE_MY_PLUGIN_PYTHON_VER: "${{ matrix.python-version }}"
+      INVOKE_MY_PLUGIN_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
         uses: "networktocode/gh-action-setup-poetry-environment@v4"
+      - name: "Set up Docker Buildx"
+        id: "buildx"
+        uses: "docker/setup-buildx-action@v3"
+      - name: "Build"
+        uses: "docker/build-push-action@v5"
+        with:
+          builder: "${{ steps.buildx.outputs.name }}"
+          context: "./"
+          push: false
+          load: true
+          tags: "${{ env.PLUGIN_NAME }}/nautobot:${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          file: "./development/Dockerfile"
+          cache-from: "type=gha,scope=${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          cache-to: "type=gha,scope=${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          build-args: |
+            NAUTOBOT_VER=${{ matrix.nautobot-version }}
+            PYTHON_VER=${{ matrix.python-version }}
+      - name: "Copy credentials"
+        run: "cp development/creds.example.env development/creds.env"
+      - name: "Checking: migrations"
+        run: "poetry run invoke check-migrations"
+  unittest:
+    needs:
+      - "pylint"
+      - "check-migrations"
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.8", "3.11"]
+        db-backend: ["postgresql"]
+        nautobot-version: ["stable"]
+        include:
+          - python-version: "3.11"
+            db-backend: "postgresql"
+            nautobot-version: "1.6.8"
+          - python-version: "3.11"
+            db-backend: "mysql"
+            nautobot-version: "stable"
+    runs-on: "ubuntu-22.04"
+    env:
+      INVOKE_MY_PLUGIN_PYTHON_VER: "${{ matrix.python-version }}"
+      INVOKE_MY_PLUGIN_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Setup environment"
+        uses: "networktocode/gh-action-setup-poetry-environment@v4"
+      - name: "Set up Docker Buildx"
+        id: "buildx"
+        uses: "docker/setup-buildx-action@v3"
+      - name: "Build"
+        uses: "docker/build-push-action@v5"
+        with:
+          builder: "${{ steps.buildx.outputs.name }}"
+          context: "./"
+          push: false
+          load: true
+          tags: "${{ env.PLUGIN_NAME }}/nautobot:${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          file: "./development/Dockerfile"
+          cache-from: "type=gha,scope=${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          cache-to: "type=gha,scope=${{ matrix.nautobot-version }}-py${{ matrix.python-version }}"
+          build-args: |
+            NAUTOBOT_VER=${{ matrix.nautobot-version }}
+            PYTHON_VER=${{ matrix.python-version }}
       - name: "Copy credentials"
         run: "cp development/creds.example.env development/creds.env"
       - name: "Use Mysql invoke settings when needed"
@@ -145,8 +224,6 @@ jobs:
     name: "Publish to GitHub"
     runs-on: "ubuntu-22.04"
     if: "startsWith(github.ref, 'refs/tags/v')"
-    env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -160,16 +237,12 @@ jobs:
         run: "echo RELEASE_VERSION=${GITHUB_REF:10} >> $GITHUB_ENV"
       - name: "Run Poetry Version"
         run: "poetry version $RELEASE_VERSION"
-      - name: "Install Dependencies (needed for mkdocs)"
-        run: "poetry install --no-root"
-      - name: "Build Documentation"
-        run: "poetry run invoke build-and-check-docs"
       - name: "Run Poetry Build"
         run: "poetry build"
       - name: "Upload binaries to release"
         uses: "svenstaro/upload-release-action@v2"
         with:
-          repo_token: "${{ secrets.GH_NAUTOBOT_BOT_TOKEN }}"
+          repo_token: "${{ secrets.NTC_GITHUB_TOKEN }}"  # use GH_NAUTOBOT_BOT_TOKEN for Nautobot Org repos.
           file: "dist/*"
           tag: "${{ github.ref }}"
           overwrite: true
@@ -180,8 +253,6 @@ jobs:
     name: "Push Package to PyPI"
     runs-on: "ubuntu-22.04"
     if: "startsWith(github.ref, 'refs/tags/v')"
-    env:
-      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -195,10 +266,6 @@ jobs:
         run: "echo RELEASE_VERSION=${GITHUB_REF:10} >> $GITHUB_ENV"
       - name: "Run Poetry Version"
         run: "poetry version $RELEASE_VERSION"
-      - name: "Install Dependencies (needed for mkdocs)"
-        run: "poetry install --no-root"
-      - name: "Build Documentation"
-        run: "poetry run invoke build-and-check-docs"
       - name: "Run Poetry Build"
         run: "poetry build"
       - name: "Push to PyPI"
@@ -223,7 +290,7 @@ jobs:
         # ENVs cannot be used directly in job.if. This is a workaround to check
         # if SLACK_WEBHOOK_URL is present.
         if: "env.SLACK_WEBHOOK_URL != ''"
-        uses: "slackapi/slack-github-action@v1.17.0"
+        uses: "slackapi/slack-github-action@v1"
         with:
           payload: |
             {
