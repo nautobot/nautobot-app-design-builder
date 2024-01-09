@@ -5,4 +5,4 @@
 
 | Nautobot Design Builder Version | Nautobot First Support Version | Nautobot Last Support Version |
 | ------------- | -------------------- | ------------- |
-| 1.0.X         | 1.6.8                | 1.99.99        |
+| 1.0.X         | 1.6.8                | 2.0.X         |

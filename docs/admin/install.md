@@ -2,9 +2,6 @@
 
 Here you will find detailed instructions on how to **install** and **configure** the App within your Nautobot environment.
 
-!!! warning "Developer Note - Remove Me!"
-    Detailed instructions on installing the App. You will need to update this section based on any additional dependencies or prerequisites.
-
 ## Prerequisites
 
 - The plugin is compatible with Nautobot 1.6.8 and higher.
@@ -15,8 +12,7 @@ Here you will find detailed instructions on how to **install** and **configure**
 
 ### Access Requirements
 
-!!! warning "Developer Note - Remove Me!"
-    What external systems (if any) it needs access to in order to work.
+Design Builder does not necessarily require any external system access. However, if design jobs will be loaded from a git repository, then the Nautobot instances will need access to the git repo.
 
 ## Install Guide
 
@@ -66,16 +62,3 @@ Then restart (if necessary) the Nautobot services which may include:
 ```shell
 sudo systemctl restart nautobot nautobot-worker nautobot-scheduler
 ```
-
-## App Configuration
-
-!!! warning "Developer Note - Remove Me!"
-    Any configuration required to get the App set up. Edit the table below as per the examples provided.
-
-The plugin behavior can be controlled with the following list of settings:
-
-| Key     | Example | Default | Description                          |
-| ------- | ------ | -------- | ------------------------------------- |
-| `enable_backup` | `True` | `True` | A boolean to represent whether or not to run backup configurations within the plugin. |
-| `platform_slug_map` | `{"cisco_wlc": "cisco_aireos"}` | `None` | A dictionary in which the key is the platform slug and the value is what netutils uses in any "network_os" parameter. |
-| `per_feature_bar_width` | `0.15` | `0.15` | The width of the table bar within the overview report |
