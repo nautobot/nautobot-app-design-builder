@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "0.1.0"
+version = "0.4.4"
 description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user."
 authors = ["Network to Code, LLC <opensource@networktocode.com>"]
 license = "Apache-2.0"
@@ -28,7 +28,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
 # Used for local development
-nautobot = "^1.6.8"
+nautobot = { version = ">=1.6.8", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 bandit = "*"
@@ -45,15 +45,22 @@ pylint-nautobot = "*"
 yamllint = "*"
 toml = "*"
 Markdown = "*"
+# Pining the version. The newer versions break unittests.
+nautobot-bgp-models= "0.7.1"
+
 # Rendering docs to HTML
 mkdocs = "1.5.2"
 # Material for MkDocs theme
-mkdocs-material = "9.1.15"
+mkdocs-material = "9.2.4"
 # Render custom markdown for version added/changed/remove notes
 mkdocs-version-annotations = "1.0.0"
 # Automatic documentation from sources, for MkDocs
 mkdocstrings = "0.22.0"
 mkdocstrings-python = "1.5.2"
+
+[tool.poetry.extras]
+nautobot = ["nautobot"]
+# bgp_models = ["nautobot-bgp-models"]
 
 [tool.black]
 line-length = 120

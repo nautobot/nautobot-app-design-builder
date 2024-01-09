@@ -4,6 +4,8 @@ import sys
 
 from nautobot.core.settings import *  # noqa: F403  # pylint: disable=wildcard-import,unused-wildcard-import
 from nautobot.core.settings_funcs import is_truthy, parse_redis_connection
+from importlib import metadata
+from packaging.version import Version
 
 #
 # Debug
@@ -133,9 +135,12 @@ PLUGINS = ["nautobot_design_builder"]
 
 # Apps configuration settings. These settings are used by various Apps that the user may have installed.
 # Each key in the dictionary is the name of an installed App and its value is a dictionary of settings.
-# PLUGINS_CONFIG = {
-#     'nautobot_design_builder': {
-#         'foo': 'bar',
-#         'buzz': 'bazz'
-#     }
-# }
+
+# TODO: The following is necessary only until BGP models plugin
+# is officially supported in 2.0
+nautobot_version = Version(Version(metadata.version("nautobot")).base_version)
+
+if nautobot_version < Version("2.0"):
+    PLUGINS.append("nautobot_bgp_models")
+
+PLUGINS_CONFIG = {"design_builder": {"context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None)}}

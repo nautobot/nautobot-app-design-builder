@@ -101,9 +101,9 @@ nav:
   - User Guide:
       - App Overview: "user/app_overview.md"
       - Getting Started: "user/app_getting_started.md"
-      - Using the App: "user/app_use_cases.md"
+      - Design Quick Start: "user/design_quickstart.md"
+      - Design Development: "user/design_development.md"
       - Frequently Asked Questions: "user/faq.md"
-      - External Interactions: "user/external_interactions.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"
@@ -116,9 +116,14 @@ nav:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
       - Development Environment: "dev/dev_environment.md"
-      - Architecture Decision Records: "dev/arch_decision.md"
       - Code Reference:
           - "dev/code_reference/index.md"
           - Package: "dev/code_reference/package.md"
           - API: "dev/code_reference/api.md"
+          - Design Job: "dev/code_reference/design_job.md"
+          - Context: "dev/code_reference/context.md"
+          - Design Builder: "dev/code_reference/design.md"
+          - Jinja Rendering: "dev/code_reference/jinja2.md"
+          - Template Extensions: "dev/code_reference/ext.md"
+          - Util: "dev/code_reference/util.md"
   - Nautobot Docs Home ↗︎: "https://docs.nautobot.com"
