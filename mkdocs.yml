@@ -72,6 +72,7 @@ extra:
       link: "https://twitter.com/networktocode"
       name: "Network to Code Twitter"
 markdown_extensions:
+  - "abbr"
   - "admonition"
   - "toc":
       permalink: true
@@ -80,7 +81,9 @@ markdown_extensions:
   - "pymdownx.highlight":
       anchor_linenums: true
   - "pymdownx.inlinehilite"
-  - "pymdownx.snippets"
+  - "pymdownx.snippets":
+      auto_append:
+        - "docs/assets/abbreviations.md"
   - "pymdownx.superfences"
   - "footnotes"
 plugins:
@@ -104,6 +107,7 @@ nav:
       - Design Quick Start: "user/design_quickstart.md"
       - Design Development: "user/design_development.md"
       - Frequently Asked Questions: "user/faq.md"
+      - Git-based Config Context: "user/git_config_context.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"
@@ -119,7 +123,6 @@ nav:
       - Code Reference:
           - "dev/code_reference/index.md"
           - Package: "dev/code_reference/package.md"
-          - API: "dev/code_reference/api.md"
           - Design Job: "dev/code_reference/design_job.md"
           - Context: "dev/code_reference/context.md"
           - Design Builder: "dev/code_reference/design.md"
