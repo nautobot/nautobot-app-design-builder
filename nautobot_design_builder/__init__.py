@@ -1,39 +1,26 @@
-"""App declaration for Nautobot Design Builder."""
-from django.conf import settings
-from django.utils.functional import classproperty
-
-from nautobot.apps import NautobotAppConfig
-
+"""Plugin declaration for nautobot_design_builder."""
 # Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
-try:
-    from importlib import metadata
-except ImportError:
-    # Python version < 3.8
-    import importlib_metadata as metadata
+from importlib import metadata
 
 __version__ = metadata.version(__name__)
 
+from nautobot.extras.plugins import NautobotAppConfig
 
-class DesignBuilderConfig(NautobotAppConfig):
-    """App configuration for the nautobot_design_builder app."""
+
+class NautobotDesignBuilderConfig(NautobotAppConfig):
+    """Plugin configuration for the nautobot_design_builder plugin."""
 
     name = "nautobot_design_builder"
-    verbose_name = "Design Builder"
+    verbose_name = "Nautobot Design Builder"
     version = __version__
     author = "Network to Code, LLC"
-    description = "Design Builder."
+    description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user.."
     base_url = "design-builder"
     required_settings = []
-    min_version = "1.6.0"
+    min_version = "1.6.8"
     max_version = "2.9999"
     default_settings = {}
     caching_config = {}
 
-    # pylint: disable=no-self-argument
-    @classproperty
-    def context_repository(cls):
-        """Retrieve the Git Repository slug that has been configured for the Design Builder."""
-        return settings.PLUGINS_CONFIG[cls.name]["context_repository"]
 
-
-config = DesignBuilderConfig  # pylint:disable=invalid-name
+config = NautobotDesignBuilderConfig  # pylint:disable=invalid-name

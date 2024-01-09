@@ -1,13 +1,24 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "0.4.4"
+version = "0.1.0"
 description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user."
-authors = ["Network to Code, LLC <info@networktocode.com>"]
+authors = ["Network to Code, LLC <opensource@networktocode.com>"]
+license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/nautobot/nautobot-app-design-builder"
 repository = "https://github.com/nautobot/nautobot-app-design-builder"
 keywords = ["nautobot", "nautobot-plugin"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
 include = [
+    "LICENSE",
     "README.md",
 ]
 packages = [
@@ -19,21 +30,20 @@ python = ">=3.8,<3.12"
 # Used for local development
 nautobot = ">=1.6.0,<=2.9999"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 bandit = "*"
 black = "*"
 coverage = "*"
 django-debug-toolbar = "*"
-# we need to pin flake8 because of package dependencies that cause it to downgrade and
-# therefore cause issues with linting since older versions do not take .flake8 as config
-flake8 = "^3.9.2"
+flake8 = "*"
 invoke = "*"
 ipython = "*"
 pydocstyle = "*"
 pylint = "*"
 pylint-django = "*"
-pytest = "*"
+pylint-nautobot = "*"
 yamllint = "*"
+toml = "*"
 Markdown = "*"
 toml = "*"
 
@@ -42,21 +52,16 @@ nautobot-bgp-models = "*"
 # Rendering docs to HTML
 mkdocs = "1.5.2"
 # Material for MkDocs theme
-mkdocs-material = "9.2.4"
+mkdocs-material = "9.1.15"
 # Render custom markdown for version added/changed/remove notes
 mkdocs-version-annotations = "1.0.0"
 # Automatic documentation from sources, for MkDocs
 mkdocstrings = "0.22.0"
 mkdocstrings-python = "1.5.2"
 
-
-[tool.poetry.extras]
-nautobot = ["nautobot"]
-# bgp_models = ["nautobot-bgp-models"]
-
 [tool.black]
 line-length = 120
-target-version = ['py37']
+target-version = ['py38', 'py39', 'py310', 'py311']
 include = '\.pyi?$'
 exclude = '''
 (
@@ -79,23 +84,19 @@ exclude = '''
 
 [tool.pylint.master]
 # Include the pylint_django plugin to avoid spurious warnings about Django patterns
-load-plugins = "pylint_django"
-ignore = ".venv"
+load-plugins="pylint_django, pylint_nautobot"
+ignore=".venv"
 
 [tool.pylint.basic]
 # No docstrings required for private methods (Pylint default), or for test_ functions, or for inner Meta classes.
-no-docstring-rgx = "^(_|test_|Test|Meta$)"
+no-docstring-rgx="^(_|test_|Meta$)"
 
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
 disable = """,
-    line-too-long,
-    duplicate-code,
-    too-many-lines,
-    too-many-ancestors,
-    raise-missing-from,
-"""
+    line-too-long
+    """
 
 [tool.pylint.miscellaneous]
 # Don't flag TODO as a failure, let us commit with things that still need to be done in the code
@@ -103,6 +104,11 @@ notes = """,
     FIXME,
     XXX,
     """
+
+[tool.pylint-nautobot]
+supported_nautobot_versions = [
+    "1.6.8"
+]
 
 [tool.pydocstyle]
 convention = "google"
@@ -119,7 +125,3 @@ add_ignore = "D212"
 [build-system]
 requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-vv --doctest-modules"
