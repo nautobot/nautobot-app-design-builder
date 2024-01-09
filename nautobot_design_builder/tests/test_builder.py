@@ -547,6 +547,8 @@ devices:
 
 
 class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
+    """Test object creator methods."""
+
     builder = None
 
     def setUp(self):

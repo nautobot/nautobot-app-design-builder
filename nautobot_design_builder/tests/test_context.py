@@ -7,6 +7,8 @@ from nautobot_design_builder.tests.designs.sub_designs import SubDesignContext
 
 
 class TestContext(unittest.TestCase):
+    """Test context."""
+
     def test_load(self):
         data = {"var1": "val1", "var2": "val2"}
         context = Context.load(data)
@@ -55,6 +57,8 @@ class TestContext(unittest.TestCase):
 
 
 class TestUpdateDictNode(unittest.TestCase):
+    """Test dict node."""
+
     def test_simple_update(self):
         data1 = {"var1": "val1"}
         data2 = {"var1": "val2"}
@@ -112,6 +116,8 @@ class TestUpdateDictNode(unittest.TestCase):
 
 
 class TestRootNode(unittest.TestCase):
+    """Test root node."""
+
     def test_simple_struct(self):
         data = {"var1": "val1"}
         want = {"var1": "val1"}
@@ -222,6 +228,8 @@ class TestRootNode(unittest.TestCase):
 
 
 class TestContextDecorator(unittest.TestCase):
+    """Test context decorator."""
+
     def test_context_file(self):
         base_files = [
             (BaseContext, "base_context_file"),

@@ -77,11 +77,13 @@ def network_offset(prefix: str, offset: str) -> IPNetwork:
     try:
         prefix = IPNetwork(prefix)
     except AddrFormatError:
+        # pylint: disable=raise-missing-from
         raise AddrFormatError(f"Invalid prefix {prefix}")
 
     try:
         offset = IPNetwork(offset)
     except AddrFormatError:
+        # pylint: disable=raise-missing-from
         raise AddrFormatError(f"Invalid offset {offset}")
 
     # netaddr overloads the + operator to sum
@@ -100,6 +102,7 @@ def _json_default(value):
     try:
         return value.data
     except AttributeError:
+        # pylint: disable=raise-missing-from
         raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
 
 

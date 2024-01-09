@@ -11,6 +11,8 @@ from nautobot_design_builder.tests.designs import test_designs
 
 
 class TestDesignJob(DesignTestCase):
+    """Test running design jobs."""
+
     @patch("nautobot_design_builder.design_job.Builder")
     def test_simple_design_commit(self, object_creator: Mock):
         job = self.get_mocked_job(test_designs.SimpleDesign)
@@ -59,6 +61,8 @@ class TestDesignJob(DesignTestCase):
 
 
 class TestDesignJobLogging(DesignTestCase):
+    """Test that the design job logs errors correctly."""
+
     @patch("nautobot_design_builder.design_job.Builder")
     def test_simple_design_implementation_error(self, object_creator: Mock):
         object_creator.return_value.implement_design.side_effect = DesignImplementationError("Broken")
