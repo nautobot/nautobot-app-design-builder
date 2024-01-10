@@ -2,17 +2,25 @@
 manufacturers:
   - "!create_or_update:name": "Juniper"
     slug: "juniper"
+  - "!create_or_update:name": "Cisco"
+    slug: "cisco"
 
 device_types:
   - "!create_or_update:model": "PTX10016"
     slug: "ptx10016"
     manufacturer__slug: "juniper"
     u_height: 21
+  - "!create_or_update:model": "C8300-1N1S-6T"
+    manufacturer__slug: "cisco"
+    u_height: 1
 
 device_roles:
   - "!create_or_update:name": "Core Router"
     slug: "core_router"
     color: "3f51b5"
+  - "!create_or_update:name": "Edge Router"
+    slug: "edge_router"
+    color: "ffeb3b"
 
 regions:
     "!create_or_update:name": "Americas"
@@ -36,6 +44,16 @@ regions:
         - "!create_or_update:name": "SEA1"
           status__name: "Active"
           "!ref": "sea1"
+
+providers:
+- "!create_or_update:name": "NTC"
+
+provider_networks:
+  - "!create_or_update:name": "NTC-WAN"
+    "!create_or_update:provider__name": "NTC"
+
+circuit_types:
+  - "!create_or_update:name": "Ethernet"
 
 {% macro device(device_name, site) -%}
     - "!create_or_update:name": "{{ device_name }}.{{ site }}"
