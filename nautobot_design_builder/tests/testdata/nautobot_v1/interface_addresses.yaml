@@ -27,15 +27,15 @@ designs:
             status__name: "Active"
             description: "description for Ethernet1/1"
             ip_addresses:
-              - address: 192.168.56.1/24
+              - address: "192.168.56.1/24"
                 status__name: "Active"
 checks:
   - model_exists:
       model: "nautobot.ipam.models.IPAddress"
       query: {address: "192.168.56.1/24"}
   - equal:
-    - model: "nautobot.dcim.models.Interface"
-      query: {name: "Ethernet1/1"}
-    - model: "nautobot.ipam.models.IPAddress"
-      query: {address: "192.168.56.1/24"}
-      attribute: "interface"
+      - model: "nautobot.dcim.models.Interface"
+        query: {name: "Ethernet1/1"}
+      - model: "nautobot.ipam.models.IPAddress"
+        query: {address: "192.168.56.1/24"}
+        attribute: "interface"

@@ -6,7 +6,7 @@ designs:
 
     prefixes:
       - site__name: "site_1"
-        status__name: Active
+        status__name: "Active"
         prefix: "192.168.0.0/24"
       - "!create_or_update:site__name": "site_1"
         "!create_or_update:prefix": "192.168.56.0/24"

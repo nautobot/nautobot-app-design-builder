@@ -1,6 +1,6 @@
 ---
 designs:
-  - commit: False
+  - commit: false
     manufacturers:
       - name: "manufacturer1"
       - name: "manufacturer2"

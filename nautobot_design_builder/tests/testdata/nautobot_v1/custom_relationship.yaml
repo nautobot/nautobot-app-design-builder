@@ -3,15 +3,15 @@ extensions:
   - "nautobot_design_builder.contrib.ext.LookupExtension"
 designs:
   - relationships:
-    - name: "Device to VLANS"
-      slug: "device-to-vlans"
-      type: "many-to-many"
-      "!lookup:source_type":
-        app_label: "dcim"
-        model: "device"
-      "!lookup:destination_type":
-        app_label: "ipam"
-        model: "vlan"
+      - name: "Device to VLANS"
+        slug: "device-to-vlans"
+        type: "many-to-many"
+        "!lookup:source_type":
+          app_label: "dcim"
+          model: "device"
+        "!lookup:destination_type":
+          app_label: "ipam"
+          model: "vlan"
     manufacturers:
       - name: "manufacturer1"
 

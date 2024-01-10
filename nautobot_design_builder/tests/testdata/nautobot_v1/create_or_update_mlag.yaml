@@ -39,7 +39,7 @@ designs:
             status__name: "Active"
             "!ref": "ethernet41"
           - name: "Port-Channel1"
-            type: lag
+            type: "lag"
             status__name: "Active"
             member_interfaces:
               - "!ref:ethernet11"

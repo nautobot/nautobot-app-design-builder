@@ -1,10 +1,10 @@
 ---
 designs:
   - tags:
-      - name: Test Tag
-        "!ref": test_tag
-        slug: test_tag
-        description: Some Description
+      - name: "Test Tag"
+        "!ref": "test_tag"
+        slug: "test_tag"
+        description: "Some Description"
 
     sites:
       - name: "site_1"

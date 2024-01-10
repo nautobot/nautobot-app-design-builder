@@ -1,9 +1,9 @@
 ---
 designs:
   - tags:
-      - name: Test Tag
+      - name: "Test Tag"
         slug: "test_tag"
-        description: Some Description
+        description: "Some Description"
 checks:
   - model_exists:
       model: "nautobot.extras.models.Tag"
