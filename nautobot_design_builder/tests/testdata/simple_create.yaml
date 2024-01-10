@@ -1,0 +1,23 @@
+---
+designs:
+  - manufacturers:
+      - name: "manufacturer1"
+      - name: "manufacturer2"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model1"
+        u_height: 1
+checks:
+  - model_exists:
+      model: "nautobot.dcim.models.Manufacturer"
+      query: {name: "manufacturer1"}
+  - model_exists:
+      model: "nautobot.dcim.models.Manufacturer"
+      query: {name: "manufacturer2"}
+  - equal:
+      - model: "nautobot.dcim.models.Manufacturer"
+        query: {name: "manufacturer1"}
+      - model: "nautobot.dcim.models.DeviceType"
+        query: {model: "model1"}
+        attribute: "manufacturer"
