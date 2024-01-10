@@ -1,5 +1,4 @@
 ---
-nautobot_version: "<2"
 designs:
   # Design 1
   - secrets:
