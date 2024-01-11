@@ -108,6 +108,8 @@ def builder_test_case(data_dir):
             def test_wrapper(testcase):
                 @patch("nautobot_design_builder.design.Builder.roll_back")
                 def test_runner(self, roll_back: Mock):
+                    if testcase.get("skip", False):
+                        self.skipTest("Skipping due to testcase skip=true")
                     extensions = []
                     for extension in testcase.get("extensions", []):
                         extensions.append(_load_class(extension))
@@ -147,4 +149,13 @@ class TestV1Designs(TestCase):  # pylint:disable=too-many-public-methods
     def setUp(self):
         if nautobot_version >= "2.0.0":
             self.skipTest("These tests are only supported in Nautobot 1.x")
+        super().setUp()
+
+@builder_test_case(os.path.join(os.path.dirname(__file__), "testdata", "nautobot_v2"))
+class TestV2Designs(TestCase):  # pylint:disable=too-many-public-methods
+    """Designs that only work in Nautobot 1.x"""
+
+    def setUp(self):
+        if nautobot_version < "2.0.0":
+            self.skipTest("These tests are only supported in Nautobot 2.x")
         super().setUp()
