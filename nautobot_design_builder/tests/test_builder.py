@@ -151,6 +151,7 @@ class TestV1Designs(TestCase):  # pylint:disable=too-many-public-methods
             self.skipTest("These tests are only supported in Nautobot 1.x")
         super().setUp()
 
+
 @builder_test_case(os.path.join(os.path.dirname(__file__), "testdata", "nautobot_v2"))
 class TestV2Designs(TestCase):  # pylint:disable=too-many-public-methods
     """Designs that only work in Nautobot 1.x"""

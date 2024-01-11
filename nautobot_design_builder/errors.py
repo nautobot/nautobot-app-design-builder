@@ -56,7 +56,7 @@ class DesignModelError(Exception):
                 return model.__name__
             try:
                 return str(model)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 # Sometimes when converting a model to a string the __str__
                 # method itself produces an exceptions, like when an attribute
                 # hasn't been set or something. Whatever it is commonly is
@@ -73,7 +73,7 @@ class DesignModelError(Exception):
         if model:
             try:
                 instance_str = str(model)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 # Sometimes when converting a model to a string the __str__
                 # method itself produces an exceptions, like when an attribute
                 # hasn't been set or something. Whatever it is commonly is
