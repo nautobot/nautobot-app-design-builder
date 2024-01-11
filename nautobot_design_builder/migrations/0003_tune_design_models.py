@@ -5,23 +5,27 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('nautobot_design_builder', '0002_statuses'),
+        ("nautobot_design_builder", "0002_statuses"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='journalentry',
-            name='_custom_field_data',
+            model_name="journalentry",
+            name="_custom_field_data",
         ),
         migrations.RemoveField(
-            model_name='journalentry',
-            name='tags',
+            model_name="journalentry",
+            name="tags",
         ),
         migrations.AlterField(
-            model_name='journal',
-            name='design_instance',
-            field=models.ForeignKey(editable=False, on_delete=django.db.models.deletion.CASCADE, related_name='journals', to='nautobot_design_builder.designinstance'),
+            model_name="journal",
+            name="design_instance",
+            field=models.ForeignKey(
+                editable=False,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="journals",
+                to="nautobot_design_builder.designinstance",
+            ),
         ),
     ]
