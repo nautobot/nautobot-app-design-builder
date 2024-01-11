@@ -54,7 +54,15 @@ class DesignModelError(Exception):
         if not isinstance(model, Model) and not hasattr(model, "instance"):
             if isclass(model):
                 return model.__name__
-            return str(model)
+            try:
+                return str(model)
+            except Exception:
+                # Sometimes when converting a model to a string the __str__
+                # method itself produces an exceptions, like when an attribute
+                # hasn't been set or something. Whatever it is commonly is
+                # the cause of the original exception, we don't want to
+                # cause *another* exception because of that.
+                return model.__class__.__name__
 
         model_class = model.__class__
         # if it looks like a duck...
@@ -63,7 +71,15 @@ class DesignModelError(Exception):
             model = model.instance
 
         if model:
-            instance_str = str(model)
+            try:
+                instance_str = str(model)
+            except Exception:
+                # Sometimes when converting a model to a string the __str__
+                # method itself produces an exceptions, like when an attribute
+                # hasn't been set or something. Whatever it is commonly is
+                # the cause of the original exception, we don't want to
+                # cause *another* exception because of that.
+                instance_str = model.__class__.__name__
         model_str = model_class._meta.verbose_name.capitalize()
         if instance_str:
             model_str = f"{model_str} {instance_str}"
