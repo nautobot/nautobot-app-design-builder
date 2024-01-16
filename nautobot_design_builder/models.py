@@ -415,7 +415,7 @@ class JournalEntry(BaseModel):
             if key not in added_value:
                 current_value[key] = removed_value[key]
 
-    def revert(self, local_logger: logging.Logger = logger):
+    def revert(self, local_logger: logging.Logger = logger):  # pylint: disable=too-many-branches
         """Revert the changes that are represented in this journal entry.
 
         Raises:
