@@ -470,16 +470,33 @@ class JournalEntry(BaseModel):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
                     current_value = getattr(self.design_object, attribute)
-                    self.update_current_value_from_dict(
-                        current_value=current_value,
-                        added_value=added_value,
-                        removed_value=removed_value,
-                    )
+                    if isinstance(current_value, dict):
+                        self.update_current_value_from_dict(
+                            current_value=current_value,
+                            added_value=added_value,
+                            removed_value=removed_value,
+                        )
+                    else:
+                        # The attribute is a Foreign Key that is represented as a dict
+                        current_value_type = type(current_value)
+                        try:
+                            current_value = current_value_type.objects.get(id=removed_value["id"])
+                        except ObjectDoesNotExist:
+                            local_logger.error(
+                                "%s object with ID %s, doesn't exist.",
+                                current_value_type,
+                                removed_value["id"],
+                            )
 
                     setattr(self.design_object, attribute, current_value)
                 else:
-                    setattr(self.design_object, attribute, removed_value)
-
+                    try:
+                        setattr(self.design_object, attribute, removed_value)
+                    except AttributeError:
+                        # For instance: class properties
+                        # TODO: the current serialization (serialize_object_v2) doesn't exclude properties
+                        # For instance, display in DeviceType
+                        pass
                 self.design_object.save()
                 local_logger.info(
                     "%s %s has been reverted to its previous state.",

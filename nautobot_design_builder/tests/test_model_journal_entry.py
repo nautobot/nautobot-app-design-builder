@@ -2,6 +2,7 @@
 from unittest.mock import patch, Mock
 from django.test import TestCase
 from nautobot.extras.models import Secret
+from nautobot.dcim.models import Manufacturer, DeviceType
 from nautobot.utilities.utils import serialize_object_v2
 
 from nautobot_design_builder.design import calculate_changes
@@ -15,6 +16,7 @@ class TestJournalEntry(TestCase):
 
     def setUp(self) -> None:
         super().setUp()
+        # Used to test Scalars and Dictionaries
         self.secret = Secret.objects.create(
             name="test secret",
             provider="environment-variable",
@@ -28,7 +30,20 @@ class TestJournalEntry(TestCase):
             changes=calculate_changes(self.secret),
         )
 
-    def get_entry(self, updated_secret, design_object=None, initial_state=None):
+        # Used to test Property attributes and ForeignKeys
+        self.manufacturer = Manufacturer.objects.create(
+            name="test manufacturer",
+        )
+        self.device_type = DeviceType.objects.create(model="test device type", manufacturer=self.manufacturer)
+
+        self.initial_state_device_type = serialize_object_v2(self.device_type)
+        self.initial_entry_device_type = JournalEntry(
+            design_object=self.device_type,
+            full_control=True,
+            changes=calculate_changes(self.device_type),
+        )
+
+    def get_entry(self, updated_object, design_object=None, initial_state=None):
         """Generate a JournalEntry."""
         if design_object is None:
             design_object = self.secret
@@ -39,7 +54,7 @@ class TestJournalEntry(TestCase):
         return JournalEntry(
             design_object=design_object,
             changes=calculate_changes(
-                updated_secret,
+                updated_object,
                 initial_state=initial_state,
             ),
         )
@@ -196,3 +211,29 @@ class TestJournalEntry(TestCase):
             entry.revert()
             self.assertEqual(entry.design_object.parameters, {"key1": "value1"})
             save_mock.assert_called()
+
+    def test_change_property(self):
+        """This test checks that the 'display' property is properly managed."""
+        updated_device_type = DeviceType.objects.get(id=self.device_type.id)
+        updated_device_type.model = "new name"
+        updated_device_type.save()
+        entry = self.get_entry(
+            updated_device_type, design_object=self.device_type, initial_state=self.initial_state_device_type
+        )
+        entry.revert()
+        self.device_type.refresh_from_db()
+        self.assertEqual(self.device_type.model, "test device type")
+
+    def test_change_foreign_key(self):
+        new_manufacturer = Manufacturer.objects.create(name="new manufacturer")
+        new_manufacturer.save()
+        updated_device_type = DeviceType.objects.get(id=self.device_type.id)
+        updated_device_type.manufacturer = new_manufacturer
+        updated_device_type.save()
+
+        entry = self.get_entry(
+            updated_device_type, design_object=self.device_type, initial_state=self.initial_state_device_type
+        )
+        entry.revert()
+        self.device_type.refresh_from_db()
+        self.assertEqual(self.device_type.manufacturer, self.manufacturer)
