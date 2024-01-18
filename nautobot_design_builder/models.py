@@ -507,7 +507,7 @@ class JournalEntry(BaseModel):
                             object_str,
                             extra={"obj": self.design_object},
                         )
-                        pass
+
                 self.design_object.save()
                 local_logger.info(
                     "%s %s has been reverted to its previous state.",
