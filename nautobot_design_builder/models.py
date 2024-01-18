@@ -415,7 +415,7 @@ class JournalEntry(BaseModel):
             if key not in added_value:
                 current_value[key] = removed_value[key]
 
-    def revert(self, local_logger: logging.Logger = logger):
+    def revert(self, local_logger: logging.Logger = logger):  # pylint: disable=too-many-branches
         """Revert the changes that are represented in this journal entry.
 
         Raises:
@@ -470,15 +470,43 @@ class JournalEntry(BaseModel):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
                     current_value = getattr(self.design_object, attribute)
-                    self.update_current_value_from_dict(
-                        current_value=current_value,
-                        added_value=added_value,
-                        removed_value=removed_value,
-                    )
+                    current_value_type = type(current_value)
+                    if isinstance(current_value, dict):
+                        self.update_current_value_from_dict(
+                            current_value=current_value,
+                            added_value=added_value,
+                            removed_value=removed_value,
+                        )
+                    elif isinstance(current_value, models.Model):
+                        # The attribute is a Foreign Key that is represented as a dict
+                        try:
+                            current_value = current_value_type.objects.get(id=removed_value["id"])
+                        except ObjectDoesNotExist:
+                            local_logger.error(
+                                "%s object with ID %s, doesn't exist.",
+                                current_value_type,
+                                removed_value["id"],
+                            )
+                    else:
+                        # TODO: cover other use cases, such as M2M relationship
+                        local_logger.error(
+                            "%s can't be reverted because decommission of type %s is not supported yet.",
+                            current_value,
+                            current_value_type,
+                        )
 
                     setattr(self.design_object, attribute, current_value)
                 else:
-                    setattr(self.design_object, attribute, removed_value)
+                    try:
+                        setattr(self.design_object, attribute, removed_value)
+                    except AttributeError:
+                        # TODO: the current serialization (serialize_object_v2) doesn't exclude properties
+                        local_logger.debug(
+                            "Attribute %s in this object %s can't be set. It may be a 'property'.",
+                            attribute,
+                            object_str,
+                            extra={"obj": self.design_object},
+                        )
 
                 self.design_object.save()
                 local_logger.info(
