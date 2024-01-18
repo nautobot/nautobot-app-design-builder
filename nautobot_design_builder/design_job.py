@@ -201,6 +201,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.validate_data_logic(data)
 
+        if nautobot_version < "2.0.0":
+            self.job_result.job_kwargs = {"data": self.serialize_data(data)}
+        else:
+            self.job_result.job_kwargs = self.serialize_data(data)
+
         journal = self._setup_journal(data.pop("instance_name"), data.pop("owner"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
