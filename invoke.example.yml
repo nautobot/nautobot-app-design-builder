@@ -1,7 +1,7 @@
 ---
 nautobot_design_builder:
   project_name: "nautobot-design-builder"
-  nautobot_ver: "1.6.8"
+  nautobot_ver: "1.6.0"
   local: false
   python_ver: "3.11"
   compose_dir: "development"

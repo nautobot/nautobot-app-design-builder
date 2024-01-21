@@ -20,7 +20,7 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user.."
     base_url = "design-builder"
     required_settings = []
-    min_version = "1.6.8"
+    min_version = "1.6.0"
     max_version = "2.9999"
     default_settings = {}
     caching_config = {}
