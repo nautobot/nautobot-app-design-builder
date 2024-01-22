@@ -437,7 +437,9 @@ class JournalEntry(BaseModel):
 
         """
         if not self.design_object:
-            raise ValidationError(f"No reference object found for this JournalEntry: {str(self.id)}")
+            # TODO: This is something that may happen when a design has been uptade and objectes deleted
+            # raise ValidationError(f"No reference object found for this JournalEntry: {str(self.id)}")
+            return
 
         # It is possible that the journal entry contains a stale copy of the
         # design object. Consider this example: A journal entry is create and

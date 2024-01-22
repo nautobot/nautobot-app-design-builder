@@ -162,11 +162,15 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         def update_design_items(new_value, old_value):
             """Recursive function to adapt the new design taken into account the previous one."""
             if isinstance(new_value, list):
+                elements_to_be_deleted = []
+
                 for elem1, elem2 in itertools.zip_longest(new_value, old_value):
                     if elem1 is None:
                         # FIXME: If there are more elements in the old list, these should be deleted
                         print("element to be deleted")
-                        print(elem2)
+                        if isinstance(elem2, dict):
+                            elem2["!delete:"] = {NAUTOBOT_ID: elem2[NAUTOBOT_ID]}
+                            elements_to_be_deleted.append(elem2)
                     elif elem2 is None:
                         # If it is a new element in the design, we pass it as it is, no previous reference to be taken into account.
                         pass
@@ -174,6 +178,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                         update_design_items(elem1, elem2)
                     else:
                         raise DesignImplementationError("Unexpected type of object.")
+
+                new_value.extend(elements_to_be_deleted)
 
             elif isinstance(new_value, dict):
                 for inner_old_key in old_value:

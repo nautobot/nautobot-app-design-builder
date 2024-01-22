@@ -165,8 +165,9 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     CREATE = "create"
     UPDATE = "update"
     CREATE_OR_UPDATE = "create_or_update"
+    DELETE = "delete"
 
-    ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
+    ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE, DELETE]
 
     # Callback Event types
     PRE_SAVE = "PRE_SAVE"
@@ -283,7 +284,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                         attribute_names.extend(result.keys())
                     elif result is not None:
                         raise errors.DesignImplementationError(f"Cannot handle extension return type {type(result)}")
-                elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
+                elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE, self.DELETE]:
                     self.action = args[0]
                     self.filter[args[1]] = value
 
@@ -407,16 +408,30 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self._update_fields()
         self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
 
-        msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
-        try:
-            self.instance.full_clean()
-            self.instance.save()
-            if self.parent is None:
+        if self.instance._state.adding:  # pylint: disable=protected-access
+            msg = "Created"
+        elif self.action == self.DELETE:
+            msg = "Deleted"
+        else:
+            msg = "Updated"
+
+        if self.action == self.DELETE:
+            # FIXME: we should handle the children before deleting? or we can rely on the Django dependencies?
+            try:
+                self.instance.delete()
                 self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
-            self.creator.journal.log(self)
-            self.instance.refresh_from_db()
-        except ValidationError as validation_error:
-            raise errors.DesignValidationError(self) from validation_error
+            except ValidationError as validation_error:
+                raise errors.DesignValidationError(self) from validation_error
+        else:
+            try:
+                self.instance.full_clean()
+                self.instance.save()
+                if self.parent is None:
+                    self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
+                self.creator.journal.log(self)
+                self.instance.refresh_from_db()
+            except ValidationError as validation_error:
+                raise errors.DesignValidationError(self) from validation_error
 
         for field_name in self.deferred:
             items = self.deferred_attributes[field_name]
@@ -614,7 +629,10 @@ class Builder(LoggingMixin):
         elif isinstance(objects, list):
             for index, model_instance in enumerate(objects):
                 model = ModelInstance(self, model_cls, model_instance)
-                model.save(self.builder_output[design_file][key][index])
+                if model.action == model.DELETE:
+                    model.save({})
+                else:
+                    model.save(self.builder_output[design_file][key][index])
                 if model.deferred_attributes:
                     self.builder_output[design_file][key][index].update(model.deferred_attributes)
 
