@@ -213,7 +213,7 @@ class DesignInstance(PrimaryModel, StatusModel):
         self.__class__.pre_decommission.send(self.__class__, design_instance=self)
         # Iterate the journals in reverse order (most recent first) and
         # revert each journal.
-        for journal in self.journals.all().order_by("created"):
+        for journal in self.journals.filter(active=True).order_by("-last_updated"):
             journal.revert(local_logger=local_logger)
 
         content_type = ContentType.objects.get_for_model(DesignInstance)
@@ -254,6 +254,8 @@ class Journal(PrimaryModel):
         related_name="journals",
     )
     job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
+    builder_output = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
+    active = models.BooleanField(editable=False, default=True)
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
@@ -343,6 +345,10 @@ class Journal(PrimaryModel):
                 local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
                 raise ValueError(ex)
 
+        # When the Journal is reverted, we mark is as not active anymore
+        self.active = False
+        self.save()
+
 
 class JournalEntryQuerySet(RestrictedQuerySet):
     """Queryset for `JournalEntry` objects."""
@@ -355,6 +361,12 @@ class JournalEntryQuerySet(RestrictedQuerySet):
         """Returns JournalEntries which have the same object ID but excluding itself."""
         return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
             id=entry.id
+        )
+
+    def filter_same_parent_design_instance(self, entry: "JournalEntry"):
+        """Returns JournalEntries which have the same parent design instance."""
+        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
+            journal__design_instance__id=entry.journal.design_instance.id
         )
 
 
@@ -442,7 +454,11 @@ class JournalEntry(BaseModel):
         local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
 
         if self.full_control:
-            related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
+            related_entries = (
+                JournalEntry.objects.filter_related(self)
+                .filter_same_parent_design_instance(self)
+                .exclude_decommissioned()
+            )
             if related_entries:
                 active_journal_ids = ",".join([str(j.id) for j in related_entries])
                 raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")

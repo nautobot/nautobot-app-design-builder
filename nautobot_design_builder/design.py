@@ -20,6 +20,7 @@ from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
 from nautobot_design_builder import models
+from nautobot_design_builder.constants import NAUTOBOT_ID
 
 
 # TODO: Refactor this code into the Journal model
@@ -207,6 +208,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             self.instance_fields[field.name] = field_factory(self, field)
 
         self.created = False
+        self.nautobot_id = None
         self._parse_attributes()
         self.relationship_manager = relationship_manager
         if self.relationship_manager is None:
@@ -262,6 +264,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         attribute_names = list(self.attributes.keys())
         while attribute_names:
             key = attribute_names.pop(0)
+            if key == NAUTOBOT_ID:
+                self.nautobot_id = self.attributes[key]
+                continue
+
             self.attributes[key] = self.creator.resolve_values(self.attributes[key])
             if key.startswith("!"):
                 value = self.attributes.pop(key)
@@ -313,6 +319,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.signals[signal].connect(handler, self)
 
     def _load_instance(self):
+        if self.nautobot_id:
+            # TODO: not sure how this works for recursive items
+            self.created = False
+            self.instance = self.model_class.objects.get(id=self.nautobot_id)
+            self._initial_state = serialize_object_v2(self.instance)
+            return
+
         query_filter = _map_query_values(self.filter)
         if self.action == self.GET:
             self.instance = self.model_class.objects.get(**query_filter)
@@ -383,7 +396,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         for key, value in self.custom_fields.items():
             self.set_custom_field(key, value)
 
-    def save(self):
+    def save(self, output_dict):
         """Save the model instance to the database."""
         # The reason we call _update_fields at this point is
         # that some attributes passed into the constructor
@@ -419,7 +432,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     if hasattr(self.instance, field_name):
                         relationship_manager = getattr(self.instance, field_name)
                     related_object = self.create_child(field.model, item, relationship_manager)
-                related_object.save()
+                related_object.save(item)
                 # BEWARE
                 # DO NOT REMOVE THE FOLLOWING LINE, IT WILL BREAK THINGS
                 # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
@@ -427,6 +440,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
                 field.set_value(related_object.instance)
         self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
+        output_dict[NAUTOBOT_ID] = str(self.instance.id)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
@@ -455,6 +469,8 @@ class Builder(LoggingMixin):
     """Iterates through a design and creates and updates the objects defined within."""
 
     model_map: Dict[str, Type[Model]]
+    # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
+    builder_output: Dict
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder initialized."""
@@ -472,6 +488,7 @@ class Builder(LoggingMixin):
         self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
     ):
         """Constructor for Builder."""
+        self.builder_output = {}
         self.job_result = job_result
 
         self.extensions = {
@@ -518,7 +535,7 @@ class Builder(LoggingMixin):
         return extn["object"]
 
     @transaction.atomic
-    def implement_design(self, design, commit=False):
+    def implement_design(self, design, commit=False, design_file=None):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -539,7 +556,8 @@ class Builder(LoggingMixin):
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
-                    self._create_objects(self.model_map[key], value)
+                    # TODO: create_objects no longer represent what is happening here. maybe deploy_objects?
+                    self._create_objects(self.model_map[key], value, key, design_file)
                 else:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
             if commit:
@@ -586,14 +604,19 @@ class Builder(LoggingMixin):
                 value[k] = self.resolve_value(item, unwrap_model_instances)
         return value
 
-    def _create_objects(self, model_cls, objects):
+    def _create_objects(self, model_cls, objects, key, design_file):
         if isinstance(objects, dict):
             model = ModelInstance(self, model_cls, objects)
-            model.save()
+            model.save(self.builder_output[design_file][key])
+            # TODO: I feel this is not used at all
+            if model.deferred_attributes:
+                self.builder_output[design_file][key].update(model.deferred_attributes)
         elif isinstance(objects, list):
-            for model_instance in objects:
+            for index, model_instance in enumerate(objects):
                 model = ModelInstance(self, model_cls, model_instance)
-                model.save()
+                model.save(self.builder_output[design_file][key][index])
+                if model.deferred_attributes:
+                    self.builder_output[design_file][key][index].update(model.deferred_attributes)
 
     def commit(self):
         """Method to commit all changes to the database."""
