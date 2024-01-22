@@ -37,8 +37,8 @@ regions:
           status__name: "Active"
           "!ref": "sea1"
 
-{% macro device(device_name, site) -%}
-    - "!create_or_update:name": "{{ device_name }}.{{ site }}"
+{% macro device(index, site) -%}
+    - "!create_or_update:name": "core{{ index }}.{{ site }}"
       site: "!ref:{{ site }}"
       device_type__slug: "ptx10016"
       device_role__slug: "core_router"
@@ -47,17 +47,9 @@ regions:
 
 devices:
     # IAD5 Core Router Pair
-    {{ device("core01", "iad5") }}
-    {{ device("core02", "iad5") }}
-
-    # LGA1 Core Router Pair
-    {{ device("core01", "lga1") }}
-    {{ device("core02", "lga1") }}
-
-    # LAX11 Core Router Pair
-    {{ device("core01", "lax11") }}
-    {{ device("core02", "lax11") }}
-
-    # SEA1 Core Router Pair
-    {{ device("core01", "sea1") }}
-    {{ device("core02", "sea1") }}
+    {% for index in range(routers_per_site) %}
+    {{ device(index, "iad5") }}
+    {{ device(index, "lga1") }}
+    {{ device(index, "lax11") }}
+    {{ device(index, "sea1") }}
+    {% endfor %}
