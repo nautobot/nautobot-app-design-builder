@@ -1,0 +1,19 @@
+---
+designs:
+  - tags:
+      - name: "Test Tag"
+        "!ref": "test_tag"
+        slug: "test_tag"
+        description: "Some Description"
+
+    sites:
+      - name: "site_1"
+        status__name: "Active"
+        tags:
+          - "!ref:test_tag"
+checks:
+  - equal:
+      - model: "nautobot.dcim.models.Site"
+        query: {name: "site_1"}
+        attribute: "tags"
+      - model: "nautobot.extras.models.Tag"

@@ -1,0 +1,41 @@
+---
+designs:
+  - manufacturers:
+      - name: "manufacturer1"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model name"
+        u_height: 1
+
+    device_roles:
+      - name: "device role"
+
+    sites:
+      - name: "site_1"
+        status__name: "Active"
+
+    devices:
+      - name: "device_1"
+        site__name: "site_1"
+        status__name: "Active"
+        device_type__model: "model name"
+        device_role__name: "device role"
+        interfaces:
+          - name: "Ethernet1/1"
+            type: "virtual"
+            status__name: "Active"
+            description: "description for Ethernet1/1"
+checks:
+  - equal:
+      - model: "nautobot.dcim.models.Interface"
+        query: {name: "Ethernet1/1"}
+        attribute: "device"
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "device_1"}
+  - equal:
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "device_1"}
+        attribute: "site"
+      - model: "nautobot.dcim.models.Site"
+        query: {name: "site_1"}
