@@ -45,7 +45,6 @@ pylint-nautobot = "*"
 yamllint = "*"
 toml = "*"
 Markdown = "*"
-toml = "*"
 
 nautobot-bgp-models = "*"
 
@@ -61,7 +60,6 @@ mkdocstrings-python = "1.5.2"
 
 [tool.poetry.extras]
 nautobot = ["nautobot"]
-# bgp_models = ["nautobot-bgp-models"]
 
 [tool.black]
 line-length = 120
