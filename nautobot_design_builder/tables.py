@@ -1,4 +1,5 @@
 """Tables for design builder."""
+
 from django_tables2 import Column
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
@@ -69,12 +70,13 @@ class JournalTable(BaseTable):
     design_instance = Column(linkify=True)
     job_result = Column(linkify=True)
     journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
+    active = BooleanColumn(verbose_name="Active Journal")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Journal
-        fields = ("pk", "design_instance", "job_result", "journal_entry_count")
+        fields = ("pk", "design_instance", "job_result", "journal_entry_count", "active")
 
 
 class JournalEntryTable(BaseTable):
@@ -84,9 +86,10 @@ class JournalEntryTable(BaseTable):
     journal = Column(linkify=True)
     design_object = Column(linkify=True, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
+    active = BooleanColumn(verbose_name="Active")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = JournalEntry
-        fields = ("pk", "journal", "design_object", "changes", "full_control")
+        fields = ("pk", "journal", "design_object", "changes", "full_control", "active")

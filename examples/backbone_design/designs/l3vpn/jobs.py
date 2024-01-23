@@ -1,10 +1,12 @@
 """Design to create a l3vpn site."""
+
 from django.core.exceptions import ValidationError
 
 from nautobot.dcim.models import Device
 from nautobot.extras.jobs import ObjectVar, StringVar
 
 from nautobot_design_builder.design_job import DesignJob
+from nautobot_design_builder.contrib import ext
 
 from .context import L3VPNContext
 
@@ -33,6 +35,7 @@ class L3vpnDesign(DesignJob):
         commit_default = False
         design_file = "designs/0001_design.yaml.j2"
         context_class = L3VPNContext
+        extensions = [ext.CableConnectionExtension]
 
     @staticmethod
     def validate_data_logic(data):

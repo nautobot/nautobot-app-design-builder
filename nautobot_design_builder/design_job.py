@@ -1,6 +1,6 @@
 """Base Design Job class definition."""
+
 import sys
-import itertools
 import copy
 import traceback
 from abc import ABC, abstractmethod
@@ -24,6 +24,7 @@ from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
 from nautobot_design_builder import choices
 from nautobot_design_builder.constants import NAUTOBOT_ID
+from nautobot_design_builder.recursive import reduce_design
 
 from .util import nautobot_version
 
@@ -157,52 +158,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         )
 
     def implement_design(self, context, design_file, commit):
-        """Render the design_file template using the provided render context."""
-
-        def update_design_items(new_value, old_value):
-            """Recursive function to adapt the new design taken into account the previous one."""
-            if isinstance(new_value, list):
-                elements_to_be_deleted = []
-
-                for elem1, elem2 in itertools.zip_longest(new_value, old_value):
-                    if elem1 is None:
-                        # FIXME: If there are more elements in the old list, these should be deleted
-                        print("element to be deleted")
-                        if isinstance(elem2, dict):
-                            elem2["!delete:"] = {NAUTOBOT_ID: elem2[NAUTOBOT_ID]}
-                            elements_to_be_deleted.append(elem2)
-                    elif elem2 is None:
-                        # If it is a new element in the design, we pass it as it is, no previous reference to be taken into account.
-                        pass
-                    elif isinstance(elem1, dict) and isinstance(elem2, dict):
-                        update_design_items(elem1, elem2)
-                    else:
-                        raise DesignImplementationError("Unexpected type of object.")
-
-                new_value.extend(elements_to_be_deleted)
-
-            elif isinstance(new_value, dict):
-                for inner_old_key in old_value:
-                    # Reseting desired values for attributes not included in the new design implementation
-                    # TODO: use well-know references and  rethink this approach to cover more cases
-                    if inner_old_key not in new_value and inner_old_key != NAUTOBOT_ID and "!" not in inner_old_key:
-                        new_value[inner_old_key] = None
-
-                for inner_key, inner_value in new_value.copy().items():
-                    if inner_key in old_value and new_value[inner_key] == old_value[inner_key] and "!" not in inner_key:
-                        # If the values of the attribute in the design are the same, remove it for simplification
-                        del new_value[inner_key]
-                        continue
-
-                    if isinstance(inner_value, dict) or isinstance(inner_value, list):
-                        # If an attribute is a dict or list, explore it recursively
-                        # TODO: check how this works with config context
-                        update_design_items(inner_value, old_value[inner_key])
-
-                if NAUTOBOT_ID in old_value:
-                    new_value[NAUTOBOT_ID] = old_value[NAUTOBOT_ID]
+        """Render the design_file template using the provided render context, considering reduction if
+        a previous design instance exists.
+        """
 
         design = self.render_design(context, design_file)
+        self.log_debug(f"New Design to be implemented: {design}")
+        deprecated_design = {}
 
         # The design to apply will take into account the previous journal that keeps track (in the builder_output)
         # of the design used (i.e., the YAML) including the Nautobot IDs that will help to reference them
@@ -211,26 +173,29 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         last_journal = (
             self.builder.journal.design_journal.design_instance.journals.filter(active=True)
             .exclude(id=self.builder.journal.design_journal.id)
-            .last()
+            .order_by("-last_updated")
+            .first()
         )
-        if last_journal:
-            if not last_journal.builder_output:
-                # TODO: manage this case? In normal situation this should not ever happen
-                return
-
+        if last_journal and last_journal.builder_output:
             # The last design output is used as the reference to understand what needs to be changed
             # The design output store the whole set of attributes, not only the ones taken into account
             # in the implementation
             previous_design = last_journal.builder_output[design_file]
-            for key, value in design.items():
-                old_value = previous_design[key]
-                update_design_items(value, old_value)
+            self.log_debug(f"Design from previous Journal: {previous_design}")
 
-        self.builder.implement_design(design, commit, design_file)
+            for key, new_value in design.items():
+                old_value = previous_design[key]
+                future_value = self.builder.builder_output[design_file][key]
+                reduce_design(new_value, old_value, future_value, deprecated_design, key)
+
+            self.log_debug(f"Design to implement after reduction: {design}")
+            self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")
+
+        self.builder.implement_design(design, deprecated_design, commit, design_file)
 
     def _setup_journal(self, instance_name: str, design_owner: str):
         try:
-            instance = models.DesignInstance.objects.get(name=instance_name)
+            instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
             instance.last_implemented = datetime.now()
         except models.DesignInstance.DoesNotExist:
@@ -310,7 +275,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if commit:
                 self.post_implementation(context, self.builder)
 
-                # The Journal stores the design YAMLs (with IDs) for future operations (e.g., updates)
+                # The Journal stores the design (with Nautobot identifiers from post_implementation) for future operations (e.g., updates)
                 journal.builder_output = self.builder.builder_output
 
                 journal.design_instance.status = Status.objects.get(

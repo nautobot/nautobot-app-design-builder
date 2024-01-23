@@ -1,5 +1,6 @@
 """Provides ORM interaction for design builder."""
-from collections import defaultdict
+
+from collections import defaultdict, OrderedDict
 from typing import Dict, List, Mapping, Type
 
 from django.apps import apps
@@ -12,15 +13,66 @@ from django.db import transaction
 
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import JobResult, Relationship
-from nautobot.utilities.utils import serialize_object_v2, shallow_compare_dict
+from nautobot.utilities.utils import shallow_compare_dict
+from nautobot.extras.api.serializers import StatusModelSerializerMixin
+from nautobot.extras.api.fields import StatusSerializerField
+from nautobot.core.api.exceptions import SerializerNotFound
 
 
+from nautobot.extras.models import Status
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
 from nautobot_design_builder import models
 from nautobot_design_builder.constants import NAUTOBOT_ID
+from nautobot_design_builder.util import nautobot_version
+from nautobot_design_builder.recursive import inject_nautobot_uuids
+
+if nautobot_version < "2.0.0":
+    # TODO: This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
+    # https://github.com/nautobot/nautobot/blob/ltm-1.6/nautobot/extras/api/fields.py#L22
+    from nautobot.utilities.api import get_serializer_for_model
+    from nautobot.utilities.utils import serialize_object
+
+    def serialize_object_v2(obj):
+        """
+        Custom Implementation. Not needed for Nautobot 2.0.
+
+        Return a JSON serialized representation of an object using obj's serializer.
+        """
+
+        class CustomStatusSerializerField(StatusSerializerField):
+            def to_representation(self, obj):
+                """Make this field compatible w/ the existing API for `ChoiceField`."""
+                if obj == "":
+                    return None
+
+                return OrderedDict([("value", obj.slug), ("label", str(obj)), ("id", str(obj.id))])
+
+        class CustomStatusModelSerializerMixin(StatusModelSerializerMixin):
+            """Mixin to add `status` choice field to model serializers."""
+
+            status = CustomStatusSerializerField(queryset=Status.objects.all())
+
+        # Try serializing obj(model instance) using its API Serializer
+        try:
+            serializer_class = get_serializer_for_model(obj.__class__)
+            if issubclass(serializer_class, StatusModelSerializerMixin):
+
+                class NewSerializerClass(CustomStatusModelSerializerMixin, serializer_class):
+                    pass
+
+                serializer_class = NewSerializerClass
+            data = serializer_class(obj, context={"request": None, "depth": 1}).data
+        except SerializerNotFound:
+            # Fall back to generic JSON representation of obj
+            data = serialize_object(obj)
+
+        return data
+
+else:
+    from nautobot.core.models.utils import serialize_object_v2
 
 
 # TODO: Refactor this code into the Journal model
@@ -165,9 +217,8 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     CREATE = "create"
     UPDATE = "update"
     CREATE_OR_UPDATE = "create_or_update"
-    DELETE = "delete"
 
-    ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE, DELETE]
+    ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
 
     # Callback Event types
     PRE_SAVE = "PRE_SAVE"
@@ -180,8 +231,12 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         attributes: dict,
         relationship_manager=None,
         parent=None,
+        ext_tag=None,
+        ext_value=None,
     ):  # pylint:disable=too-many-arguments
         """Constructor for a ModelInstance."""
+        self.ext_tag = ext_tag
+        self.ext_value = ext_value
         self.creator = creator
         self.model_class = model_class
         self.name = model_class.__name__
@@ -284,7 +339,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                         attribute_names.extend(result.keys())
                     elif result is not None:
                         raise errors.DesignImplementationError(f"Cannot handle extension return type {type(result)}")
-                elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE, self.DELETE]:
+                elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
                     self.action = args[0]
                     self.filter[args[1]] = value
 
@@ -320,8 +375,8 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.signals[signal].connect(handler, self)
 
     def _load_instance(self):
+        # If the objects is already an existing Nautobot object, just get it.
         if self.nautobot_id:
-            # TODO: not sure how this works for recursive items
             self.created = False
             self.instance = self.model_class.objects.get(id=self.nautobot_id)
             self._initial_state = serialize_object_v2(self.instance)
@@ -408,30 +463,16 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self._update_fields()
         self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
 
-        if self.instance._state.adding:  # pylint: disable=protected-access
-            msg = "Created"
-        elif self.action == self.DELETE:
-            msg = "Deleted"
-        else:
-            msg = "Updated"
-
-        if self.action == self.DELETE:
-            # FIXME: we should handle the children before deleting? or we can rely on the Django dependencies?
-            try:
-                self.instance.delete()
+        msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
+        try:
+            self.instance.full_clean()
+            self.instance.save()
+            if self.parent is None:
                 self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
-            except ValidationError as validation_error:
-                raise errors.DesignValidationError(self) from validation_error
-        else:
-            try:
-                self.instance.full_clean()
-                self.instance.save()
-                if self.parent is None:
-                    self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
-                self.creator.journal.log(self)
-                self.instance.refresh_from_db()
-            except ValidationError as validation_error:
-                raise errors.DesignValidationError(self) from validation_error
+            self.creator.journal.log(self)
+            self.instance.refresh_from_db()
+        except ValidationError as validation_error:
+            raise errors.DesignValidationError(self) from validation_error
 
         for field_name in self.deferred:
             items = self.deferred_attributes[field_name]
@@ -441,13 +482,19 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             for item in items:
                 field = self.instance_fields[field_name]
                 if isinstance(item, ModelInstance):
+                    item_dict = output_dict
                     related_object = item
+                    if item.ext_tag:
+                        # If the item is a Design Builder extension, we get the ID
+                        item_dict[item.ext_tag][NAUTOBOT_ID] = str(item.instance.id)
                 else:
+                    item_dict = item
                     relationship_manager = None
                     if hasattr(self.instance, field_name):
                         relationship_manager = getattr(self.instance, field_name)
                     related_object = self.create_child(field.model, item, relationship_manager)
-                related_object.save(item)
+                # The item_dict is recursively updated
+                related_object.save(item_dict)
                 # BEWARE
                 # DO NOT REMOVE THE FOLLOWING LINE, IT WILL BREAK THINGS
                 # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
@@ -479,13 +526,13 @@ _OBJECT_TYPES_APP_FILTER = set(
     ]
 )
 
+from .logging import get_logger
+
 
 class Builder(LoggingMixin):
     """Iterates through a design and creates and updates the objects defined within."""
 
     model_map: Dict[str, Type[Model]]
-    # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
-    builder_output: Dict
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder initialized."""
@@ -503,6 +550,7 @@ class Builder(LoggingMixin):
         self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
     ):
         """Constructor for Builder."""
+        # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
         self.builder_output = {}
         self.job_result = job_result
 
@@ -531,6 +579,15 @@ class Builder(LoggingMixin):
 
         self.journal = Journal(design_journal=journal)
 
+    def decommission_object(self, object_id, object_name):
+        """This method decommissions an specific object_id from the design instance."""
+        self.journal.design_journal.design_instance.decommission(
+            local_logger=get_logger(__name__, self.job_result), object_id=object_id
+        )
+        self.log_success(
+            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.design_instance}."
+        )
+
     def get_extension(self, ext_type, tag):
         """Looks up an extension based on its tag name and returns an instance of that Extension type.
 
@@ -550,7 +607,7 @@ class Builder(LoggingMixin):
         return extn["object"]
 
     @transaction.atomic
-    def implement_design(self, design, commit=False, design_file=None):
+    def implement_design(self, design, deprecated_design={}, commit=False, design_file=None):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -573,8 +630,17 @@ class Builder(LoggingMixin):
                 if key in self.model_map and value:
                     # TODO: create_objects no longer represent what is happening here. maybe deploy_objects?
                     self._create_objects(self.model_map[key], value, key, design_file)
-                else:
+                elif not key in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
+
+            # TODO: we should iterate it in reverse order?
+            for key, value in deprecated_design.items():
+                if key in self.model_map and value:
+                    # TODO: create_objects no longer represent what is happening here. maybe deploy_objects?
+                    self._deprecate_objects(self.model_map[key], value)
+                elif not key in self.model_map:
+                    raise errors.DesignImplementationError(f"Unknown model key {key} in design")
+
             if commit:
                 self.commit()
             else:
@@ -627,14 +693,35 @@ class Builder(LoggingMixin):
             if model.deferred_attributes:
                 self.builder_output[design_file][key].update(model.deferred_attributes)
         elif isinstance(objects, list):
-            for index, model_instance in enumerate(objects):
-                model = ModelInstance(self, model_cls, model_instance)
-                if model.action == model.DELETE:
-                    model.save({})
-                else:
-                    model.save(self.builder_output[design_file][key][index])
-                if model.deferred_attributes:
-                    self.builder_output[design_file][key][index].update(model.deferred_attributes)
+            for model_instance in objects:
+                model_identifier = None
+                for inner_key in model_instance:
+                    if "!create" in inner_key or "!update" in inner_key:
+                        model_identifier = model_instance[inner_key]
+                        break
+
+                future_object = None
+                for obj in self.builder_output[design_file][key]:
+                    # assuming it's a dict
+                    for inner_key in obj:
+                        if "!create" in inner_key or "!update" in inner_key:
+                            if obj[inner_key] == model_identifier:
+                                future_object = obj
+                                break
+                    if future_object:
+                        break
+
+                if future_object:
+                    # Recursive functoin to update the created Nautobot UUIDs into the final design
+                    model = ModelInstance(self, model_cls, model_instance)
+                    model.save(future_object)
+                    if model.deferred_attributes:
+                        inject_nautobot_uuids(model.deferred_attributes, future_object)
+
+    def _deprecate_objects(self, model_cls, objects):
+        if isinstance(objects, list):
+            for obj in objects:
+                self.decommission_object(obj[0], obj[1])
 
     def commit(self):
         """Method to commit all changes to the database."""

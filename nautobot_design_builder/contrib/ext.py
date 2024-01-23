@@ -1,4 +1,5 @@
 """Extra action tags that are not part of the core Design Builder."""
+
 from functools import reduce
 import operator
 from typing import Any, Dict, Iterator, Tuple
@@ -18,6 +19,7 @@ from nautobot_design_builder.design import ModelInstance
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
 from nautobot_design_builder.ext import AttributeExtension
 from nautobot_design_builder.jinja2 import network_offset
+from nautobot_design_builder.constants import NAUTOBOT_ID
 
 
 class LookupMixin:
@@ -260,6 +262,20 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                         name: "GigabitEthernet1"
             ```
         """
+        # TODO: Some extensions may need to do some previous work to be able to be implemented
+        # For example, to set up this cable connection on an interface, we have to disconnect
+        # previously existing ones. And this is something that can be postponed for the cleanup phase
+        # We could change the paradigm of having attribute as an abstract method, and create a generic
+        # attribute method in the `AttributeExtension` that calls several hooks, one for setting
+        # (the current one), and one for pre-cleaning that would be custom for every case (and optional)
+
+        # This is the custom implementation of the pre-clean up method for the connect_cable extension
+        connected_object_uuid = model_instance.attributes.get(NAUTOBOT_ID)
+        if connected_object_uuid:
+            connected_object = model_instance.model_class.objects.get(id=connected_object_uuid)
+            if hasattr(connected_object, "cable") and connected_object.cable:
+                model_instance.creator.decommission_object(str(connected_object.cable.id), str(connected_object.cable))
+
         if "to" not in value:
             raise DesignImplementationError(
                 f"`connect_cable` must have a `to` field indicating what to terminate to. {value}"
@@ -290,6 +306,8 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 self.builder,
                 model_class=dcim.Cable,
                 attributes=cable_attributes,
+                ext_tag=f"!{self.tag}",
+                ext_value=value,
             )
         ]
 

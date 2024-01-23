@@ -307,3 +307,8 @@ invoke.yml
 docs/README.md
 docs/CHANGELOG.md
 public
+
+# Remove Local Tests
+
+examples/backbone_design/designs/test*
+nautobot_design_builder/device_types/

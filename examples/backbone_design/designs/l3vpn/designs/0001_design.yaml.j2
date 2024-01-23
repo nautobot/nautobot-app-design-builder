@@ -12,17 +12,26 @@ prefixes:
     - "!create_or_update:prefix": "{{ get_l3vpn_prefix(l3vpn_prefix, l3vpn_prefix_length) }}"
       status__name: "Reserved"
       vrf: "!ref:my_vrf"
+      description: "{{ get_instance_name("useless arg") }}"
 
 
-{% macro device_edit(device, offset) -%}
+{% macro device_edit(device, other_device, offset) -%}
   - "!update:name": "{{ device.name }}"
     local_context_data: {
       "mpls_router": true,
     }
     interfaces:
-      - name: {{ get_interface_name(device) }}
+      - "!create_or_update:name": "{{ get_interface_name(device) }}"
         status__name: "Planned"
         type: "other"
+        description: "{{ get_instance_name("useless arg") }}"
+        {% if offset == 2 %}
+        "!connect_cable":
+          status__name: "Planned"
+          to:
+            device__name: "{{ other_device.name }}"
+            name: "{{ get_interface_name(other_device) }}"
+        {% endif %}
         ip_addresses:
         - "!create_or_update:address": "{{ get_ip_address(get_l3vpn_prefix(l3vpn_prefix, l3vpn_prefix_length), offset) }}"
           status__name: "Reserved"
@@ -30,5 +39,5 @@ prefixes:
 {% endmacro %}
 
 devices:
-  {{ device_edit(ce, 1) }}
-  {{ device_edit(pe, 2) }}
+  {{ device_edit(ce, pe, 1) }}
+  {{ device_edit(pe, ce, 2) }}

@@ -1,4 +1,5 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
+
 import logging
 from typing import List
 from django.contrib.contenttypes.models import ContentType
@@ -203,25 +204,27 @@ class DesignInstance(PrimaryModel, StatusModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
-    def decommission(self, local_logger=logger):
+    def decommission(self, local_logger=logger, object_id=None):
         """Decommission a design instance.
 
         This will reverse the journal entries for the design instance and
         reset associated objects to their pre-design state.
         """
-        local_logger.info("Decommissioning design", extra={"obj": self})
-        self.__class__.pre_decommission.send(self.__class__, design_instance=self)
+        if not object_id:
+            local_logger.info("Decommissioning design", extra={"obj": self})
+            self.__class__.pre_decommission.send(self.__class__, design_instance=self)
         # Iterate the journals in reverse order (most recent first) and
         # revert each journal.
         for journal in self.journals.filter(active=True).order_by("-last_updated"):
-            journal.revert(local_logger=local_logger)
+            journal.revert(local_logger=local_logger, object_id=object_id)
 
-        content_type = ContentType.objects.get_for_model(DesignInstance)
-        self.status = Status.objects.get(
-            content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
-        )
-        self.save()
-        self.__class__.post_decommission.send(self.__class__, design_instance=self)
+        if not object_id:
+            content_type = ContentType.objects.get_for_model(DesignInstance)
+            self.status = Status.objects.get(
+                content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
+            )
+            self.save()
+            self.__class__.post_decommission.send(self.__class__, design_instance=self)
 
     def delete(self, *args, **kwargs):
         """Protect logic to remove Design Instance."""
@@ -325,7 +328,7 @@ class Journal(PrimaryModel):
             )
         return entry
 
-    def revert(self, local_logger: logging.Logger = logger):
+    def revert(self, local_logger: logging.Logger = logger, object_id=None):
         """Revert the changes represented in this Journal.
 
         Raises:
@@ -337,17 +340,21 @@ class Journal(PrimaryModel):
         # Without a design object we cannot have changes, right? I suppose if the
         # object has been deleted since the change was made then it wouldn't exist,
         # but I think we need to discuss the implications of this further.
-        local_logger.info("Reverting journal", extra={"obj": self})
-        for journal_entry in self.entries.exclude(_design_object_id=None).order_by("-last_updated"):
+        if not object_id:
+            local_logger.info("Reverting journal", extra={"obj": self})
+        for journal_entry in (
+            self.entries.exclude(_design_object_id=None).exclude(active=False).order_by("-last_updated")
+        ):
             try:
-                journal_entry.revert(local_logger=local_logger)
+                journal_entry.revert(local_logger=local_logger, object_id=object_id)
             except (ValidationError, DesignValidationError) as ex:
                 local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
                 raise ValueError(ex)
 
-        # When the Journal is reverted, we mark is as not active anymore
-        self.active = False
-        self.save()
+        if not object_id:
+            # When the Journal is reverted, we mark is as not active anymore
+            self.active = False
+            self.save()
 
 
 class JournalEntryQuerySet(RestrictedQuerySet):
@@ -403,6 +410,7 @@ class JournalEntry(BaseModel):
     design_object = ct_fields.GenericForeignKey(ct_field="_design_object_type", fk_field="_design_object_id")
     changes = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
     full_control = models.BooleanField(editable=False)
+    active = models.BooleanField(editable=False, default=True)
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
@@ -427,7 +435,7 @@ class JournalEntry(BaseModel):
             if key not in added_value:
                 current_value[key] = removed_value[key]
 
-    def revert(self, local_logger: logging.Logger = logger):
+    def revert(self, local_logger: logging.Logger = logger, object_id=None):
         """Revert the changes that are represented in this journal entry.
 
         Raises:
@@ -437,8 +445,10 @@ class JournalEntry(BaseModel):
 
         """
         if not self.design_object:
-            # TODO: This is something that may happen when a design has been uptade and objectes deleted
-            # raise ValidationError(f"No reference object found for this JournalEntry: {str(self.id)}")
+            # This is something that may happen when a design has been updated and object was deleted
+            return
+
+        if object_id and str(self.design_object.id) != object_id:
             return
 
         # It is possible that the journal entry contains a stale copy of the
@@ -457,7 +467,8 @@ class JournalEntry(BaseModel):
 
         if self.full_control:
             related_entries = (
-                JournalEntry.objects.filter_related(self)
+                JournalEntry.objects.filter(active=True)
+                .filter_related(self)
                 .filter_same_parent_design_instance(self)
                 .exclude_decommissioned()
             )
@@ -488,15 +499,45 @@ class JournalEntry(BaseModel):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
                     current_value = getattr(self.design_object, attribute)
-                    self.update_current_value_from_dict(
-                        current_value=current_value,
-                        added_value=added_value,
-                        removed_value=removed_value,
-                    )
+                    current_value_type = type(current_value)
+                    if isinstance(current_value, dict):
+                        self.update_current_value_from_dict(
+                            current_value=current_value,
+                            added_value=added_value,
+                            removed_value=removed_value,
+                        )
+                    elif isinstance(current_value, models.Model):
+                        try:
+                            current_value = current_value_type.objects.get(id=removed_value["id"])
+                        except ObjectDoesNotExist:
+                            # local_logger.warning(
+                            #     "%s object with ID %s, doesn't exist, so setting to Null",
+                            #     current_value_type,
+                            #     removed_value["id"],
+                            # )
+                            current_value = None
+                    elif current_value is None:
+                        pass
+                    else:
+                        # TODO: cover other use cases, such as M2M relationship
+                        local_logger.error(
+                            "%s can't be reverted because decommission of type %s is not supported yet.",
+                            current_value,
+                            current_value_type,
+                        )  # The attribute is a Foreign Key that is represented as a dict
 
                     setattr(self.design_object, attribute, current_value)
                 else:
-                    setattr(self.design_object, attribute, removed_value)
+                    try:
+                        setattr(self.design_object, attribute, removed_value)
+                    except AttributeError:
+                        # TODO: the current serialization (serialize_object_v2) doesn't exclude properties
+                        local_logger.debug(
+                            "Attribute %s in this object %s can't be set. It may be a 'property'.",
+                            attribute,
+                            object_str,
+                            extra={"obj": self.design_object},
+                        )
 
                 self.design_object.save()
                 local_logger.info(
@@ -505,3 +546,6 @@ class JournalEntry(BaseModel):
                     object_str,
                     extra={"obj": self.design_object},
                 )
+
+        self.active = False
+        self.save()
