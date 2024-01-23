@@ -1,7 +1,7 @@
 # Nautobot Design Builder
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nautobot/nautobot-app-design-builder/develop/docs/images/icon-nautobot-design-builder.png" class="logo" height="200px">
+  <img src="https://raw.githubusercontent.com/nautobot/nautobot-app-design-builder/develop/docs/images/icon-design-builder.png" class="logo" height="200px">
   <br>
   <a href="https://github.com/nautobot/nautobot-app-design-builder/actions"><img src="https://github.com/nautobot/nautobot-app-design-builder/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <a href="https://docs.nautobot.com/projects/nautobot-design-builder/en/latest"><img src="https://readthedocs.org/projects/nautobot-app-design-builder/badge/"></a>
