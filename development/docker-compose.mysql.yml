@@ -1,14 +1,31 @@
+# We can't remove volumes in a compose override, for the test configuration using the final containers
+# we don't want the volumes so this is the default override file to add the volumes in the dev case
+# any override will need to include these volumes to use them.
+# see:  https://github.com/docker/compose/issues/3729
 ---
 version: "3.8"
-
 services:
   nautobot:
-    environment:
-      - "NAUTOBOT_DB_ENGINE=django.db.backends.mysql"
-    env_file:
-      - "development.env"
-      - "creds.env"
-      - "development_mysql.env"
+    command: "nautobot-server runserver 0.0.0.0:8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
+      - "../:/source"
+      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
+      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"
+    healthcheck:
+      test: ["CMD", "true"]  # Due to layering, disable: true won't work. Instead, change the test
+  docs:
+    entrypoint: "mkdocs serve -v -a 0.0.0.0:8080"
+    ports:
+      - "8001:8080"
+    volumes:
+      - "../:/source"
+    image: "nautobot-design-builder/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
+    healthcheck:
+      disable: true
+    tty: true
   worker:
     environment:
       - "NAUTOBOT_DB_ENGINE=django.db.backends.mysql"
@@ -26,7 +43,10 @@ services:
       - "creds.env"
       - "development_mysql.env"
     volumes:
-      - "mysql_data:/var/lib/mysql"
+      - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
+      - "../:/source"
+      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
+      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"
     healthcheck:
       test:
         - "CMD"

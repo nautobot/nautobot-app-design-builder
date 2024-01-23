@@ -19,4 +19,3 @@ about: Propose a new feature or enhancement
     functionality and describe how.
 --->
 ### Use Case
-
