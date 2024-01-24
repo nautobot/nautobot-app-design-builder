@@ -45,8 +45,7 @@ pylint-nautobot = "*"
 yamllint = "*"
 toml = "*"
 Markdown = "*"
-# Pining the version. The newer versions break unittests.
-nautobot-bgp-models= "0.7.1"
+nautobot-bgp-models = "*"
 
 # Rendering docs to HTML
 mkdocs = "1.5.2"
