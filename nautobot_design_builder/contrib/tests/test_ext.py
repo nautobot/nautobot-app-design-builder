@@ -301,9 +301,10 @@ class TestBGPExtension(TestCase):
     """Test BGP extension."""
 
     def setUp(self):
-        # TODO: Remove this when BGP models is migrated to 2.0
-        if nautobot_version >= "2.0.0":
-            self.skipTest("BGP Models is not supported in Nautobot 2.x")
+        try:
+            import nautobot_bgp_models.models  # pylint:disable=import-outside-toplevel,unused-import,import-error # noqa: F401
+        except ModuleNotFoundError:
+            self.skipTest("BGP Models app is not installed, skipping associated tests")
         super().setUp()
 
     def test_creation(self):

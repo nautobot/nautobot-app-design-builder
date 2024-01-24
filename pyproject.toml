@@ -29,6 +29,7 @@ packages = [
 python = ">=3.8,<3.12"
 # Used for local development
 nautobot = ">=1.6.0,<=2.9999"
+nautobot-bgp-models = { version = "*", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 bandit = "*"
@@ -46,8 +47,6 @@ yamllint = "*"
 toml = "*"
 Markdown = "*"
 
-nautobot-bgp-models = "*"
-
 # Rendering docs to HTML
 mkdocs = "1.5.2"
 # Material for MkDocs theme
@@ -60,6 +59,7 @@ mkdocstrings-python = "1.5.2"
 
 [tool.poetry.extras]
 nautobot = ["nautobot"]
+contrib = ["nautobot-bgp-models"]
 
 [tool.black]
 line-length = 120
