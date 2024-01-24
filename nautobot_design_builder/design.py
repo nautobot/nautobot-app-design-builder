@@ -140,6 +140,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.filter = {}
         self.action = None
         self.instance_fields = {}
+        self._kwargs = {}
         for direction in Relationship.objects.get_for_model(model_class):
             for relationship in direction:
                 self.instance_fields[relationship.slug] = field_factory(self, relationship)
@@ -225,7 +226,11 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     raise errors.DesignImplementationError(f"{fieldname} is not a property", self.model_class)
                 self.attributes[fieldname] = {search: self.attributes.pop(key)}
             elif not hasattr(self.model_class, key) and key not in self.instance_fields:
-                raise errors.DesignImplementationError(f"{key} is not a property", self.model_class)
+                value = self.creator.resolve_values(self.attributes.pop(key))
+                if isinstance(value, ModelInstance):
+                    value = value.instance
+                self._kwargs[key] = value
+                # raise errors.DesignImplementationError(f"{key} is not a property", self.model_class)
 
         if self.action is None:
             self.action = self.CREATE
@@ -281,7 +286,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.attributes.update(query_filter)
         elif self.action != "create":
             raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
-        self.instance = self.model_class()
+        try:
+            self.instance = self.model_class(**self._kwargs)
+        except TypeError as ex:
+            raise errors.DesignImplementationError(str(ex), self.model_class)
 
     def _update_fields(self):  # pylint: disable=too-many-branches
         if self.action == self.GET and self.attributes:

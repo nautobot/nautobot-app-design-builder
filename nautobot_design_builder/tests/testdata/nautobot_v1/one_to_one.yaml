@@ -1,0 +1,50 @@
+---
+designs:
+  - manufacturers:
+      - name: "manufacturer1"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "chassis"
+        u_height: 1
+        subdevice_role: "parent"
+
+      - manufacturer__name: "manufacturer1"
+        model: "card"
+        u_height: 0
+        subdevice_role: "child"
+
+    device_roles:
+      - name: "device role"
+
+    sites:
+      - name: "site_1"
+        status__name: "Active"
+
+    devices:
+      - name: "device_1"
+        site__name: "site_1"
+        status__name: "Active"
+        device_type__model: "chassis"
+        device_role__name: "device role"
+        devicebays:
+          - name: "Bay 1"
+            installed_device:
+              name: "device_2"
+              site__name: "site_1"
+              status__name: "Active"
+              device_type__model: "card"
+              device_role__name: "device role"
+checks:
+  - model_exists:
+      model: "nautobot.dcim.models.Device"
+      query: {name: "device_1"}
+  - model_exists:
+      model: "nautobot.dcim.models.Device"
+      query: {name: "device_2"}
+  - equal:
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "device_2"}
+        attribute: "parent_bay.device"
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "device_1"}

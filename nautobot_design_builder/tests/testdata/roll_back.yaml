@@ -1,0 +1,13 @@
+---
+designs:
+  - commit: false
+    manufacturers:
+      - name: "manufacturer1"
+      - name: "manufacturer2"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model1"
+        u_height: 1
+# No checks, commit: false automatically checks that the rollback
+# function has been called

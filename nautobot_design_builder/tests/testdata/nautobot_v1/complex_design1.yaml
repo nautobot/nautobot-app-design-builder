@@ -1,0 +1,172 @@
+---
+checks:
+  # Spine 1 to Leaf 1
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine1", name: "Ethernet9/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf1", name: "Ethernet33/1"}
+
+  # Spine 1 to Leaf 2
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine1", name: "Ethernet25/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf2", name: "Ethernet33/1"}
+
+  # Spine 2 to Leaf 1
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine2", name: "Ethernet9/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf1", name: "Ethernet34/1"}
+
+  # Spine 2 to Leaf 2
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine2", name: "Ethernet25/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf2", name: "Ethernet34/1"}
+
+  # Spine 3 to Leaf 1
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine3", name: "Ethernet9/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf1", name: "Ethernet35/1"}
+
+  # Spine 3 to Leaf 2
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine3", name: "Ethernet25/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf2", name: "Ethernet35/1"}
+designs:
+  - manufacturers:
+      - "name": "manufacturer"
+
+    device_types:
+      - "manufacturer__name": "manufacturer"
+        "model": "model name"
+        "u_height": 1
+
+    device_roles:
+      - "name": "EVPN Leaf"
+      - "name": "EVPN Spine"
+
+    sites:
+      - "name": "site"
+        "status__name": "Active"
+
+    devices:
+      # Create Spine Switches
+      - "!create_or_update:name": "spine1"
+        "status__name": "Active"
+        "site__name": "site"
+        "device_role__name": "EVPN Spine"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet9/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine1_to_leaf1"
+          - "!create_or_update:name": "Ethernet25/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine1_to_leaf2"
+      - "!create_or_update:name": "spine2"
+        "status__name": "Active"
+        "site__name": "site"
+        "device_role__name": "EVPN Spine"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet9/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine2_to_leaf1"
+          - "!create_or_update:name": "Ethernet25/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine2_to_leaf2"
+      - "!create_or_update:name": "spine3"
+        "status__name": "Active"
+        "site__name": "site"
+        "device_role__name": "EVPN Spine"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet9/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine3_to_leaf1"
+          - "!create_or_update:name": "Ethernet25/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine3_to_leaf2"
+      - "!create_or_update:name": "leaf1"
+        "status__name": "Active"
+        "site__name": "site"
+        "device_role__name": "EVPN Leaf"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet33/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf1_to_spine1"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet34/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf1_to_spine2"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet35/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf1_to_spine3"
+            "status__name": "Active"
+      - "!create_or_update:name": "leaf2"
+        "status__name": "Active"
+        "site__name": "site"
+        "device_role__name": "EVPN Leaf"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet33/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf2_to_spine1"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet34/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf2_to_spine2"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet35/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf2_to_spine3"
+            "status__name": "Active"
+
+    cables:
+      - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf1.id"
+        "!create_or_update:termination_b_id": "!ref:leaf1_to_spine1.id"
+        "termination_a": "!ref:spine1_to_leaf1"
+        "termination_b": "!ref:leaf1_to_spine1"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf1.id"
+        "!create_or_update:termination_b_id": "!ref:leaf1_to_spine2.id"
+        "termination_a": "!ref:spine2_to_leaf1"
+        "termination_b": "!ref:leaf1_to_spine2"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf1.id"
+        "!create_or_update:termination_b_id": "!ref:leaf1_to_spine3.id"
+        "termination_a": "!ref:spine3_to_leaf1"
+        "termination_b": "!ref:leaf1_to_spine3"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf2.id"
+        "!create_or_update:termination_b_id": "!ref:leaf2_to_spine1.id"
+        "termination_a": "!ref:spine1_to_leaf2"
+        "termination_b": "!ref:leaf2_to_spine1"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf2.id"
+        "!create_or_update:termination_b_id": "!ref:leaf2_to_spine2.id"
+        "termination_a": "!ref:spine2_to_leaf2"
+        "termination_b": "!ref:leaf2_to_spine2"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf2.id"
+        "!create_or_update:termination_b_id": "!ref:leaf2_to_spine3.id"
+        "termination_a": "!ref:spine3_to_leaf2"
+        "termination_b": "!ref:leaf2_to_spine3"
+        "status__name": "Planned"
