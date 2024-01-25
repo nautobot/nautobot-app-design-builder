@@ -26,9 +26,8 @@ from nautobot_design_builder import models
 from nautobot_design_builder.util import nautobot_version
 
 if nautobot_version < "2.0.0":
-    # TODO: This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
+    # This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
     # https://github.com/nautobot/nautobot/blob/ltm-1.6/nautobot/extras/api/fields.py#L22
-    # FIXME: make this compatible for Nautobot 2.0
     from nautobot.utilities.api import get_serializer_for_model, serialize_object
 
     def serialize_object_v2(obj):
