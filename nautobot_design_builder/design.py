@@ -39,6 +39,8 @@ if nautobot_version < "2.0.0":
         """
 
         class CustomStatusSerializerField(StatusSerializerField):
+            """CustomStatusSerializerField."""
+
             def to_representation(self, obj):
                 """Make this field compatible w/ the existing API for `ChoiceField`."""
                 if obj == "":
@@ -57,6 +59,8 @@ if nautobot_version < "2.0.0":
             if issubclass(serializer_class, StatusModelSerializerMixin):
 
                 class NewSerializerClass(CustomStatusModelSerializerMixin, serializer_class):
+                    """Custom SerializerClass."""
+
                     pass
 
                 serializer_class = NewSerializerClass
@@ -68,7 +72,7 @@ if nautobot_version < "2.0.0":
         return data
 
 else:
-    from nautobot.core.models.utils import serialize_object_v2
+    from nautobot.core.models.utils import serialize_object_v2  # pylint: disable=import-error,no-name-in-module
 
 
 # TODO: Refactor this code into the Journal model
