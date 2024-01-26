@@ -138,12 +138,12 @@ def builder_test_case(data_dir):
 
 
 @builder_test_case(os.path.join(os.path.dirname(__file__), "testdata"))
-class TestGeneralDesigns(TestCase):  # pylint:disable=too-many-public-methods
+class TestGeneralDesigns(TestCase):
     """Designs that should work with all versions of Nautobot."""
 
 
 @builder_test_case(os.path.join(os.path.dirname(__file__), "testdata", "nautobot_v1"))
-class TestV1Designs(TestCase):  # pylint:disable=too-many-public-methods
+class TestV1Designs(TestCase):
     """Designs that only work in Nautobot 1.x"""
 
     def setUp(self):
@@ -153,7 +153,7 @@ class TestV1Designs(TestCase):  # pylint:disable=too-many-public-methods
 
 
 @builder_test_case(os.path.join(os.path.dirname(__file__), "testdata", "nautobot_v2"))
-class TestV2Designs(TestCase):  # pylint:disable=too-many-public-methods
+class TestV2Designs(TestCase):
     """Designs that only work in Nautobot 1.x"""
 
     def setUp(self):
