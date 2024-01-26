@@ -1,0 +1,30 @@
+---
+designs:
+  - manufacturers:
+      - name: "Vendor"
+    device_types:
+      - "!create_or_update:model": "test model"
+        "!create_or_update:manufacturer__name": "Vendor"
+    device_roles:
+      - "name": "role"
+    sites:
+      - "name": "Site"
+        "status__name": "Active"
+    devices:
+      - "!create_or_update:name": "test device"
+        "!create_or_update:device_type__manufacturer__name": "Vendor"
+        "device_role__name": "role"
+        "site__name": "Site"
+        "status__name": "Active"
+checks:
+  - equal:
+      - model: "nautobot.dcim.models.DeviceType"
+        query: {model: "test model"}
+        attribute: "manufacturer.name"
+      - value: "Vendor"
+  - equal:
+      - model: "nautobot.dcim.models.DeviceType"
+        query: {model: "test model"}
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "test device"}
+        attribute: "device_type"

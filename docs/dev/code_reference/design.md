@@ -1,1 +1,1 @@
-::: design_builder.design
+::: nautobot_design_builder.design

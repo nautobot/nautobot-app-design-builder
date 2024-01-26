@@ -2,8 +2,8 @@
 
 This repository includes all of the files related to the designs.
 
-For local testing, a Visual Studio Code dev container has been configured. Simply clone the repository and you should be prompted to re-open the workspace in the container. You can also select `Remote-Containers: Open Folder in Container` from the command palette.
+For local testing, start the development stack with `invoke start` and navigate to <https://localhost:8080> in your browser. The designs should show up as they would in a production environment.
 
-To see the debug output from the Nautobot application stack, open a new terminal and run `invoke log`
+To see the debug output from the Nautobot application stack, open a new terminal and run `invoke debug`
 
 To run the unit tests, open a terminal panel and run the command `invoke unittest`

@@ -1,0 +1,25 @@
+---
+designs:
+  - namespaces:
+      - name: "VRF Namespace"
+        "!ref": "parent_namespace"
+
+    prefixes:
+      - namespace__name: "VRF Namespace"
+        status__name: "Active"
+        prefix: "192.168.56.0/24"
+
+    ip_addresses:
+      - address: "192.168.56.1/24"
+        # Note: `namespace` is a keyword argument in the IPAddress constructor,
+        # therefore, reflection cannot take place. This means that attribute action tags
+        # (like !lookup:`) and query params (like `namespace__name`) can't be used.
+        # If an IPAddress needs to be assigned to a namespace it can only be
+        # done via a !ref.
+        namespace: "!ref:parent_namespace"
+        status__name: "Active"
+
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.IPAddress"
+      query: {address: "192.168.56.1/24"}

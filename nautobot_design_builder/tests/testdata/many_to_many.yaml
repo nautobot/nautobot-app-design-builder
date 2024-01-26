@@ -1,0 +1,28 @@
+---
+designs:
+  - manufacturers:
+      - name: "manufacturer1"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model1"
+        "!ref": "model1"
+
+    config_contexts:
+      - name: "My Context"
+        data:
+          foo: 123
+        device_types:
+          - "!ref:model1"
+          - model: "model2"
+            manufacturer__name: "manufacturer1"
+checks:
+  - model_exists:
+      model: "nautobot.dcim.models.DeviceType"
+      query: {model: "model2"}
+
+  - equal:
+      - model: "nautobot.dcim.models.DeviceType"
+      - model: "nautobot.extras.models.ConfigContext"
+        query: {name: "My Context"}
+        attribute: "device_types"

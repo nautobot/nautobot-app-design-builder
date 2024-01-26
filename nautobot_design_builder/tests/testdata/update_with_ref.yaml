@@ -1,0 +1,21 @@
+---
+designs:
+  - manufacturers:
+      - name: "manufacturer1"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model1"
+        u_height: 1
+        "!ref": "device"
+
+      - "!update:id": "!ref:device.id"
+        model: "new model name"
+
+checks:
+  - model_exists:
+      model: "nautobot.dcim.models.DeviceType"
+      query: {model: "new model name"}
+  - model_not_exist:
+      model: "nautobot.dcim.models.DeviceType"
+      query: {model: "model1"}

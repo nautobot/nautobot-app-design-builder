@@ -1,1 +1,1 @@
-::: design_builder.jinja2
+::: nautobot_design_builder.jinja2
