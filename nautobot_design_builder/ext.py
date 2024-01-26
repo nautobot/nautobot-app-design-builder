@@ -9,7 +9,7 @@ import sys
 from types import ModuleType
 import yaml
 
-from nautobot_design_builder import DesignBuilderConfig
+from nautobot_design_builder import NautobotDesignBuilderConfig
 from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.git import GitRepo
 
@@ -190,6 +190,7 @@ class ReferenceExtension(AttributeExtension, ValueExtension):
         try:
             model_instance = self._env[key]
         except KeyError:
+            # pylint: disable=raise-missing-from
             raise DesignImplementationError(f"No ref named {key} has been saved in the design.")
         if model_instance.instance and not model_instance.instance._state.adding:  # pylint: disable=protected-access
             model_instance.instance.refresh_from_db()
@@ -225,7 +226,7 @@ class GitContextExtension(AttributeExtension):
 
     def __init__(self, builder: "Builder"):  # noqa: D107
         super().__init__(builder)
-        slug = DesignBuilderConfig.context_repository
+        slug = NautobotDesignBuilderConfig.context_repository
         self.context_repo = GitRepo(slug, builder.job_result)
         self._env = {}
         self._reset()

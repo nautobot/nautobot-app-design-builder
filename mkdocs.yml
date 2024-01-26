@@ -1,8 +1,8 @@
 ---
 dev_addr: "127.0.0.1:8001"
-edit_uri: "edit/develop/docs"
+edit_uri: "edit/main/nautobot-app-design-builder/docs"
 site_dir: "nautobot_design_builder/static/nautobot_design_builder/docs"
-site_name: "Design Builder Documentation"
+site_name: "Nautobot Design Builder Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-design-builder/en/latest/"
 repo_url: "https://github.com/nautobot/nautobot-app-design-builder"
 copyright: "Copyright &copy; The Authors"
@@ -14,14 +14,17 @@ theme:
     - "django"
     - "yaml"
   features:
-    - "navigation.tracking"
+    - "content.action.edit"
+    - "content.action.view"
+    - "content.code.copy"
+    - "navigation.footer"
+    - "navigation.indexes"
     - "navigation.tabs"
     - "navigation.tabs.sticky"
-    - "search.suggest"
+    - "navigation.tracking"
     - "search.highlight"
     - "search.share"
-    - "navigation.indexes"
-    - "content.tooltips"
+    - "search.suggest"
   favicon: "assets/favicon.ico"
   logo: "assets/nautobot_logo.svg"
   palette:
@@ -90,7 +93,7 @@ plugins:
       default_handler: "python"
       handlers:
         python:
-          paths: ["nautobot_design_builder"]
+          paths: ["."]
           options:
             show_root_heading: true
 watch:
@@ -104,6 +107,7 @@ nav:
       - Design Quick Start: "user/design_quickstart.md"
       - Design Development: "user/design_development.md"
       - Frequently Asked Questions: "user/faq.md"
+      - Git-based Config Context: "user/git_config_context.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"
@@ -118,9 +122,10 @@ nav:
       - Development Environment: "dev/dev_environment.md"
       - Code Reference:
           - "dev/code_reference/index.md"
-          - Design Job: "dev/code_reference/design_job.md"
+          - Package: "dev/code_reference/package.md"
           - Context: "dev/code_reference/context.md"
           - Design Builder: "dev/code_reference/design.md"
+          - Design Job: "dev/code_reference/design_job.md"
           - Jinja Rendering: "dev/code_reference/jinja2.md"
           - Template Extensions: "dev/code_reference/ext.md"
           - Util: "dev/code_reference/util.md"

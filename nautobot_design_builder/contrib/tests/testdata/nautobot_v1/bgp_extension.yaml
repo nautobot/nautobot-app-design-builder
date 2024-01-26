@@ -1,0 +1,78 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.BGPPeeringExtension"
+designs:
+  - sites:
+      - "!create_or_update:name": "Site"
+        status__name: "Active"
+
+    device_roles:
+      - "!create_or_update:name": "test-role"
+
+    manufacturers:
+      - "!create_or_update:name": "test-manufacturer"
+
+    device_types:
+      - manufacturer__name: "test-manufacturer"
+        "!create_or_update:model": "test-type"
+
+    autonomous_systems:
+      - "!create_or_update:asn": 64500
+        status__name: "Active"
+
+    devices:
+      - "!create_or_update:name": "device1"
+        status__name: "Active"
+        site__name: "Site"
+        device_role__name: "test-role"
+        device_type__model: "test-type"
+        interfaces:
+          - "!create_or_update:name": "Ethernet1/1"
+            type: "virtual"
+            status__name: "Active"
+            ip_addresses:
+              - "!create_or_update:address": "192.168.1.1/24"
+                status__name: "Active"
+        bgp_routing_instances:
+          - "!create_or_update:autonomous_system__asn": 64500
+            "!ref": "device1-instance"
+            status__name: "Active"
+
+      - "!create_or_update:name": "device2"
+        status__name: "Active"
+        site__name: "Site"
+        device_role__name: "test-role"
+        device_type__model: "test-type"
+        interfaces:
+          - "!create_or_update:name": "Ethernet1/1"
+            type: "virtual"
+            status__name: "Active"
+            ip_addresses:
+              - "!create_or_update:address": "192.168.1.2/24"
+                status__name: "Active"
+        bgp_routing_instances:
+          - "!create_or_update:autonomous_system__asn": 64500
+            "!ref": "device2-instance"
+            status__name: "Active"
+
+    bgp_peerings:
+      - "!bgp_peering":
+          endpoint_a:
+            "!create_or_update:routing_instance__device__name": "device1"
+            "!create_or_update:source_ip":
+              "!get:interface__device__name": "device1"
+              "!get:interface__name": "Ethernet1/1"
+          endpoint_z:
+            "!create_or_update:routing_instance__device__name": "device2"
+            "!create_or_update:source_ip":
+              "!get:interface__device__name": "device2"
+              "!get:interface__name": "Ethernet1/1"
+        status__name: "Active"
+checks:
+  - equal:
+      - model: "nautobot_bgp_models.models.PeerEndpoint"
+        query: {routing_instance__device__name: "device1"}
+        attribute: "peering"
+      - model: "nautobot_bgp_models.models.PeerEndpoint"
+        query: {routing_instance__device__name: "device2"}
+        attribute: "peering"

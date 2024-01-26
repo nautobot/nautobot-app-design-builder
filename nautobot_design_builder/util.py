@@ -91,6 +91,7 @@ def load_design_package(path: str, package_name: str) -> Type[ModuleType]:
         package_spec.loader.exec_module(package)
         return package
     except FileNotFoundError:
+        # pylint: disable=raise-missing-from
         raise ModuleNotFoundError(f"no module named '{package_name}' at {path}")
 
 
