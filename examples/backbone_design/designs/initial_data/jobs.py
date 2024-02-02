@@ -14,3 +14,17 @@ class InitialDesign(DesignJob):
         commit_default = False
         design_file = "designs/0001_design.yaml.j2"
         context_class = InitialDesignContext
+        nautobot_version = "<2"
+
+
+class InitialDesignV2(DesignJob):
+    """Initialize the database with default values needed by the core site designs."""
+
+    class Meta:
+        """Metadata needed to implement the backbone site design."""
+
+        name = "Initial Data"
+        commit_default = False
+        design_file = "designs/0001_design_v2.yaml.j2"
+        context_class = InitialDesignContext
+        nautobot_version = ">=2"

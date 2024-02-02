@@ -27,3 +27,4 @@ class CoreSiteDesign(DesignJob):
         commit_default = False
         design_file = "designs/0001_design.yaml.j2"
         context_class = CoreSiteContext
+        nautobot_version = "<2"
