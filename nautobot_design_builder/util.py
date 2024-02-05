@@ -287,20 +287,16 @@ def load_jobs(module_name=None):
         except GitRepository.DoesNotExist:
             return
 
-    if is_local:
-        frame.f_globals["jobs"] = []
-
+    frame.f_globals["jobs"] = []
     for class_name, cls in designs.items():
         new_cls = type(class_name, (cls,), {})
         new_cls.__module__ = frame.f_globals["__name__"]
         frame.f_globals[class_name] = new_cls
-        if is_local:
-            frame.f_globals["jobs"].append(new_cls)
+        frame.f_globals["jobs"].append(new_cls)
 
     if nautobot_version >= "2":
         try:
             from nautobot.apps.jobs import register_jobs  # pylint:disable=import-outside-toplevel
-
             register_jobs(*frame.f_globals["jobs"])
         except ImportError:
             pass

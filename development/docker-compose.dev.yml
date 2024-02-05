@@ -12,8 +12,6 @@ services:
     volumes:
       - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
       - "../:/source"
-      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
-      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"
     healthcheck:
       test: ["CMD", "true"]  # Due to layering, disable: true won't work. Instead, change the test
   docs:
@@ -34,8 +32,6 @@ services:
     volumes:
       - "./nautobot_config.py:/opt/nautobot/nautobot_config.py"
       - "../:/source"
-      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
-      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"
     healthcheck:
       test: ["CMD", "true"]  # Due to layering, disable: true won't work. Instead, change the test
 # To expose postgres or redis to the host uncomment the following

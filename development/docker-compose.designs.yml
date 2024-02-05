@@ -1,0 +1,11 @@
+---
+version: "3.8"
+services:
+  nautobot:
+    volumes:
+      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
+      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"
+  worker:
+    volumes:
+      - "../examples/backbone_design/designs:/opt/nautobot/designs:cached"
+      - "../examples/backbone_design/jobs:/opt/nautobot/jobs:cached"

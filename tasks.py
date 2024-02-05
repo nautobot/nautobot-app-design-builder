@@ -56,6 +56,7 @@ namespace.configure(
                 "docker-compose.redis.yml",
                 "docker-compose.postgres.yml",
                 "docker-compose.dev.yml",
+                "docker-compose.designs.yml",
             ],
             "compose_http_timeout": "86400",
         }
