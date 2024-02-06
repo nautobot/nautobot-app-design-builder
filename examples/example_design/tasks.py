@@ -45,7 +45,7 @@ namespace = Collection("example_design")
 namespace.configure(
     {
         "example_design": {
-            "nautobot_ver": "latest",
+            "nautobot_ver": "stable",
             "project_name": "example_design",
             "python_ver": "3.8",
             "local": False,
