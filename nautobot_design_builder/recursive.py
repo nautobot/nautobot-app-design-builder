@@ -44,15 +44,18 @@ def inject_nautobot_uuids(initial_data, final_data):
             final_data[NAUTOBOT_ID] = initial_data[NAUTOBOT_ID]
 
 
-def reduce_design(new_value, old_value, future_value, decommissioned_objects, type_key):
+# TODO: could we make it simpler?
+def reduce_design(
+    new_value, old_value, future_value, decommissioned_objects, type_key
+):  # pylint: disable=too-many-locals,too-many-return-statements,too-many-branches,too-many-statements
     """Recursive function to simplify the new design by comparing with a previous design.
 
     Args:
-        - new_value: New design element.
-        - old_value: Previous design element.
-        - future_value: Final design element to be persisted for future reference.
-        - decommissioned_objects: Elements that are no longer relevant and will be decommissioned.
-        - type_key: Reference key in the design element.
+        new_value: New design element.
+        old_value: Previous design element.
+        future_value: Final design element to be persisted for future reference.
+        decommissioned_objects: Elements that are no longer relevant and will be decommissioned.
+        type_key: Reference key in the design element.
 
     """
     if isinstance(new_value, list):
@@ -82,7 +85,12 @@ def reduce_design(new_value, old_value, future_value, decommissioned_objects, ty
                     # If the objects in the same list position are not the same (based on the design identifier),
                     # the old element is added to the decommissioning list, and a recursive process to decommission
                     # all the related children objects is initiated
+                    # TODO: One possible situation is that a cable of a nested interface in the same object
+                    # is added into the nested reduce design, but the nautobot identifier is lost to
+                    # be taken into account to be decommissioned before. Maybe we could move the nautobot identifiers to the new object?
+
                     objects_to_decommission.append((old_nautobot_identifier, old_elem_identifier))
+
                     reduce_design({}, old_element, {}, decommissioned_objects, type_key)
 
                 # When the elements have the same identifier, we progress on the recursive reduction analysis
@@ -108,7 +116,7 @@ def reduce_design(new_value, old_value, future_value, decommissioned_objects, ty
 
         return False
 
-    elif isinstance(new_value, dict):
+    if isinstance(new_value, dict):
         # Removing the old Nautobot identifier to simplify comparison
         old_nautobot_identifier = old_value.pop(NAUTOBOT_ID, None)
 
@@ -139,7 +147,7 @@ def reduce_design(new_value, old_value, future_value, decommissioned_objects, ty
                 continue
 
             # Reseting desired values for attributes not included in the new design implementation
-            # FIXME: not sure why do we need this
+            # TODO: not sure why do we need this
             if inner_old_key not in new_value:
                 new_value[inner_old_key] = None
 
@@ -169,7 +177,7 @@ def reduce_design(new_value, old_value, future_value, decommissioned_objects, ty
                     decommissioned_objects[inner_key].append((obj[NAUTOBOT_ID], get_object_identifier(obj)))
                     reduce_design({}, obj, {}, decommissioned_objects, inner_key)
 
-            elif (isinstance(inner_value, dict) or isinstance(inner_value, list)) and inner_key in old_value:
+            elif isinstance(inner_value, (dict, list)) and inner_key in old_value:
                 # If an attribute is a dict or list, explore it recursively to reduce it
                 if reduce_design(
                     inner_value,
@@ -193,3 +201,5 @@ def reduce_design(new_value, old_value, future_value, decommissioned_objects, ty
             new_value[NAUTOBOT_ID] = old_nautobot_identifier
 
         return False
+
+    raise DesignImplementationError("The design reduction only works for dict or list objects.")

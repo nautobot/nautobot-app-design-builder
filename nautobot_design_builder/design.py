@@ -406,7 +406,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     queryset = rel.get_queryset()
                     model = self.create_child(queryset.model, value, relationship_manager=queryset)
                     if model.action != self.GET:
-                        model.save()
+                        model.save(value)
                     query_filter[query_param] = model.instance
 
             try:
@@ -606,9 +606,10 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    # TODO: update the signature to require a deprectated design, even empty
+    # TODO: update the signature to require a deprecated design, even empty
+    # if not specified it should be empty dict
     @transaction.atomic
-    def implement_design(self, design, deprecated_design={}, commit=False, design_file=None):
+    def implement_design(self, design, deprecated_design, commit=False, design_file=None):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -630,7 +631,7 @@ class Builder(LoggingMixin):
             for key, value in design.items():
                 if key in self.model_map and value:
                     self._create_objects(self.model_map[key], value, key, design_file)
-                elif not key in self.model_map:
+                elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
 
             for _, value in deprecated_design.items():

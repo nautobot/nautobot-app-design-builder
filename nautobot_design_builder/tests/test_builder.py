@@ -1,4 +1,5 @@
 """Test object creator methods."""
+
 from unittest.mock import Mock, patch
 import yaml
 from django.contrib.contenttypes.models import ContentType
@@ -557,7 +558,7 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
     def implement_design(self, design_input, commit=True):
         """Convenience function for implementing a design."""
         self.builder = Builder()
-        self.builder.implement_design(design=yaml.safe_load(design_input), commit=commit)
+        self.builder.implement_design(design=yaml.safe_load(design_input), deprecated_design={}, commit=commit)
 
     def test_create(self):
         self.implement_design(INPUT_CREATE_OBJECTS)

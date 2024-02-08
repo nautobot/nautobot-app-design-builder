@@ -7,9 +7,10 @@ import unittest
 from nautobot_design_builder.recursive import reduce_design, inject_nautobot_uuids
 
 
+# TODO: Refactor this tests to use a parametrized approach
 class TestRecursive(unittest.TestCase):
     def setUp(self):
-        self.maxDiff = None
+        self.maxDiff = None  # pylint: disable=invalid-name
 
     def test_update_output_design_1(self):
         deferred_data = {
@@ -544,11 +545,11 @@ class TestRecursive(unittest.TestCase):
             if to_delete:
                 ext_keys_to_be_simplified.append(key)
 
-        for key in goal_design:
-            self.assertEqual(goal_design[key], design[key])
+        for key, value in goal_design.items():
+            self.assertEqual(value, design[key])
 
-        for key in goal_elements_to_be_decommissioned:
-            self.assertEqual(goal_elements_to_be_decommissioned[key], elements_to_be_decommissioned[key])
+        for key, value in goal_elements_to_be_decommissioned.items():
+            self.assertEqual(value, elements_to_be_decommissioned[key])
 
     def test_reduce_design_2(self):
         design = {
@@ -879,11 +880,11 @@ class TestRecursive(unittest.TestCase):
             if to_delete:
                 ext_keys_to_be_simplified.append(key)
 
-        for key in goal_design:
-            self.assertEqual(goal_design[key], design[key])
+        for key, value in goal_design.items():
+            self.assertEqual(value, design[key])
 
-        for key in goal_elements_to_be_decommissioned:
-            self.assertEqual(goal_elements_to_be_decommissioned[key], elements_to_be_decommissioned[key])
+        for key, value in goal_elements_to_be_decommissioned.items():
+            self.assertEqual(value, elements_to_be_decommissioned[key])
 
     def test_reduce_design_3(self):
         design = {
@@ -1037,11 +1038,11 @@ class TestRecursive(unittest.TestCase):
             if to_delete:
                 ext_keys_to_be_simplified.append(key)
 
-        for key in goal_design:
-            self.assertEqual(goal_design[key], design[key])
+        for key, value in goal_design.items():
+            self.assertEqual(value, design[key])
 
-        for key in goal_elements_to_be_decommissioned:
-            self.assertEqual(goal_elements_to_be_decommissioned[key], elements_to_be_decommissioned[key])
+        for key, value in goal_elements_to_be_decommissioned.items():
+            self.assertEqual(value, elements_to_be_decommissioned[key])
 
     def test_reduce_design_4(self):
         design = {
@@ -1355,11 +1356,189 @@ class TestRecursive(unittest.TestCase):
             if to_delete:
                 ext_keys_to_be_simplified.append(key)
 
-        for key in goal_design:
-            self.assertEqual(goal_design[key], design[key])
+        for key, value in goal_design.items():
+            self.assertEqual(value, design[key])
 
-        for key in goal_elements_to_be_decommissioned:
-            self.assertEqual(goal_elements_to_be_decommissioned[key], elements_to_be_decommissioned[key])
+        for key, value in goal_elements_to_be_decommissioned.items():
+            self.assertEqual(value, elements_to_be_decommissioned[key])
+
+    def test_reduce_design_5(self):
+        design = {
+            "vrfs": [{"!create_or_update:name": "64501:1", "description": "VRF for customer abc", "!ref": "my_vrf"}],
+            "prefixes": [
+                {"!create_or_update:prefix": "192.0.2.0/24", "status__name": "Reserved"},
+                {
+                    "!create_or_update:prefix": "192.0.2.0/30",
+                    "status__name": "Reserved",
+                    "vrf": "!ref:my_vrf",
+                    "description": "sadfasd",
+                },
+            ],
+            "devices": [
+                {
+                    "!update:name": "core1.lax11",
+                    "local_context_data": {"mpls_router": True},
+                    "interfaces": [
+                        {
+                            "!create_or_update:name": "GigabitEthernet1/1",
+                            "status__name": "Planned",
+                            "type": "other",
+                            "description": "sadfasd",
+                            "ip_addresses": [{"!create_or_update:address": "192.0.2.1/30", "status__name": "Reserved"}],
+                        }
+                    ],
+                },
+                {
+                    "!update:name": "core0.lax11",
+                    "local_context_data": {"mpls_router": True},
+                    "interfaces": [
+                        {
+                            "!create_or_update:name": "GigabitEthernet1/1",
+                            "status__name": "Planned",
+                            "type": "other",
+                            "description": "sadfasd",
+                            "!connect_cable": {
+                                "status__name": "Planned",
+                                "to": {"device__name": "core1.lax11", "name": "GigabitEthernet1/1"},
+                            },
+                            "ip_addresses": [{"!create_or_update:address": "192.0.2.2/30", "status__name": "Reserved"}],
+                        }
+                    ],
+                },
+            ],
+        }
+        previous_design = {
+            "vrfs": [
+                {
+                    "!ref": "my_vrf",
+                    "description": "VRF for customer abc",
+                    "nautobot_identifier": "4757e7e5-2362-4199-adee-20cfa1a5b2fc",
+                    "!create_or_update:name": "64501:1",
+                }
+            ],
+            "devices": [
+                {
+                    "interfaces": [
+                        {
+                            "type": "other",
+                            "description": "sadfasd",
+                            "ip_addresses": [
+                                {
+                                    "status__name": "Reserved",
+                                    "nautobot_identifier": "8f9a5073-2975-4b9a-86d1-ebe54e73ca6c",
+                                    "!create_or_update:address": "192.0.2.1/30",
+                                }
+                            ],
+                            "status__name": "Planned",
+                            "nautobot_identifier": "b95378bd-5580-4eeb-9542-c298e8424399",
+                            "!create_or_update:name": "GigabitEthernet1/1",
+                        }
+                    ],
+                    "!update:name": "core1.lax11",
+                    "local_context_data": {"mpls_router": True},
+                    "nautobot_identifier": "aee92e54-4763-4d76-9390-b3a714931a47",
+                },
+                {
+                    "interfaces": [
+                        {
+                            "type": "other",
+                            "description": "sadfasd",
+                            "ip_addresses": [
+                                {
+                                    "status__name": "Reserved",
+                                    "nautobot_identifier": "053289c3-1469-4682-9b95-9e499b8563fb",
+                                    "!create_or_update:address": "192.0.2.2/30",
+                                }
+                            ],
+                            "status__name": "Planned",
+                            "!connect_cable": {
+                                "to": {"name": "GigabitEthernet1/1", "device__name": "core1.lax11"},
+                                "status__name": "Planned",
+                                "nautobot_identifier": "36f26409-5d65-4b50-8934-111f9aafa9ec",
+                            },
+                            "nautobot_identifier": "30b6689c-8ca6-47d0-8dbe-9c1d300860a6",
+                            "!create_or_update:name": "GigabitEthernet1/1",
+                        }
+                    ],
+                    "!update:name": "core0.iad5",
+                    "local_context_data": {"mpls_router": True},
+                    "nautobot_identifier": "a46729d6-6e71-4905-9833-24dd7841f98a",
+                },
+            ],
+            "prefixes": [
+                {
+                    "status__name": "Reserved",
+                    "nautobot_identifier": "7909ae9d-02de-4034-9ef9-12e1499bc563",
+                    "!create_or_update:prefix": "192.0.2.0/24",
+                },
+                {
+                    "vrf": "!ref:my_vrf",
+                    "description": "sadfasd",
+                    "status__name": "Reserved",
+                    "nautobot_identifier": "05540529-6ade-417c-88af-a9b1f4ae75f7",
+                    "!create_or_update:prefix": "192.0.2.0/30",
+                },
+            ],
+        }
+        goal_design = {
+            "vrfs": [
+                {
+                    "!create_or_update:name": "64501:1",
+                    "description": "VRF for customer abc",
+                    "!ref": "my_vrf",
+                    "nautobot_identifier": "4757e7e5-2362-4199-adee-20cfa1a5b2fc",
+                }
+            ],
+            "prefixes": [
+                {
+                    "!create_or_update:prefix": "192.0.2.0/30",
+                    "status__name": "Reserved",
+                    "vrf": "!ref:my_vrf",
+                    "description": "sadfasd",
+                    "nautobot_identifier": "05540529-6ade-417c-88af-a9b1f4ae75f7",
+                }
+            ],
+            "devices": [
+                {
+                    "!update:name": "core0.lax11",
+                    "local_context_data": {"mpls_router": True},
+                    "interfaces": [
+                        {
+                            "!create_or_update:name": "GigabitEthernet1/1",
+                            "status__name": "Planned",
+                            "type": "other",
+                            "description": "sadfasd",
+                            "!connect_cable": {
+                                "nautobot_identifier": "36f26409-5d65-4b50-8934-111f9aafa9ec",
+                                "status__name": "Planned",
+                                "to": {"device__name": "core1.lax11", "name": "GigabitEthernet1/1"},
+                            },
+                            "ip_addresses": [{"!create_or_update:address": "192.0.2.2/30", "status__name": "Reserved"}],
+                        }
+                    ],
+                }
+            ],
+        }
+        goal_elements_to_be_decommissioned = {
+            "interfaces": [("30b6689c-8ca6-47d0-8dbe-9c1d300860a6", "GigabitEthernet1/1")],
+            "ip_addresses": [("053289c3-1469-4682-9b95-9e499b8563fb", "192.0.2.2/30")],
+            "devices": [("a46729d6-6e71-4905-9833-24dd7841f98a", "core0.iad5")],
+        }
+        elements_to_be_decommissioned = {}
+        future_design = copy.deepcopy(design)
+        ext_keys_to_be_simplified = []
+        for key, new_value in design.items():
+            old_value = previous_design[key]
+            future_value = future_design[key]
+            to_delete = reduce_design(new_value, old_value, future_value, elements_to_be_decommissioned, key)
+            if to_delete:
+                ext_keys_to_be_simplified.append(key)
+
+        for key, value in goal_design.items():
+            self.assertEqual(value, design[key])
+
+        for key, value in goal_elements_to_be_decommissioned.items():
+            self.assertEqual(value, elements_to_be_decommissioned[key])
 
 
 if __name__ == "__main__":

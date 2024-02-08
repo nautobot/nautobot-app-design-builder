@@ -1,4 +1,5 @@
 """Unit tests related to template extensions."""
+
 import sys
 
 from django.test import TestCase
@@ -75,7 +76,7 @@ class TestExtensionCommitRollback(TestCase):
 
         builder = Builder(extensions=[CommitExtension])
         try:
-            builder.implement_design(design, commit=commit)
+            builder.implement_design(design, {}, commit=commit)
         except DesignImplementationError:
             pass
         return committed, rolled_back

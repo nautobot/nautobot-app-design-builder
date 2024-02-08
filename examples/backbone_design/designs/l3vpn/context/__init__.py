@@ -22,6 +22,7 @@ class L3VPNContext(Context):
 
     @lru_cache
     def get_l3vpn_prefix(self, parent_prefix, prefix_length):
+        # FIXME: use the tag instead of description
         existing_prefix = Prefix.objects.filter(description=self.get_instance_name("useless arg")).first()
         if existing_prefix:
             return str(existing_prefix)
