@@ -128,16 +128,17 @@ def docker_compose(context, command, **kwargs):
 
 def run_command(context, command, **kwargs):
     """Wrapper to run a command locally or inside the nautobot container."""
+    service = kwargs.pop("service", "nautobot")
     if is_truthy(context.nautobot_design_builder.local):
         context.run(command, **kwargs)
     else:
         # Check if nautobot is running, no need to start another nautobot container to run a command
         docker_compose_status = "ps --services --filter status=running"
         results = docker_compose(context, docker_compose_status, hide="out")
-        if "nautobot" in results.stdout:
-            compose_command = f"exec nautobot {command}"
+        if service in results.stdout:
+            compose_command = f"exec {service} {command}"
         else:
-            compose_command = f"run --rm --entrypoint '{command}' nautobot"
+            compose_command = f"run --rm --entrypoint '{command}' {service}"
 
         pty = kwargs.pop("pty", True)
 
@@ -291,9 +292,9 @@ def shell_plus(context):
 
 
 @task
-def cli(context):
+def cli(context, service="nautobot"):
     """Launch a bash shell inside the Nautobot container."""
-    run_command(context, "bash")
+    run_command(context, "bash", service=service)
 
 
 @task(

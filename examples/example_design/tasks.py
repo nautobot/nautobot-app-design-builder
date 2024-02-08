@@ -45,7 +45,7 @@ namespace = Collection("example_design")
 namespace.configure(
     {
         "example_design": {
-            "nautobot_ver": "stable",
+            "nautobot_version": "stable",
             "project_name": "example_design",
             "python_ver": "3.8",
             "local": False,
@@ -93,7 +93,7 @@ def docker_compose(context, command, **kwargs):
         # Note: 'docker compose logs' will stop following after 60 seconds by default,
         # so we are overriding that by setting this environment variable.
         "COMPOSE_HTTP_TIMEOUT": context.example_design.compose_http_timeout,
-        "NAUTOBOT_VER": context.example_design.nautobot_ver,
+        "NAUTOBOT_VERSION": context.example_design.nautobot_version,
         "PYTHON_VER": context.example_design.python_ver,
         **kwargs.pop("env", {}),
     }

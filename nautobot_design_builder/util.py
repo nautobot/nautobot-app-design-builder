@@ -297,6 +297,7 @@ def load_jobs(module_name=None):
     if nautobot_version >= "2":
         try:
             from nautobot.apps.jobs import register_jobs  # pylint:disable=import-outside-toplevel
+
             register_jobs(*frame.f_globals["jobs"])
         except ImportError:
             pass

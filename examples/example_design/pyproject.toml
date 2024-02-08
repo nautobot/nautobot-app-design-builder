@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "example-design"
+name = "example_design"
 version = "0.1.0"
 description = "Example design builder designs"
 authors = ["Network to Code, LLC <info@networktocode.com>"]
@@ -10,16 +10,14 @@ keywords = ["nautobot", "nautobot-plugin"]
 include = [
     "README.md",
 ]
-packages = [
-    { include = "example_design" },
-]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.8,<3.12"
 # Required for Python 3.7 for now. See: https://stackoverflow.com/a/73932581/194311
 importlib-metadata = "4.13.0"
 # Used for local development
-nautobot = { version = "^1.5.0", optional = true }
+nautobot = { version = "^2.0.0" }
+nautobot-design-builder = "*"
 
 [tool.poetry.dev-dependencies]
 bandit = "*"
@@ -40,16 +38,6 @@ python-dotenv = "^0.21.1"
 yamllint = "*"
 Markdown = "*"
 toml = "*"
-# Rendering docs to HTML
-mkdocs = "1.4.3"
-# Material for MkDocs theme
-mkdocs-material = "9.1.15"
-# Render custom markdown for version added/changed/remove notes
-mkdocs-version-annotations = "1.0.0"
-# Automatic documentation from sources, for MkDocs
-mkdocstrings = "0.22.0"         # Last version with python 3.7 support
-mkdocstrings-python = "1.1.2"   # Last version with python 3.7 support
-griffe = "0.30.1"               # Last version with python 3.7 support
 
 [tool.poetry.extras]
 nautobot = ["nautobot"]
