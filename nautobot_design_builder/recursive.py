@@ -1,3 +1,5 @@
+"""Temporal file that includes the recursive functions used to manipulate designs."""
+
 import itertools
 from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.constants import NAUTOBOT_ID, IDENTIFIER_KEYS
@@ -55,7 +57,6 @@ def reduce_design(new_value, old_value, future_value, decommissioned_objects, ty
     """
     if isinstance(new_value, list):
         objects_to_decommission = []
-        objects_to_reduce = []
 
         for new_element, old_element, future_element in itertools.zip_longest(
             new_value.copy(), old_value, future_value

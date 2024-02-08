@@ -23,7 +23,6 @@ from nautobot_design_builder.design import Builder
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
 from nautobot_design_builder import choices
-from nautobot_design_builder.constants import NAUTOBOT_ID
 from nautobot_design_builder.recursive import reduce_design
 
 from .util import nautobot_version

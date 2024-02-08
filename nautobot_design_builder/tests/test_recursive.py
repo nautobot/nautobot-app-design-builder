@@ -1,6 +1,5 @@
 """Unit tests related to template extensions."""
 
-import sys
 import copy
 import unittest
 

@@ -21,12 +21,12 @@ from nautobot.extras.models import Status
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
-from nautobot_design_builder.logging import LoggingMixin
+from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
 from nautobot_design_builder import models
 from nautobot_design_builder.constants import NAUTOBOT_ID
 from nautobot_design_builder.util import nautobot_version
-from nautobot_design_builder.recursive import inject_nautobot_uuids
+from nautobot_design_builder.recursive import inject_nautobot_uuids, get_object_identifier
 
 
 if nautobot_version < "2.0.0":
@@ -528,8 +528,6 @@ _OBJECT_TYPES_APP_FILTER = set(
     ]
 )
 
-from .logging import get_logger
-
 
 class Builder(LoggingMixin):
     """Iterates through a design and creates and updates the objects defined within."""
@@ -608,6 +606,7 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
+    # TODO: update the signature to require a deprectated design, even empty
     @transaction.atomic
     def implement_design(self, design, deprecated_design={}, commit=False, design_file=None):
         """Iterates through items in the design and creates them.
@@ -630,18 +629,12 @@ class Builder(LoggingMixin):
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
-                    # TODO: create_objects no longer represent what is happening here. maybe deploy_objects?
                     self._create_objects(self.model_map[key], value, key, design_file)
                 elif not key in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
 
-            # TODO: we should iterate it in reverse order?
-            for key, value in deprecated_design.items():
-                if key in self.model_map and value:
-                    # TODO: create_objects no longer represent what is happening here. maybe deploy_objects?
-                    self._deprecate_objects(self.model_map[key], value)
-                elif not key in self.model_map:
-                    raise errors.DesignImplementationError(f"Unknown model key {key} in design")
+            for _, value in deprecated_design.items():
+                self._deprecate_objects(value)
 
             if commit:
                 self.commit()
@@ -696,31 +689,22 @@ class Builder(LoggingMixin):
                 self.builder_output[design_file][key].update(model.deferred_attributes)
         elif isinstance(objects, list):
             for model_instance in objects:
-                model_identifier = None
-                for inner_key in model_instance:
-                    if "!create" in inner_key or "!update" in inner_key:
-                        model_identifier = model_instance[inner_key]
-                        break
-
+                model_identifier = get_object_identifier(model_instance)
                 future_object = None
                 for obj in self.builder_output[design_file][key]:
-                    # assuming it's a dict
-                    for inner_key in obj:
-                        if "!create" in inner_key or "!update" in inner_key:
-                            if obj[inner_key] == model_identifier:
-                                future_object = obj
-                                break
-                    if future_object:
+                    obj_identifier = get_object_identifier(obj)
+                    if obj_identifier == model_identifier:
+                        future_object = obj
                         break
 
                 if future_object:
-                    # Recursive functoin to update the created Nautobot UUIDs into the final design
+                    # Recursive function to update the created Nautobot UUIDs into the final design for future reference
                     model = ModelInstance(self, model_cls, model_instance)
                     model.save(future_object)
                     if model.deferred_attributes:
                         inject_nautobot_uuids(model.deferred_attributes, future_object)
 
-    def _deprecate_objects(self, model_cls, objects):
+    def _deprecate_objects(self, objects):
         if isinstance(objects, list):
             for obj in objects:
                 self.decommission_object(obj[0], obj[1])
