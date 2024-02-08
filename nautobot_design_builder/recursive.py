@@ -15,7 +15,7 @@ def get_object_identifier(obj):
     return None
 
 
-def inject_nautobot_uuids(initial_data, final_data):
+def inject_nautobot_uuids(initial_data, final_data, only_ext=False):
     """This recursive function update the output design adding the Nautobot identifier."""
     if isinstance(initial_data, list):
         for item1 in initial_data:
@@ -24,7 +24,7 @@ def inject_nautobot_uuids(initial_data, final_data):
                 for item2 in final_data:
                     item2_identifier = get_object_identifier(item2)
                     if item2_identifier == item1_identifier:
-                        inject_nautobot_uuids(item1, item2)
+                        inject_nautobot_uuids(item1, item2, only_ext)
                         break
     elif isinstance(initial_data, dict):
         new_data_identifier = get_object_identifier(final_data)
@@ -33,15 +33,19 @@ def inject_nautobot_uuids(initial_data, final_data):
         for key in initial_data:
             # TODO: We only recurse it for lists, not found a use case for dicts
             if isinstance(initial_data[key], list):
-                inject_nautobot_uuids(initial_data[key], final_data[key])
+                inject_nautobot_uuids(initial_data[key], final_data[key], only_ext)
 
             # Other special keys (extensions), not identifiers
             elif "!" in key and not any(identifier_key in key for identifier_key in IDENTIFIER_KEYS):
-                inject_nautobot_uuids(initial_data[key], final_data[key])
+                inject_nautobot_uuids(initial_data[key], final_data[key], only_ext)
 
         # TODO: for ext:connect_cable how do I know is the same object? both identifiers are None
         if data_identifier == new_data_identifier:
-            final_data[NAUTOBOT_ID] = initial_data[NAUTOBOT_ID]
+            if not only_ext:
+                final_data[NAUTOBOT_ID] = initial_data[NAUTOBOT_ID]
+            else:
+                if data_identifier is None:
+                    final_data[NAUTOBOT_ID] = initial_data[NAUTOBOT_ID]
 
 
 # TODO: could we make it simpler?
@@ -85,11 +89,13 @@ def reduce_design(
                     # If the objects in the same list position are not the same (based on the design identifier),
                     # the old element is added to the decommissioning list, and a recursive process to decommission
                     # all the related children objects is initiated
+
+                    objects_to_decommission.append((old_nautobot_identifier, old_elem_identifier))
+
                     # TODO: One possible situation is that a cable of a nested interface in the same object
                     # is added into the nested reduce design, but the nautobot identifier is lost to
                     # be taken into account to be decommissioned before. Maybe we could move the nautobot identifiers to the new object?
-
-                    objects_to_decommission.append((old_nautobot_identifier, old_elem_identifier))
+                    inject_nautobot_uuids(old_element, new_element, only_ext=True)
 
                     reduce_design({}, old_element, {}, decommissioned_objects, type_key)
 

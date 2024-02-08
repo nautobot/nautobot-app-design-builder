@@ -270,11 +270,17 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         # (the current one), and one for pre-cleaning that would be custom for every case (and optional)
 
         # This is the custom implementation of the pre-clean up method for the connect_cable extension
-        connected_object_uuid = model_instance.attributes.get(NAUTOBOT_ID)
-        if connected_object_uuid:
-            connected_object = model_instance.model_class.objects.get(id=connected_object_uuid)
-            if hasattr(connected_object, "cable") and connected_object.cable:
-                model_instance.creator.decommission_object(str(connected_object.cable.id), str(connected_object.cable))
+        cable_id = value.pop(NAUTOBOT_ID, None)
+        if cable_id:
+            model_instance.creator.decommission_object(cable_id, cable_id)
+        else:
+            connected_object_uuid = model_instance.attributes.get(NAUTOBOT_ID)
+            if connected_object_uuid:
+                connected_object = model_instance.model_class.objects.get(id=connected_object_uuid)
+                if hasattr(connected_object, "cable") and connected_object.cable:
+                    model_instance.creator.decommission_object(
+                        str(connected_object.cable.id), str(connected_object.cable)
+                    )
 
         if "to" not in value:
             raise DesignImplementationError(
