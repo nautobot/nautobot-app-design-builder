@@ -275,9 +275,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if commit:
                 self.post_implementation(context, self.builder)
 
-                # The Journal stores the design (with Nautobot identifiers from post_implementation) for future operations (e.g., updates)
+                # The Journal stores the design (with Nautobot identifiers from post_implementation)
+                # for future operations (e.g., updates)
                 journal.builder_output = self.builder.builder_output
-
                 journal.design_instance.status = Status.objects.get(
                     content_types=ContentType.objects.get_for_model(models.DesignInstance),
                     name=choices.DesignInstanceStatusChoices.ACTIVE,

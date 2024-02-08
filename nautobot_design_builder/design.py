@@ -17,9 +17,8 @@ from nautobot.utilities.utils import shallow_compare_dict
 from nautobot.extras.api.serializers import StatusModelSerializerMixin
 from nautobot.extras.api.fields import StatusSerializerField
 from nautobot.core.api.exceptions import SerializerNotFound
-
-
 from nautobot.extras.models import Status
+
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin
@@ -29,11 +28,12 @@ from nautobot_design_builder.constants import NAUTOBOT_ID
 from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder.recursive import inject_nautobot_uuids
 
+
 if nautobot_version < "2.0.0":
-    # TODO: This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
+    # This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
     # https://github.com/nautobot/nautobot/blob/ltm-1.6/nautobot/extras/api/fields.py#L22
-    from nautobot.utilities.api import get_serializer_for_model
-    from nautobot.utilities.utils import serialize_object
+    from nautobot.utilities.api import get_serializer_for_model  # pylint: disable=ungrouped-imports
+    from nautobot.utilities.utils import serialize_object  # pylint: disable=ungrouped-imports
 
     def serialize_object_v2(obj):
         """
@@ -43,6 +43,8 @@ if nautobot_version < "2.0.0":
         """
 
         class CustomStatusSerializerField(StatusSerializerField):
+            """CustomStatusSerializerField."""
+
             def to_representation(self, obj):
                 """Make this field compatible w/ the existing API for `ChoiceField`."""
                 if obj == "":
@@ -61,7 +63,7 @@ if nautobot_version < "2.0.0":
             if issubclass(serializer_class, StatusModelSerializerMixin):
 
                 class NewSerializerClass(CustomStatusModelSerializerMixin, serializer_class):
-                    pass
+                    """Custom SerializerClass."""
 
                 serializer_class = NewSerializerClass
             data = serializer_class(obj, context={"request": None, "depth": 1}).data
@@ -72,7 +74,7 @@ if nautobot_version < "2.0.0":
         return data
 
 else:
-    from nautobot.core.models.utils import serialize_object_v2
+    from nautobot.core.models.utils import serialize_object_v2  # pylint: disable=import-error,no-name-in-module
 
 
 # TODO: Refactor this code into the Journal model
