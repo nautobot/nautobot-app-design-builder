@@ -195,6 +195,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.log_failure(message="Failed to implement design")
             self.log_failure(message=str(ex))
             self.failed = True
+            if nautobot_version >= "2":
+                raise ex
         except Exception as ex:
             transaction.savepoint_rollback(sid)
             self.failed = True

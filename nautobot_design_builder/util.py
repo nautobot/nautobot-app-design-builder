@@ -10,6 +10,7 @@ from importlib.machinery import ModuleSpec
 from types import ModuleType
 from typing import Iterator, Tuple, Type, TYPE_CHECKING
 from packaging.version import Version
+from packaging.specifiers import Specifier
 import yaml
 
 from django.conf import settings
@@ -167,7 +168,7 @@ def designs_in_directory(
         try:
             module = load_design_module(path, package_name, discovered_module_name)
         except Exception as ex:  # pylint:disable=broad-except
-            local_logger.exception(f"Unable to load module {discovered_module_name} from {path}: {ex}")
+            local_logger.error(f"Unable to load module {discovered_module_name} from {path}: {ex}")
             continue
         # Get all members of the module that are DesignJob subclasses
         for design_class_name, _ in inspect.getmembers(module, is_design):
@@ -219,6 +220,23 @@ def designs_in_repository(
         yield discovered_name, class_name, path
 
 
+def conditional_load_job(designs, module_path, module_name, class_name):
+    """Populate the `designs` dictionary if the loaded design works with the current version of Nautobot.
+
+    Args:
+        designs (dict): Dictionary of design classes
+        module_path (str): path to module containing the design class
+        module_name (str): name of the module to load from the package.
+        class_name (str): name of the class to load from the module.
+    """
+    design_class = get_design_class(module_path, module_name, class_name)
+    required_version = getattr(design_class.Meta, "nautobot_version", None)
+    if required_version is not None:
+        required_version = Specifier(required_version)
+    if required_version is None or nautobot_version.version in required_version:
+        designs[class_name] = design_class
+
+
 def load_jobs(module_name=None):
     """Expose designs to the Nautobot Jobs framework.
 
@@ -257,7 +275,7 @@ def load_jobs(module_name=None):
         for discovered_name, class_name in designs_in_directory(
             dirname, package_name, module_name=module_name, reload_modules=True
         ):
-            designs[class_name] = get_design_class(dirname, discovered_name, class_name)
+            conditional_load_job(designs, dirname, discovered_name, class_name)
     else:
         try:
             repo_slug = os.path.basename(os.path.abspath(os.path.join(dirname, "..")))
@@ -265,19 +283,24 @@ def load_jobs(module_name=None):
             for discovered_name, class_name, module_path in designs_in_repository(
                 repo, module_name=module_name, reload_modules=True
             ):
-                designs[class_name] = get_design_class(module_path, discovered_name, class_name)
+                conditional_load_job(designs, module_path, discovered_name, class_name)
         except GitRepository.DoesNotExist:
             return
 
-    if is_local:
-        frame.f_globals["jobs"] = []
-
+    frame.f_globals["jobs"] = []
     for class_name, cls in designs.items():
         new_cls = type(class_name, (cls,), {})
         new_cls.__module__ = frame.f_globals["__name__"]
         frame.f_globals[class_name] = new_cls
-        if is_local:
-            frame.f_globals["jobs"].append(new_cls)
+        frame.f_globals["jobs"].append(new_cls)
+
+    if nautobot_version >= "2":
+        try:
+            from nautobot.apps.jobs import register_jobs  # pylint:disable=import-outside-toplevel
+
+            register_jobs(*frame.f_globals["jobs"])
+        except ImportError:
+            pass
 
 
 def get_design_class(path: str, module_name: str, class_name: str) -> Type["DesignJob"]:
