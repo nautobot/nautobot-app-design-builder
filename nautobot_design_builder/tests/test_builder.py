@@ -199,13 +199,13 @@ tags:
 
 INPUT_ASSIGN_TAGS = """
 tags:
-  - name: Test Tag
+  - "!create_or_update:name": Test Tag
     "!ref": test_tag
     slug: test_tag
     description: Some Description
 
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
     tags:
       - "!ref:test_tag"
@@ -558,7 +558,10 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
     def implement_design(self, design_input, commit=True):
         """Convenience function for implementing a design."""
         self.builder = Builder()
-        self.builder.implement_design(design=yaml.safe_load(design_input), deprecated_design={}, commit=commit)
+        fake_file_name = "whatever"
+        design = yaml.safe_load(design_input)
+        self.builder.builder_output[fake_file_name] = design.copy()
+        self.builder.implement_design(design=design, deprecated_design={}, commit=commit, design_file=fake_file_name)
 
     def test_create(self):
         self.implement_design(INPUT_CREATE_OBJECTS)

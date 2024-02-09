@@ -19,6 +19,10 @@ def inject_nautobot_uuids(initial_data, final_data, only_ext=False):
     """This recursive function update the output design adding the Nautobot identifier."""
     if isinstance(initial_data, list):
         for item1 in initial_data:
+            # FIXME: this is because it's a MpdelInstance
+            if not isinstance(item1, dict):
+                continue
+
             item1_identifier = get_object_identifier(item1)
             if item1_identifier:
                 for item2 in final_data:

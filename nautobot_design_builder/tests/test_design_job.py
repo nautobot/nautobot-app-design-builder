@@ -1,4 +1,5 @@
 """Test running design jobs."""
+
 from unittest.mock import patch, Mock
 
 from django.core.exceptions import ValidationError
@@ -8,6 +9,8 @@ from nautobot.dcim.models import Manufacturer
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
+from nautobot_design_builder.models import Journal
+from nautobot_design_builder.design_job import DesignJob
 
 
 class TestDesignJob(DesignTestCase):

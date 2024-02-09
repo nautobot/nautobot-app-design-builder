@@ -1,4 +1,5 @@
 """Test Journal."""
+
 from unittest.mock import patch, Mock
 from django.test import TestCase
 from nautobot.extras.models import Secret
@@ -8,10 +9,11 @@ from nautobot.utilities.utils import serialize_object_v2
 from nautobot_design_builder.design import calculate_changes
 from nautobot_design_builder.errors import DesignValidationError
 
+from .test_model_design_instance import BaseDesignInstanceTest
 from ..models import JournalEntry
 
 
-class TestJournalEntry(TestCase):
+class TestJournalEntry(BaseDesignInstanceTest):
     """Test JournalEntry."""
 
     def setUp(self) -> None:
@@ -24,10 +26,21 @@ class TestJournalEntry(TestCase):
             parameters={"key1": "initial-value"},
         )
         self.initial_state = serialize_object_v2(self.secret)
+
+        # A JournalEntry needs a Journal
+        self.original_name = "original equipment manufacturer"
+        self.manufacturer = Manufacturer.objects.create(name=self.original_name)
+        self.job_kwargs = {
+            "manufacturer": f"{self.manufacturer.pk}",
+            "instance": "my instance",
+        }
+        self.journal = self.create_journal(self.job1, self.design_instance, self.job_kwargs)
+
         self.initial_entry = JournalEntry(
             design_object=self.secret,
             full_control=True,
             changes=calculate_changes(self.secret),
+            journal=self.journal,
         )
 
         # Used to test Property attributes and ForeignKeys
@@ -41,6 +54,7 @@ class TestJournalEntry(TestCase):
             design_object=self.device_type,
             full_control=True,
             changes=calculate_changes(self.device_type),
+            journal=self.journal,
         )
 
     def get_entry(self, updated_object, design_object=None, initial_state=None):
@@ -57,6 +71,8 @@ class TestJournalEntry(TestCase):
                 updated_object,
                 initial_state=initial_state,
             ),
+            full_control=False,
+            journal=self.journal,
         )
 
     @patch("nautobot_design_builder.models.JournalEntry.objects")

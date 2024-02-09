@@ -1,4 +1,4 @@
-"""Unit tests related to template extensions."""
+"""Unit tests related to the recursive functions for reducing and updating designs."""
 
 import copy
 import unittest

@@ -1,39 +1,12 @@
 """Test Journal."""
 
-from unittest import mock
-import uuid
-
-from django.contrib.contenttypes.models import ContentType
-
 from nautobot.dcim.models import Manufacturer
-from nautobot.extras.models import JobResult, Job
-
-from nautobot_design_builder.util import nautobot_version
 
 from .test_model_design_instance import BaseDesignInstanceTest
-from .. import models
 
 
 class BaseJournalTest(BaseDesignInstanceTest):
     """Base Journal Test."""
-
-    def create_journal(self, job, design_instance, kwargs):
-        """Creates a Journal."""
-        job_result = JobResult(
-            job_model=self.job1,
-            name=job.class_path,
-            job_id=uuid.uuid4(),
-            obj_type=ContentType.objects.get_for_model(Job),
-        )
-        job_result.log = mock.Mock()
-        if nautobot_version < "2.0":
-            job_result.job_kwargs = {"data": kwargs}
-        else:
-            job_result.task_kwargs = kwargs
-        job_result.validated_save()
-        journal = models.Journal(design_instance=design_instance, job_result=job_result)
-        journal.validated_save()
-        return journal
 
     def setUp(self):
         super().setUp()

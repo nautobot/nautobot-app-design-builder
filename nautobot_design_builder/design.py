@@ -606,7 +606,7 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    # TODO: update the signature to require a deprecated design, even empty
+    # TODO: make design file mandatory as it's used for the output
     # if not specified it should be empty dict
     @transaction.atomic
     def implement_design(self, design, deprecated_design, commit=False, design_file=None):
@@ -702,6 +702,8 @@ class Builder(LoggingMixin):
                     # Recursive function to update the created Nautobot UUIDs into the final design for future reference
                     model = ModelInstance(self, model_cls, model_instance)
                     model.save(future_object)
+                    # FIXME: when the deferred attributes are Tags, M2M, this logic fails
+                    # because the objects are already ModelInstances
                     if model.deferred_attributes:
                         inject_nautobot_uuids(model.deferred_attributes, future_object)
 
