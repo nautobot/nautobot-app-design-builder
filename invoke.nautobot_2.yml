@@ -8,4 +8,3 @@ nautobot_design_builder:
     - "docker-compose.redis.yml"
     - "docker-compose.postgres.yml"
     - "docker-compose.dev.yml"
-    - "docker-compose.designs-v2.yml"
