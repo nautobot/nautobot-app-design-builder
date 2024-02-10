@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "0.4.4"
+version = "1.0.0"
 description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user."
 authors = ["Network to Code, LLC <opensource@networktocode.com>"]
 license = "Apache-2.0"
@@ -56,6 +56,7 @@ mkdocs-version-annotations = "1.0.0"
 # Automatic documentation from sources, for MkDocs
 mkdocstrings = "0.22.0"
 mkdocstrings-python = "1.5.2"
+gitpython = "^3.1.41"
 
 [tool.poetry.extras]
 nautobot = ["nautobot"]

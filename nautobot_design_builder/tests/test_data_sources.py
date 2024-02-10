@@ -217,5 +217,5 @@ class TestDesignDiscovery(TestBase):
         got_designs = list(designs_in_repository(repo, local_logger=mock_logger))
         self.assertEqual(want_designs, got_designs)
 
-        got_args = mock_logger.exception.call_args[0]
+        got_args = mock_logger.error.call_args[0]
         self.assertIn(f"Unable to load module single_errored_design from {repo.filesystem_path}/designs:", got_args[0])
