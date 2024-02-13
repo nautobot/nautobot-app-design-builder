@@ -7,7 +7,6 @@ from django.db.models import Model, Manager
 from django.db.models.fields import Field as DjangoField
 from django.dispatch.dispatcher import Signal
 from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
-from django.db import transaction
 
 
 from nautobot.core.graphql.utils import str_to_var_name
@@ -449,14 +448,13 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    @transaction.atomic
     def implement_design(self, design: Dict, commit: bool = False):
         """Iterates through items in the design and creates them.
 
-        This process is wrapped in a transaction. If either commit=False (default) or
-        an exception is raised, then the transaction is rolled back and no database
-        changes will be present. If commit=True and no exceptions are raised then the
-        database state should represent the changes provided in the design.
+        If either commit=False (default) or an exception is raised, then any extensions
+        with rollback functionality are called to revert their state. If commit=True
+        and no exceptions are raised then the extensions with commit functionality are
+        called to finalize changes.
 
         Args:
             design (Dict): An iterable mapping of design changes.
