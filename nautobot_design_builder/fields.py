@@ -1,4 +1,5 @@
 """Model fields."""
+
 from abc import ABC, abstractmethod
 from typing import Mapping, Type
 
@@ -20,11 +21,12 @@ class ModelField(ABC):
     """This represents any type of field (attribute or relationship) on a Nautobot model."""
 
     @abstractmethod
-    def set_value(self, value):
+    def set_value(self, value, output_dict):
         """Method used to set the value of the field.
 
         Args:
             value (Any): Value that should be set on the model field.
+            output_dict (Dict): Mutable object to save the Nautobot identifier.
         """
 
     @property
@@ -58,7 +60,7 @@ class BaseModelField(ModelField):
 class SimpleField(BaseModelField):
     """A field that accepts a scalar value."""
 
-    def set_value(self, value):  # noqa:D102
+    def set_value(self, value, output_dict):  # noqa:D102
         setattr(self.instance.instance, self.field.name, value)
 
 
@@ -73,7 +75,7 @@ class RelationshipField(BaseModelField):
 class OneToOneField(RelationshipField):
     """One to one relationship field."""
 
-    def set_value(self, value):  # noqa:D102
+    def set_value(self, value, output_dict):  # noqa:D102
         setattr(self.instance.instance, self.field.name, value)
         self.instance.instance.save()
 
@@ -81,7 +83,7 @@ class OneToOneField(RelationshipField):
 class OneToManyField(RelationshipField):
     """One to many relationship field."""
 
-    def set_value(self, value):  # noqa:D102
+    def set_value(self, value, output_dict):  # noqa:D102
         getattr(self.instance.instance, self.field.name).add(value, bulk=False)
         self.instance.instance.validated_save()
         value.validated_save()
@@ -97,14 +99,14 @@ class ManyToManyField(RelationshipField):
             if not through._meta.auto_created:
                 self.model = through
 
-    def set_value(self, value):  # noqa:D102
+    def set_value(self, value, output_dict):  # noqa:D102
         getattr(self.instance.instance, self.field.name).add(value)
 
 
 class GenericRelationField(RelationshipField):
     """Generic relationship field."""
 
-    def set_value(self, value):  # noqa:D102
+    def set_value(self, value, output_dict):  # noqa:D102
         getattr(self.instance.instance, self.field.name).add(value)
 
 
@@ -115,7 +117,7 @@ class GenericForeignKeyField(RelationshipField):
     def deferrable(self):  # noqa:D102
         return False
 
-    def set_value(self, value):  # noqa:D102
+    def set_value(self, value, output_dict):  # noqa:D102
         fk_field = self.field.fk_field
         ct_field = self.field.ct_field
         if hasattr(value, "instance"):
@@ -139,7 +141,7 @@ class ManyToOneField(RelationshipField):
     def deferrable(self):  # noqa:D102
         return False
 
-    def set_value(self, value):  # noqa:D102
+    def set_value(self, value, output_dict):  # noqa:D102
         if isinstance(value, Mapping):
             try:
                 includes_action = False
@@ -150,7 +152,7 @@ class ManyToOneField(RelationshipField):
                     value = {f"!get:{key}": value for key, value in value.items()}
                 value = self.instance.create_child(self.model, value)
                 if value.created:
-                    value.save()
+                    value.save(output_dict)
                 value = value.instance.pk
             except MultipleObjectsReturned:
                 raise DesignImplementationError(
@@ -196,7 +198,7 @@ class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-met
     def deferrable(self):  # noqa:D102
         return True
 
-    def set_value(self, value: Model):  # noqa:D102
+    def set_value(self, value: Model, output_dict):  # noqa:D102
         """Add an association between the created object and the given value.
 
         Args:

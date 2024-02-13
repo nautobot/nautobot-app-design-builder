@@ -168,7 +168,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # The design to apply will take into account the previous journal that keeps track (in the builder_output)
         # of the design used (i.e., the YAML) including the Nautobot IDs that will help to reference them
         self.builder.builder_output[design_file] = copy.deepcopy(design)
-
         last_journal = (
             self.builder.journal.design_journal.design_instance.journals.filter(active=True)
             .exclude(id=self.builder.journal.design_journal.id)

@@ -26,12 +26,12 @@ if nautobot_version < "2.0.0":
 
 INPUT_CREATE_OBJECTS = """
 manufacturers:
-  - name: "manufacturer1"
-  - name: "manufacturer2"
+  - "!create_or_update:name": "manufacturer1"
+  - "!create_or_update:name": "manufacturer2"
 
 device_types:
   - manufacturer__name: "manufacturer1"
-    model: "model name"
+    "!create_or_update:model": "model name"
     u_height: 1
 """
 
@@ -43,11 +43,11 @@ device_types:
 
 INPUT_UPDATE_OBJECT_1 = """
 manufacturers:
-  - name: "manufacturer1"
+  - "!create_or_update:name": "manufacturer1"
 
 device_types:
   - manufacturer__name: "manufacturer1"
-    model: "model name"
+    "!create_or_update:model": "model name"
     u_height: 1
     "!ref": "device"
 
@@ -57,28 +57,28 @@ device_types:
 
 INPUT_CREATE_NESTED_OBJECTS = """
 manufacturers:
-  - name: "manufacturer1"
+  - "!create_or_update:name": "manufacturer1"
 
 device_types:
   - manufacturer__name: "manufacturer1"
-    model: "model name"
+    "!create_or_update:model": "model name"
     u_height: 1
 
 device_roles:
-  - name: "device role"
+  - "!create_or_update:name": "device role"
 
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
 
 devices:
-  - name: "device_1"
+  - "!create_or_update:name": "device_1"
     site__name: "site_1"
     status__name: "Active"
     device_type__model: "model name"
     device_role__name: "device role"
     interfaces:
-      - name: "Ethernet1/1"
+      - "!create_or_update:name": "Ethernet1/1"
         type: "virtual"
         status__name: "Active"
         description: "description for Ethernet1/1"
@@ -94,50 +94,50 @@ devices:
 
 INPUT_MANY_TO_MANY_OBJECTS = """
 regions:
-  - name: "Region 1"
+  - "!create_or_update:name": "Region 1"
     "!ref": "region_1"
 
 config_contexts:
-  - name: "My Context"
+  - "!create_or_update:name": "My Context"
     data:
       foo: 123
     regions:
       - "!ref:region_1"
-      - name: "My cool new region"
+      - "!create_or_update:name": "My cool new region"
 """
 
 INPUT_ONE_TO_ONE_OBJECTS = """
 manufacturers:
-  - name: "manufacturer1"
+  - "!create_or_update:name": "manufacturer1"
 
 device_types:
   - manufacturer__name: "manufacturer1"
-    model: "chassis"
+    "!create_or_update:model": "chassis"
     u_height: 1
     subdevice_role: "parent"
 
   - manufacturer__name: "manufacturer1"
-    model: "card"
+    "!create_or_update:model": "card"
     u_height: 0
     subdevice_role: "child"
 
 device_roles:
-  - name: "device role"
+  - "!create_or_update:name": "device role"
 
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
 
 devices:
-  - name: "device_1"
+  - "!create_or_update:name": "device_1"
     site__name: "site_1"
     status__name: "Active"
     device_type__model: "chassis"
     device_role__name: "device role"
     devicebays:
-      - name: "Bay 1"
+      - "!create_or_update:name": "Bay 1"
         installed_device:
-          name: "device_2"
+          "!create_or_update:name": "device_2"
           site__name: "site_1"
           status__name: "Active"
           device_type__model: "card"
@@ -146,13 +146,13 @@ devices:
 
 INPUT_PREFIXES = """
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
 
 prefixes:
   - site__name: "site_1"
     status__name: Active
-    prefix: "192.168.0.0/24"
+    "!create_or_update:prefix": "192.168.0.0/24"
   - "!create_or_update:site__name": "site_1"
     "!create_or_update:prefix": "192.168.56.0/24"
     status__name: "Active"
@@ -160,39 +160,39 @@ prefixes:
 
 INPUT_INTERFACE_ADDRESSES = """
 manufacturers:
-  - name: "manufacturer1"
+  - "!create_or_update:name": "manufacturer1"
 
 device_types:
   - manufacturer__name: "manufacturer1"
-    model: "model name"
+    "!create_or_update:model": "model name"
     u_height: 1
 
 device_roles:
-  - name: "device role"
+  - "!create_or_update:name": "device role"
 
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
 
 devices:
-  - name: "device_1"
+  - "!create_or_update:name": "device_1"
     site__name: "site_1"
     status__name: "Active"
     device_type__model: "model name"
     device_role__name: "device role"
     interfaces:
-      - name: "Ethernet1/1"
+      - "!create_or_update:name": "Ethernet1/1"
         type: "virtual"
         status__name: "Active"
         description: "description for Ethernet1/1"
         ip_addresses:
-          - address: 192.168.56.1/24
+          - "!create_or_update:address": 192.168.56.1/24
             status__name: "Active"
   """
 
 INPUT_CREATE_TAGS = """
 tags:
-  - name: Test Tag
+  - "!create_or_update:name": Test Tag
     slug: test_tag
     description: Some Description
 """
@@ -213,12 +213,12 @@ sites:
 
 INPUT_ASSIGN_TAGS_1 = """
 tags:
-  - name: "Test Tag"
+  - "!create_or_update:name": "Test Tag"
     slug: "test_tag"
     description: "Some Description"
 
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
     tags:
       - { "!get:name": "Test Tag" }
@@ -226,44 +226,44 @@ sites:
 
 INPUT_CREATE_MLAG = """
 manufacturers:
-  - name: "manufacturer1"
+  - "!create_or_update:name": "manufacturer1"
 
 device_types:
   - manufacturer__name: "manufacturer1"
-    model: "model name"
+    "!create_or_update:model": "model name"
     u_height: 1
 
 device_roles:
-  - name: "device role"
+  - "!create_or_update:name": "device role"
 
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
 
 devices:
-  - name: "device_1"
+  - "!create_or_update:name": "device_1"
     site__name: "site_1"
     status__name: "Active"
     device_type__model: "model name"
     device_role__name: "device role"
     interfaces:
-      - name: "Ethernet1/1"
+      - "!create_or_update:name": "Ethernet1/1"
         type: "1000base-t"
         status__name: "Active"
         "!ref": "ethernet11"
-      - name: "Ethernet2/1"
+      - "!create_or_update:name": "Ethernet2/1"
         type: "1000base-t"
         status__name: "Active"
         "!ref": "ethernet21"
-      - name: "Ethernet3/1"
+      - "!create_or_update:name": "Ethernet3/1"
         type: "1000base-t"
         status__name: "Active"
         "!ref": "ethernet31"
-      - name: "Ethernet4/1"
+      - "!create_or_update:name": "Ethernet4/1"
         type: "1000base-t"
         status__name: "Active"
         "!ref": "ethernet41"
-      - name: "Port-Channel1"
+      - "!create_or_update:name": "Port-Channel1"
         type: lag
         status__name: "Active"
         member_interfaces:
@@ -339,19 +339,19 @@ secrets_groups:
 
 INPUT_COMPLEX_DESIGN1 = """
 manufacturers:
-  - "name": "manufacturer"
+  - "!create_or_update:name": "manufacturer"
 
 device_types:
   - "manufacturer__name": "manufacturer"
-    "model": "model name"
+    "!create_or_update:model": "model name"
     "u_height": 1
 
 device_roles:
-  - "name": "EVPN Leaf"
-  - "name": "EVPN Spine"
+  - "!create_or_update:name": "EVPN Leaf"
+  - "!create_or_update:name": "EVPN Spine"
 
 sites:
-  - "name": "site"
+  - "!create_or_update:name": "site"
     "status__name": "Active"
 
 devices:
@@ -470,18 +470,18 @@ cables:
 
 INPUT_COMPLEX_DESIGN2 = """
 manufacturers:
-  - "name": "manufacturer"
+  - "!create_or_update:name": "manufacturer"
 
 device_types:
   - "manufacturer__name": "manufacturer"
-    "model": "model name"
+    "!create_or_update:model": "model name"
     "u_height": 1
 
 device_roles:
-  - "name": "EVPN Leaf"
+  - "!create_or_update:name": "EVPN Leaf"
 
 sites:
-  - "name": "site"
+  - "!create_or_update:name": "site"
     "status__name": "Active"
 
 devices:
@@ -515,33 +515,33 @@ devices:
 
 INPUT_PRIMARY_INTERFACE_ADDRESSES = """
 manufacturers:
-  - name: "manufacturer1"
+  - "!create_or_update:name": "manufacturer1"
 
 device_types:
   - manufacturer__name: "manufacturer1"
-    model: "model name"
+    "!create_or_update:model": "model name"
     u_height: 1
 
 device_roles:
-  - name: "device role"
+  - "!create_or_update:name": "device role"
 
 sites:
-  - name: "site_1"
+  - "!create_or_update:name": "site_1"
     status__name: "Active"
 
 devices:
-  - name: "device_1"
+  - "!create_or_update:name": "device_1"
     site__name: "site_1"
     status__name: "Active"
     device_type__model: "model name"
     device_role__name: "device role"
     interfaces:
-      - name: "Ethernet1/1"
+      - "!create_or_update:name": "Ethernet1/1"
         type: "virtual"
         status__name: "Active"
         description: "description for Ethernet1/1"
         ip_addresses:
-          - address: 192.168.56.1/24
+          - "!create_or_update:address": 192.168.56.1/24
             status__name: "Active"
     primary_ip4: {"!get:address": "192.168.56.1/24"}
   """
@@ -778,14 +778,14 @@ class TestProvisioner(TestCase):  # pylint:disable=too-many-public-methods
     def test_create_or_update_rack(self):
         design = """
         manufacturers:
-        - name: "Vendor"
+        - "!create_or_update:name": "Vendor"
         device_types:
         - "!create_or_update:model": "test model"
           "!create_or_update:manufacturer__name": "Vendor"
         device_roles:
-        - "name": "role"
+        - "!create_or_update:name": "role"
         sites:
-        - "name": "Site"
+        - "!create_or_update:name": "Site"
           "status__name": "Active"
         devices:
         - "!create_or_update:name": "test device"

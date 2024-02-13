@@ -15,11 +15,11 @@ def get_object_identifier(obj):
     return None
 
 
-def inject_nautobot_uuids(initial_data, final_data, only_ext=False):
+def inject_nautobot_uuids(initial_data, final_data, only_ext=False):  # pylint: disable=too-many-branches
     """This recursive function update the output design adding the Nautobot identifier."""
     if isinstance(initial_data, list):
         for item1 in initial_data:
-            # FIXME: this is because it's a MpdelInstance
+            # If it's a ModelInstance
             if not isinstance(item1, dict):
                 continue
 
@@ -36,7 +36,7 @@ def inject_nautobot_uuids(initial_data, final_data, only_ext=False):
 
         for key in initial_data:
             # TODO: We only recurse it for lists, not found a use case for dicts
-            if isinstance(initial_data[key], list):
+            if isinstance(initial_data[key], list) and key in final_data:
                 inject_nautobot_uuids(initial_data[key], final_data[key], only_ext)
 
             # Other special keys (extensions), not identifiers
@@ -44,7 +44,7 @@ def inject_nautobot_uuids(initial_data, final_data, only_ext=False):
                 inject_nautobot_uuids(initial_data[key], final_data[key], only_ext)
 
         # TODO: for ext:connect_cable how do I know is the same object? both identifiers are None
-        if data_identifier == new_data_identifier:
+        if data_identifier == new_data_identifier and NAUTOBOT_ID in initial_data:
             if not only_ext:
                 final_data[NAUTOBOT_ID] = initial_data[NAUTOBOT_ID]
             else:

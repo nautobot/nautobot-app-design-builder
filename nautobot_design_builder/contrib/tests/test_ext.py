@@ -1,7 +1,7 @@
 """Unit tests related to template extensions."""
 
+import copy
 import yaml
-
 from django.db.models import Q
 from django.test import TestCase
 
@@ -34,7 +34,8 @@ class TestLookupExtension(TestCase):
         """
         design = yaml.safe_load(design_template)
         builder = Builder(extensions=[LookupExtension])
-        builder.implement_design(design, {}, commit=True)
+        builder.builder_output["whatever"] = copy.deepcopy(design)
+        builder.implement_design(design, {}, commit=True, design_file="whatever")
         device_type = DeviceType.objects.get(model="model")
         self.assertEqual("Manufacturer", device_type.manufacturer.name)
 
@@ -49,7 +50,8 @@ class TestLookupExtension(TestCase):
         """
         design = yaml.safe_load(design_template)
         builder = Builder(extensions=[LookupExtension])
-        builder.implement_design(design, {}, commit=True)
+        builder.builder_output["whatever"] = copy.deepcopy(design)
+        builder.implement_design(design, {}, commit=True, design_file="whatever")
         device_type = DeviceType.objects.get(model="model")
         self.assertEqual("Manufacturer", device_type.manufacturer.name)
 
@@ -149,7 +151,8 @@ class TestCableConnectionExtension(TestCase):
         # test idempotence by running it twice:
         for _ in range(2):
             builder = Builder(extensions=[CableConnectionExtension])
-            builder.implement_design(design, {}, commit=True)
+            builder.builder_output["whatever"] = copy.deepcopy(design)
+            builder.implement_design(design, {}, commit=True, design_file="whatever")
             interfaces = Interface.objects.all()
             self.assertEqual(2, len(interfaces))
             self.assertEqual(interfaces[0].connected_endpoint, interfaces[1])
@@ -241,7 +244,8 @@ class TestNextPrefixExtension(PrefixExtensionTests):
         """
         design = yaml.safe_load(design_template)
         object_creator = Builder(extensions=[NextPrefixExtension])
-        object_creator.implement_design(design, {}, commit=True)
+        object_creator.builder_output["whatever"] = copy.deepcopy(design)
+        object_creator.implement_design(design, {}, commit=True, design_file="whatever")
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.1.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.2.0/24").exists())
@@ -259,7 +263,8 @@ class TestNextPrefixExtension(PrefixExtensionTests):
         self.assertFalse(Prefix.objects.filter(prefix="10.0.2.0/24").exists())
         design = yaml.safe_load(design_template)
         object_creator = Builder(extensions=[NextPrefixExtension])
-        object_creator.implement_design(design, {}, commit=True)
+        object_creator.builder_output["whatever"] = copy.deepcopy(design)
+        object_creator.implement_design(design, {}, commit=True, design_file="whatever")
         self.assertTrue(Prefix.objects.filter(prefix="10.0.2.0/24").exists())
 
 
@@ -284,7 +289,8 @@ class TestChildPrefixExtension(PrefixExtensionTests):
         """
         design = yaml.safe_load(design_template)
         object_creator = Builder(extensions=[NextPrefixExtension, ChildPrefixExtension])
-        object_creator.implement_design(design, {}, commit=True)
+        object_creator.builder_output["whatever"] = copy.deepcopy(design)
+        object_creator.implement_design(design, {}, commit=True, design_file="whatever")
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.0/24").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.0/25").exists())
         self.assertTrue(Prefix.objects.filter(prefix="10.0.0.128/25").exists())
@@ -333,6 +339,7 @@ class TestBGPExtension(TestCase):
           bgp_routing_instances:
           - "!create_or_update:autonomous_system__asn": 64500
             "!ref": "device1-instance"
+            status__name: "Active"
 
         - "!create_or_update:name": "device2"
           status__name: "Active"
@@ -349,6 +356,7 @@ class TestBGPExtension(TestCase):
           bgp_routing_instances:
           - "!create_or_update:autonomous_system__asn": 64500
             "!ref": "device2-instance"
+            status__name: "Active"
 
         bgp_peerings:
         - "!bgp_peering":
@@ -368,7 +376,8 @@ class TestBGPExtension(TestCase):
 
         design = yaml.safe_load(design_template)
         object_creator = Builder(extensions=[BGPPeeringExtension])
-        object_creator.implement_design(design, {}, commit=True)
+        object_creator.builder_output["whatever"] = copy.deepcopy(design)
+        object_creator.implement_design(design, {}, commit=True, design_file="whatever")
         device1 = Device.objects.get(name="device1")
         device2 = Device.objects.get(name="device2")
 
@@ -381,7 +390,7 @@ class TestBGPExtension(TestCase):
         self.assertEqual(endpoint1.peer, endpoint2)
 
         # confirm idempotence
-        object_creator.implement_design(design, {}, commit=True)
+        object_creator.implement_design(design, {}, commit=True, design_file="whatever")
         self.assertEqual(1, Peering.objects.all().count())
         self.assertEqual(peering_pk, Peering.objects.first().pk)
         self.assertEqual(endpoint2.peer, endpoint1)

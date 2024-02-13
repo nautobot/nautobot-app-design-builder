@@ -464,7 +464,6 @@ class JournalEntry(BaseModel):
         object_str = str(self.design_object)
 
         local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
-
         if self.full_control:
             related_entries = (
                 JournalEntry.objects.filter(active=True)

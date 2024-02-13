@@ -428,7 +428,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             self.created = True
         self.instance = self.model_class()
 
-    def _update_fields(self):  # pylint: disable=too-many-branches
+    def _update_fields(self, output_dict):  # pylint: disable=too-many-branches
         if self.action == self.GET and self.attributes:
             raise ValueError("Cannot update fields when using the GET action")
 
@@ -439,13 +439,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     self.deferred.append(field_name)
                     self.deferred_attributes[field_name] = self.creator.resolve_values(value)
                 else:
-                    field.set_value(value)
+                    field.set_value(value, output_dict)
             elif (
                 hasattr(self.relationship_manager, "field")
                 and (isinstance(field, (OneToOneField, ManyToOneField)))
                 and self.instance_fields[field_name].field == self.relationship_manager.field
             ):
-                field.set_value(self.relationship_manager.instance)
+                field.set_value(self.relationship_manager.instance, output_dict)
 
         for key, value in self.attributes.items():
             if hasattr(self.instance, key):
@@ -462,7 +462,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # deferring the update until just before save, we can
         # ensure that parent instances have been saved and
         # assigned a primary key
-        self._update_fields()
+        self._update_fields(output_dict)
         self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
 
         msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
@@ -502,7 +502,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
                 self.instance.refresh_from_db()
 
-                field.set_value(related_object.instance)
+                field.set_value(related_object.instance, item_dict)
         self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
         output_dict[NAUTOBOT_ID] = str(self.instance.id)
 
@@ -702,7 +702,8 @@ class Builder(LoggingMixin):
                     # Recursive function to update the created Nautobot UUIDs into the final design for future reference
                     model = ModelInstance(self, model_cls, model_instance)
                     model.save(future_object)
-                    # FIXME: when the deferred attributes are Tags, M2M, this logic fails
+
+                    # TODO: check if when the deferred attributes are Tags, M2M, this logic fails
                     # because the objects are already ModelInstances
                     if model.deferred_attributes:
                         inject_nautobot_uuids(model.deferred_attributes, future_object)

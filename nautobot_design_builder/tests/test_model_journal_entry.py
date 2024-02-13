@@ -1,7 +1,6 @@
 """Test Journal."""
 
 from unittest.mock import patch, Mock
-from django.test import TestCase
 from nautobot.extras.models import Secret
 from nautobot.dcim.models import Manufacturer, DeviceType
 from nautobot.utilities.utils import serialize_object_v2
@@ -13,7 +12,7 @@ from .test_model_design_instance import BaseDesignInstanceTest
 from ..models import JournalEntry
 
 
-class TestJournalEntry(BaseDesignInstanceTest):
+class TestJournalEntry(BaseDesignInstanceTest):  # pylint: disable=too-many-instance-attributes
     """Test JournalEntry."""
 
     def setUp(self) -> None:
@@ -77,17 +76,23 @@ class TestJournalEntry(BaseDesignInstanceTest):
 
     @patch("nautobot_design_builder.models.JournalEntry.objects")
     def test_revert_full_control(self, objects: Mock):
+        objects.filter.side_effect = lambda active: objects
         objects.filter_related.side_effect = lambda _: objects
+        objects.filter_same_parent_design_instance.side_effect = lambda _: objects
         objects.exclude_decommissioned.return_value = []
         self.assertEqual(1, Secret.objects.count())
         self.initial_entry.revert()
+        objects.filter.assert_called()
         objects.filter_related.assert_called()
+        objects.filter_same_parent_design_instance.assert_called()
         objects.exclude_decommissioned.assert_called()
         self.assertEqual(0, Secret.objects.count())
 
     @patch("nautobot_design_builder.models.JournalEntry.objects")
     def test_revert_with_dependencies(self, objects: Mock):
+        objects.filter.side_effect = lambda active: objects
         objects.filter_related.side_effect = lambda _: objects
+        objects.filter_same_parent_design_instance.side_effect = lambda _: objects
         self.assertEqual(1, Secret.objects.count())
         entry2 = JournalEntry()
         objects.exclude_decommissioned.return_value = [entry2]

@@ -262,25 +262,8 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                         name: "GigabitEthernet1"
             ```
         """
-        # TODO: Some extensions may need to do some previous work to be able to be implemented
-        # For example, to set up this cable connection on an interface, we have to disconnect
-        # previously existing ones. And this is something that can be postponed for the cleanup phase
-        # We could change the paradigm of having attribute as an abstract method, and create a generic
-        # attribute method in the `AttributeExtension` that calls several hooks, one for setting
-        # (the current one), and one for pre-cleaning that would be custom for every case (and optional)
-
-        # This is the custom implementation of the pre-clean up method for the connect_cable extension
         cable_id = value.pop(NAUTOBOT_ID, None)
-        if cable_id:
-            model_instance.creator.decommission_object(cable_id, cable_id)
-        else:
-            connected_object_uuid = model_instance.attributes.get(NAUTOBOT_ID)
-            if connected_object_uuid:
-                connected_object = model_instance.model_class.objects.get(id=connected_object_uuid)
-                if hasattr(connected_object, "cable") and connected_object.cable:
-                    model_instance.creator.decommission_object(
-                        str(connected_object.cable.id), str(connected_object.cable)
-                    )
+        connected_object_uuid = model_instance.attributes.get(NAUTOBOT_ID, None)
 
         if "to" not in value:
             raise DesignImplementationError(
@@ -305,6 +288,35 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 "!create_or_update:termination_b_id": remote_instance.id,
             }
         )
+
+        # TODO: Some extensions may need to do some previous work to be able to be implemented
+        # For example, to set up this cable connection on an interface, we have to disconnect
+        # previously existing ones. And this is something that can be postponed for the cleanup phase
+        # We could change the paradigm of having attribute as an abstract method, and create a generic
+        # attribute method in the `AttributeExtension` that calls several hooks, one for setting
+        # (the current one), and one for pre-cleaning that would be custom for every case (and optional)
+
+        # This is the custom implementation of the pre-clean up method for the connect_cable extension
+        if connected_object_uuid:
+            connected_object = model_instance.model_class.objects.get(id=connected_object_uuid)
+
+        if cable_id:
+            existing_cable = dcim.Cable.objects.get(id=cable_id)
+
+            if (
+                connected_object_uuid
+                and connected_object.id == existing_cable.termination_a.id
+                and existing_cable.termination_b.id == remote_instance.id
+            ):
+                # If the cable is already connecting what needs to be connected, it passes
+                return
+
+            model_instance.creator.decommission_object(cable_id, cable_id)
+
+        elif connected_object_uuid and hasattr(connected_object, "cable") and connected_object.cable:
+            model_instance.creator.decommission_object(str(connected_object.cable.id), str(connected_object.cable))
+
+        print(cable_attributes)
 
         model_instance.deferred.append("cable")
         model_instance.deferred_attributes["cable"] = [
