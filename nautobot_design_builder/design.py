@@ -113,8 +113,6 @@ class Journal:
 
         Args:
             model (BaseModel): The model that has been created or updated
-            created (bool, optional): If the object has just been created
-            then this argument should be True. Defaults to False.
         """
         instance = model.instance
         model_type = instance.__class__
@@ -172,13 +170,12 @@ def calculate_changes(current_state, initial_state=None, created=False, pre_chan
     initial state.
 
     Args:
-        pre_change (dict, optional): Initial state for comparison. If not
-        supplied then the initial state from this instance is used.
+        pre_change (dict, optional): Initial state for comparison. If not supplied then the initial state from this instance is used.
 
     Returns:
         Return a dictionary with the changed object's serialized data compared
         with either the model instance initial state, or the supplied pre_change
-        state. The dicionary has the following values:
+        state. The dictionary has the following values:
 
         dict: {
             "prechange": dict(),
@@ -382,7 +379,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         """
         self.signals[signal].connect(handler, self)
 
-    def _load_instance(self):
+    def _load_instance(self):  # pylint: disable=too-many-branches
         # If the objects is already an existing Nautobot object, just get it.
         if self.nautobot_id:
             self.created = False

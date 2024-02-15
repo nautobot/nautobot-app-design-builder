@@ -170,7 +170,7 @@ class DesignInstance(PrimaryModel, StatusModel):
     #       this instance is on. (future feature)
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
-    owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, null=True)
+    owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, default="")
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
     live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
@@ -349,7 +349,7 @@ class Journal(PrimaryModel):
                 journal_entry.revert(local_logger=local_logger, object_id=object_id)
             except (ValidationError, DesignValidationError) as ex:
                 local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
-                raise ValueError(ex)
+                raise ValueError from ex
 
         if not object_id:
             # When the Journal is reverted, we mark is as not active anymore

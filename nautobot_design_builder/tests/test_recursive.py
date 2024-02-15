@@ -7,6 +7,9 @@ import unittest
 from nautobot_design_builder.recursive import reduce_design, inject_nautobot_uuids
 
 
+# pylint: disable=missing-class-docstring
+
+
 # TODO: Refactor this tests to use a parametrized approach
 class TestRecursive(unittest.TestCase):
     def setUp(self):
