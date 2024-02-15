@@ -1,5 +1,4 @@
 """Management command to bootstrap development data for design builder app."""
-
 import sys
 import yaml
 
@@ -15,6 +14,7 @@ def _load_file(filename):
         with open(filename) as file:  # pylint: disable=unspecified-encoding
             return yaml.safe_load(file)
     except FileNotFoundError as ex:
+        # pylint: disable=raise-missing-from
         raise CommandError(str(ex))
 
 

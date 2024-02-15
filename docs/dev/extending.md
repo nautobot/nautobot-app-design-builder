@@ -30,10 +30,10 @@ device:
     name: "!device_name"
 ```
 
-In this case, when `!device_name` is encountered the object creator will look for an extension that implements the `device_name` value tag. If found, the corresponding `value` method will be called on the extension. Whatever `value` returns will be assigned to the attribute (`name` in this case). For a concrete example of an extension that implements both `attribute` and `value` see the [API docs](../api/ext.md#design_builder.ext.ReferenceExtension) for the ReferenceExtension.
+In this case, when `!device_name` is encountered the object creator will look for an extension that implements the `device_name` value tag. If found, the corresponding `value` method will be called on the extension. Whatever `value` returns will be assigned to the attribute (`name` in this case). For a concrete example of an extension that implements both `attribute` and `value` see the [API docs](./code_reference/ext.md#design_builder.ext.ReferenceExtension) for the ReferenceExtension.
 
 ### Writing a New Extension
 
-Adding functionality to `design.Builder` is as simple extending the [Extension](../api/ext.md#design_builder.ext.Extension) class and supplying `attribute_tag` and/or `value_tag` class variables as well as the corresponding `attribute` and `value` instance methods. Extensions are singletons within a Builder instance. When an extension's tag is encountered an instance of the extension is created. Subsequent calls to the extension will use the instance created the first time.
+Adding functionality to `design.Builder` is as simple extending the [Extension](./code_reference/ext.md#design_builder.ext.Extension) class and supplying `attribute_tag` and/or `value_tag` class variables as well as the corresponding `attribute` and `value` instance methods. Extensions are singletons within a Builder instance. When an extension's tag is encountered an instance of the extension is created. Subsequent calls to the extension will use the instance created the first time.
 
 Each extension may optionally implement `commit` or `roll_back` methods. The `commit` method is called once all of a design's objects have been created and updated in the database. Conversely, `roll_back` is called if any error occurs and the database transaction is aborted. These methods provide a means for an extension to perform additional work, or cleanup, based on the outcome of a design's database actions.

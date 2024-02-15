@@ -1,0 +1,28 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.LookupExtension"
+
+designs:
+  - manufacturers:
+      - name: "Manufacturer1"
+      - name: "Manufacturer2"
+    device_types:
+      - "!lookup:manufacturer":
+          name: "Manufacturer1"
+        model: "model1"
+      - "!lookup:manufacturer:name": "Manufacturer2"
+        model: "model2"
+checks:
+  - equal:
+      - model: "nautobot.dcim.models.DeviceType"
+        query: {model: "model1"}
+        attribute: "manufacturer"
+      - model: "nautobot.dcim.models.Manufacturer"
+        query: {name: "Manufacturer1"}
+
+  - equal:
+      - model: "nautobot.dcim.models.DeviceType"
+        query: {model: "model2"}
+        attribute: "manufacturer"
+      - model: "nautobot.dcim.models.Manufacturer"
+        query: {name: "Manufacturer2"}

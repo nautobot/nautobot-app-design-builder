@@ -9,12 +9,15 @@ from nautobot.dcim.models import Manufacturer
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
+from nautobot_design_builder.util import nautobot_version
 
 
 # pylint: disable=unused-argument
 
 
 class TestDesignJob(DesignTestCase):
+    """Test running design jobs."""
+
     @patch("nautobot_design_builder.models.Journal")
     @patch("nautobot_design_builder.models.DesignInstance.objects.get")
     @patch("nautobot_design_builder.design_job.DesignJob.design_model")
@@ -60,7 +63,10 @@ class TestDesignJob(DesignTestCase):
     def test_multiple_design_files_with_roll_back(self, design_model_mock, design_instance_mock, journal_mock):
         self.assertEqual(0, Manufacturer.objects.all().count())
         job = self.get_mocked_job(test_designs.MultiDesignJobWithError)
-        job.run(data=self.data, commit=True)
+        if nautobot_version < "2":
+            job.run(data=self.data, commit=True)
+        else:
+            self.assertRaises(DesignValidationError, job.run, data={}, commit=True)
 
         self.assertEqual(0, Manufacturer.objects.all().count())
 
@@ -79,6 +85,8 @@ class TestDesignJob(DesignTestCase):
 
 
 class TestDesignJobLogging(DesignTestCase):
+    """Test that the design job logs errors correctly."""
+
     @patch("nautobot_design_builder.models.Journal")
     @patch("nautobot_design_builder.models.DesignInstance.objects.get")
     @patch("nautobot_design_builder.design_job.DesignJob.design_model")
@@ -88,7 +96,10 @@ class TestDesignJobLogging(DesignTestCase):
     ):
         object_creator.return_value.implement_design.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(test_designs.SimpleDesign)
-        job.run(data=self.data, commit=True)
+        if nautobot_version < "2":
+            job.run(data=self.data, commit=True)
+        else:
+            self.assertRaises(DesignImplementationError, job.run, data={}, commit=True)
         self.assertTrue(job.failed)
         job.job_result.log.assert_called()
         self.assertEqual("Broken", self.logged_messages[-1]["message"])
@@ -98,7 +109,10 @@ class TestDesignJobLogging(DesignTestCase):
     @patch("nautobot_design_builder.design_job.DesignJob.design_model")
     def test_invalid_ref(self, design_model_mock, design_instance_mock, journal_mock):
         job = self.get_mocked_job(test_designs.DesignWithRefError)
-        job.run(data=self.data, commit=True)
+        if nautobot_version < "2":
+            job.run(data=self.data, commit=True)
+        else:
+            self.assertRaises(DesignImplementationError, job.run, data={}, commit=True)
         message = self.logged_messages[-1]["message"]
         self.assertEqual("No ref named manufacturer has been saved in the design.", message)
 
@@ -107,7 +121,10 @@ class TestDesignJobLogging(DesignTestCase):
     @patch("nautobot_design_builder.design_job.DesignJob.design_model")
     def test_failed_validation(self, design_model_mock, design_instance_mock, journal_mock):
         job = self.get_mocked_job(test_designs.DesignWithValidationError)
-        job.run(data=self.data, commit=True)
+        if nautobot_version < "2":
+            job.run(data=self.data, commit=True)
+        else:
+            self.assertRaises(DesignValidationError, job.run, data={}, commit=True)
         message = self.logged_messages[-1]["message"]
 
         want_error = DesignValidationError("Manufacturer")

@@ -304,11 +304,11 @@ development/*.txt
 invoke.yml
 
 # Docs
-docs/README.md
-docs/CHANGELOG.md
 public
 
 # Remove Local Tests
 
-examples/backbone_design/designs/test*
-nautobot_design_builder/device_types/
+examples/custom_design/designs/test*
+/compose.yaml
+/dump.sql
+/nautobot_design_builder/static/nautobot_design_builder/docs

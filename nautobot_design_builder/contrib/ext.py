@@ -47,6 +47,7 @@ class LookupMixin:
             model_class = content_type.model_class()
             queryset = model_class.objects
         except ContentType.DoesNotExist:
+            # pylint: disable=raise-missing-from
             raise DesignImplementationError(f"Could not find model class for {model_class}")
 
         return self.lookup(queryset, query)
@@ -119,8 +120,10 @@ class LookupMixin:
         try:
             return queryset.get(**query)
         except ObjectDoesNotExist:
+            # pylint: disable=raise-missing-from
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
         except MultipleObjectsReturned:
+            # pylint: disable=raise-missing-from
             raise MultipleObjectsReturnedError(queryset.model, query=query, parent=parent)
 
 
@@ -279,6 +282,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 remote_instance = self.lookup(query_managers.pop(0), termination_query)
             except (DoesNotExistError, FieldError):
                 if not query_managers:
+                    # pylint:disable=raise-missing-from
                     raise DoesNotExistError(model_instance.model_class, query_filter=termination_query)
 
         cable_attributes.update(
@@ -503,6 +507,7 @@ class BGPPeeringExtension(AttributeExtension):
             self.PeerEndpoint = PeerEndpoint  # pylint:disable=invalid-name
             self.Peering = Peering  # pylint:disable=invalid-name
         except ModuleNotFoundError:
+            # pylint:disable=raise-missing-from
             raise DesignImplementationError(
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )

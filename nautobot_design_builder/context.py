@@ -57,18 +57,18 @@ class ContextNodeMixin:
             return repr(getattr(self, "data"))
         return super().__repr__()
 
-    def __setitem__(self, key, value) -> "ContextNodeMixin":
+    def __setitem__(self, key: "int | str", value: Any) -> "ContextNodeMixin":
         """Store a new value within the node.
 
         Args:
-            index: Index/key/attribute name
-            value: Value of item to store
+            key (int | str): Index/key/attribute name
+            value (Any): Value of item to store
 
         Raises:
             KeyError: if the item cannot be stored.
 
         Returns:
-            _Node: _description_
+            ContextNodeMixin: _description_
         """
         if not isinstance(value, ContextNodeMixin):
             value = self._create_node(value)
@@ -322,14 +322,14 @@ class Context(_DictNode, LoggingMixin):
         return files
 
     @classmethod
-    def base_context(cls):
+    def base_context(cls) -> "Context":
         """The base context is the combination of any context_files that have been added to a context.
 
         Calling base_context will merge all of the context trees that have been added by the
         @context_file decorator.
 
         Returns:
-            Merged context tree
+            Context: Merged context tree
         """
         base = Context()
         for context in getattr(cls, "__base_contexts", {}).values():
@@ -354,8 +354,7 @@ class Context(_DictNode, LoggingMixin):
         call them successively.
 
         Raises:
-            Any DesignValidationErrors raised by the validators will be collected. and a single
-            DesignValidationError will be raised that includes all the error messages.
+            DesignValidationErrors: raised by the validators will be collected. and a single DesignValidationError will be raised that includes all the error messages.
         """
         methods = [method for method in dir(self) if method.startswith("validate_") and callable(getattr(self, method))]
         errors = []

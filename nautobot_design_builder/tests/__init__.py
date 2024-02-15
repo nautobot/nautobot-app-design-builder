@@ -1,4 +1,4 @@
-"""Unit tests for design_builder app."""
+"""Unit tests for nautobot_design_builder plugin."""
 
 import shutil
 import tempfile

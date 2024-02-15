@@ -1,4 +1,5 @@
 """Initial data required for core sites."""
+
 from nautobot_design_builder.design_job import DesignJob
 from nautobot.extras.jobs import IntegerVar
 

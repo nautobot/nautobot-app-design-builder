@@ -11,3 +11,4 @@ rules:
 ignore: |
   .venv/
   .vscode/
+  compose.yaml

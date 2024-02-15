@@ -1,4 +1,5 @@
 """Design to create a core backbone site."""
+
 from nautobot.dcim.models import Region
 from nautobot.extras.jobs import ObjectVar, StringVar, IPNetworkVar
 
