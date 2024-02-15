@@ -614,7 +614,6 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-
     @transaction.atomic
     def implement_design(self, design: Dict, deprecated_design: Dict, commit: bool = False, design_file: str = ""):
         """Iterates through items in the design and creates them.
