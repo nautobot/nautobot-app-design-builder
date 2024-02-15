@@ -431,11 +431,11 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         elif self.action != "create":
             raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
 
+        self._initial_state = {}
+        if not self.instance:
+            self.created = True
         try:
             self.instance = self.model_class(**self._kwargs)
-            # TODO: not sure if needed, if came from a merge conflict
-            if not self.instance:
-                self.created = True
         except TypeError as ex:
             raise errors.DesignImplementationError(str(ex), self.model_class)
 
