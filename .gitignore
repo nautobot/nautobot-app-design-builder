@@ -308,7 +308,7 @@ public
 
 # Remove Local Tests
 
-examples/custom_design/designs/test*
+/examples/custom_design/designs/test*
 /compose.yaml
 /dump.sql
 /nautobot_design_builder/static/nautobot_design_builder/docs
