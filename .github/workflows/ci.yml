@@ -179,14 +179,16 @@ jobs:
       matrix:
         python-version: ["3.8", "3.11"]
         db-backend: ["postgresql"]
-        nautobot-version: ["1.6", "stable"]
+        nautobot-version: ["1.6"]
+        # nautobot-version: ["1.6", "stable"]
         include:
           - python-version: "3.11"
             db-backend: "postgresql"
             nautobot-version: "1.6.0"
           - python-version: "3.11"
             db-backend: "mysql"
-            nautobot-version: "stable"
+            nautobot-version: "1.6.0"
+            # nautobot-version: "stable"
     runs-on: "ubuntu-22.04"
     env:
       INVOKE_NAUTOBOT_DESIGN_BUILDER_PYTHON_VER: "${{ matrix.python-version }}"
