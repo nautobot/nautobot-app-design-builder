@@ -1,0 +1,111 @@
+---
+
+{# Create Prefix Roles #}
+roles:
+    - "!create_or_update:name": "Loopback"
+    - "!create_or_update:name": "Koppelnetze"
+    - "!create_or_update:name": "Usernetze"
+
+{# Create Prefixes #}
+prefixes:
+    - "!create_or_update:prefix": "10.255.0.0/24"
+      status__name: "Active"
+      is_pool: true
+      role__name: "Loopback"
+    - "!create_or_update:prefix": "10.250.0.0/24"
+      status__name: "Active"
+      is_pool: true
+      role__name: "Usernetze"
+    - "!create_or_update:prefix": "10.250.100.0/24"
+      status__name: "Active"
+      is_pool: true
+      role__name: "Koppelnetze"
+
+{# Create Regions #}
+regions:
+    "!create_or_update:name": "DE"
+    children:
+    - "!create_or_update:name": "Frankfurt a. Main"
+      {# Create Site #}
+      sites:
+      - "!create_or_update:name": "DAM.LOC.BU2357 - Basa"
+        status__name: "Active"
+        locations:
+        {# Create Floor #}
+        - "!create_or_update:name": "DAM.LOC.BU2357 - EG"
+          location_type__name: "Floor"
+          status__name: "Active"
+          children:
+          {# Create Room #}
+          - "!create_or_update:name": "DAM.LOC.RO379160 - EG.BASA"
+            location_type__name: "Room"
+            status__name: "Active"
+            "!ref": "basa"
+      - "!create_or_update:name": "DAM.LOC.BU10521 - Raillion"
+        status__name: "Active"
+        locations:
+        {# Create Floor #}
+        - "!create_or_update:name": "DAM.LOC.BU10521 - EG"
+          location_type__name: "Floor"
+          status__name: "Active"
+          children:
+          {# Create Room #}
+          - "!create_or_update:name": "DAM.LOC.RO502699 - Technik"
+            location_type__name: "Room"
+            status__name: "Active"
+            "!ref": "raillion"
+      - "!create_or_update:name": "DAM.LOC.RO569891 - KSL Lager Cottbus"
+        status__name: "Active"
+        locations:
+        {# Create Floor #}
+        - "!create_or_update:name": "DAM.LOC.BU20911 - 01"
+          location_type__name: "Floor"
+          status__name: "Active"
+          children:
+          {# Create Room #}
+          - "!create_or_update:name": "DAM.LOC.RO546242 - Lager"
+            location_type__name: "Room"
+            status__name: "Active"
+            "!ref": "lager"
+
+{# Create Devices #}
+devices:
+    - "!create_or_update:name": "DAM.NW.2820520"
+      device_type__model: "Catalyst 3560-CX-12PC-S"
+      platform__name: "Cisco IOS"
+      site__name: "DAM.LOC.RO569891 - KSL Lager Cottbus"
+      status__name: "In stock"
+      location__name: "!ref:lager"
+      device_role__name: "Generic"
+      serial: "TODO10000001"
+      _custom_field_data__Physical IDG: "2820520"
+
+    - "!create_or_update:name": "DAM.NW.2781211"
+      device_type__model: "ISR C1118-8P"
+      platform__name: "Cisco IOS"
+      site__name: "DAM.LOC.RO569891 - KSL Lager Cottbus"
+      status__name: "In stock"
+      location__name: "!ref:lager"
+      device_role__name: "Generic"
+      serial: "TODO10000002"
+      _custom_field_data__Physical IDG: "2781211"
+
+    - "!create_or_update:name": "DAM.NW.2781233"
+      device_type__model: "ISR C1118-8P"
+      platform__name: "Cisco IOS"
+      site__name: "DAM.LOC.RO569891 - KSL Lager Cottbus"
+      status__name: "In stock"
+      location__name: "!ref:lager"
+      device_role__name: "Generic"
+      serial: "TODO10000003"
+      _custom_field_data__Physical IDG: "2781233"
+
+    - "!create_or_update:name": "ce01-cisco-simple"
+      device_type__model: "ISR C1118-8P"
+      platform__name: "Cisco IOS"
+      site__name: "DAM.LOC.BU2357 - Basa"
+      status__name: "In use"
+      location__name: "!ref:basa"
+      device_role__name: "ce"
+      serial: "TODO10000004"
+      _custom_field_data__Physical IDG: "2784176"
