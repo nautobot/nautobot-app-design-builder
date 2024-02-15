@@ -105,6 +105,7 @@ class Design(PrimaryModel):
 
     # TODO: Add version field (future feature)
     # TODO: Add saved graphql query (future feature)
+    # TODO: Add a template mapping to get custom payload (future feature)
     job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
 
     objects = DesignQuerySet.as_manager()

@@ -169,13 +169,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         last_journal = (
             self.builder.journal.design_journal.design_instance.journals.filter(active=True)
             .exclude(id=self.builder.journal.design_journal.id)
+            .exclude(builder_output={})
             .order_by("-last_updated")
             .first()
         )
         if last_journal and last_journal.builder_output:
-            # TODO: This second check makes that a failed journal makes the simplification
-            # think that theres is no good reference, we should check it in the queryset
-
             # The last design output is used as the reference to understand what needs to be changed
             # The design output store the whole set of attributes, not only the ones taken into account
             # in the implementation

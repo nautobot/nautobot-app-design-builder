@@ -7,7 +7,6 @@ from nautobot_design_builder.constants import NAUTOBOT_ID, IDENTIFIER_KEYS
 
 def get_object_identifier(obj):
     """Returns de object identifier value, if it exists."""
-    # TODO: add a note in the docs about design best practices
     # The object identifier should be consistent in all the design implementations, not updating it
     for key in obj:
         if any(identifier_key in key for identifier_key in IDENTIFIER_KEYS):
@@ -35,7 +34,7 @@ def inject_nautobot_uuids(initial_data, final_data, only_ext=False):  # pylint: 
         data_identifier = get_object_identifier(initial_data)
 
         for key in initial_data:
-            # TODO: We only recurse it for lists, not found a use case for dicts
+            # We only recurse it for lists, not found a use case for dicts
             if isinstance(initial_data[key], list) and key in final_data:
                 inject_nautobot_uuids(initial_data[key], final_data[key], only_ext)
 

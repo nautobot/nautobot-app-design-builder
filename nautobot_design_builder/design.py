@@ -614,8 +614,7 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    # TODO: make design file mandatory as it's used for the output
-    # if not specified it should be empty dict
+
     @transaction.atomic
     def implement_design(self, design: Dict, deprecated_design: Dict, commit: bool = False, design_file: str = ""):
         """Iterates through items in the design and creates them.
@@ -711,8 +710,6 @@ class Builder(LoggingMixin):
                     model = ModelInstance(self, model_cls, model_instance)
                     model.save(future_object)
 
-                    # TODO: check if when the deferred attributes are Tags, M2M, this logic fails
-                    # because the objects are already ModelInstances
                     if model.deferred_attributes:
                         inject_nautobot_uuids(model.deferred_attributes, future_object)
 
