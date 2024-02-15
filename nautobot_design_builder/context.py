@@ -1,4 +1,5 @@
 """Module that contains classes and functions for use with Design Builder context available when using Jinja templating."""
+
 from functools import cached_property
 from collections import UserList, UserDict, UserString
 import inspect
@@ -298,10 +299,11 @@ class Context(_DictNode, LoggingMixin):
               or their native type.
     """
 
-    def __init__(self, data: dict = None, job_result: JobResult = None):
+    def __init__(self, data: dict = None, job_result: JobResult = None, design_name: str = ""):
         """Constructor for Context class that creates data nodes from input data."""
         super().__init__(data)
         self.job_result = job_result
+        self.design_name = design_name
 
         for base, filename in self.base_context_files():
             context = load_design_yaml(base, filename)

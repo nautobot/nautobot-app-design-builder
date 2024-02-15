@@ -252,7 +252,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design_files = None
 
         if hasattr(self.Meta, "context_class"):
-            context = self.Meta.context_class(data=data, job_result=self.job_result)
+            context = self.Meta.context_class(data=data, job_result=self.job_result, design_name=self.Meta.name)
             context.validate()
         else:
             context = {}

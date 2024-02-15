@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from nautobot.dcim.models import Device, Interface
 from nautobot.ipam.models import VRF, Prefix
+from nautobot.extras.models import Tag
 
 from nautobot_design_builder.context import Context, context_file
 from nautobot_design_builder.util import nautobot_version
@@ -22,10 +23,11 @@ class L3VPNContext(Context):
 
     @lru_cache
     def get_l3vpn_prefix(self, parent_prefix, prefix_length):
-        # TODO: use the tag instead of description
-        existing_prefix = Prefix.objects.filter(description=self.get_instance_name("useless arg")).first()
-        if existing_prefix:
-            return str(existing_prefix)
+        tag = self.get_design_instance_tag()
+        if tag:
+            existing_prefix = Prefix.objects.filter(tags__in=[tag], prefix_length=30).first()
+            if existing_prefix:
+                return str(existing_prefix)
 
         for new_prefix in ipaddress.ip_network(parent_prefix).subnets(new_prefix=prefix_length):
             try:
@@ -44,18 +46,26 @@ class L3VPNContext(Context):
             new_id = int(last_vrf.name.split(":")[-1]) + 1
             return str(new_id)
 
-    def get_instance_name(self, useless_arg):
+    def get_design_instance_tag(self):
+        try:
+            return Tag.objects.get(name__contains=self.get_instance_name())
+        except Tag.DoesNotExist:
+            return None
+
+    def get_instance_name(self):
         if nautobot_version < "2.0.0":
-            return self.job_result.job_kwargs["data"]["instance_name"]
+            return f"{self.design_name} - {self.job_result.job_kwargs['data']['instance_name']}"
         else:
-            return self.job_result.job_kwargs["instance_name"]
+            return f"{self.design_name} - {self.job_result.job_kwargs['instance_name']}"
 
     def get_interface_name(self, device):
         root_interface_name = "GigabitEthernet"
         interfaces = Interface.objects.filter(name__contains=root_interface_name, device=device)
-        existing_interface = interfaces.filter(description=self.get_instance_name("useless arg")).first()
-        if existing_interface:
-            return existing_interface.name
+        tag = self.get_design_instance_tag()
+        if tag:
+            existing_interface = interfaces.filter(tags__in=[tag]).first()
+            if existing_interface:
+                return existing_interface.name
         return f"{root_interface_name}1/{len(interfaces) + 1}"
 
     def get_ip_address(self, prefix, offset):

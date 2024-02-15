@@ -320,8 +320,6 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         elif connected_object_uuid and hasattr(connected_object, "cable") and connected_object.cable:
             model_instance.creator.decommission_object(str(connected_object.cable.id), str(connected_object.cable))
 
-        print(cable_attributes)
-
         model_instance.deferred.append("cable")
         model_instance.deferred_attributes["cable"] = [
             model_instance.__class__(
