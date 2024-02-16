@@ -22,6 +22,8 @@ class NotExtension:  # pylint: disable=too-few-public-methods
 
 
 class TestExtensionDiscovery(TestCase):
+    """Test that extensions are discovered correctly."""
+
     def test_is_extension(self):
         self.assertTrue(ext.is_extension(Extension))
         self.assertFalse(ext.is_extension(NotExtension))
@@ -39,6 +41,8 @@ class TestExtensionDiscovery(TestCase):
 
 
 class TestCustomExtensions(TestCase):
+    """Test that custom extensions are loaded correctly."""
+
     def test_builder_called_with_custom_extensions(self):
         builder = Builder(extensions=[Extension])
         self.assertEqual(
@@ -51,6 +55,8 @@ class TestCustomExtensions(TestCase):
 
 
 class TestExtensionCommitRollback(TestCase):
+    """Test that extensions are called correctly."""
+
     @staticmethod
     def run_test(design, commit):
         """Implement a design and return wether or not `commit` and `roll_back` were called."""

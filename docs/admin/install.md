@@ -17,7 +17,7 @@ Design Builder does not necessarily require any external system access. However,
 ## Install Guide
 
 !!! note
-    Plugins can be installed manually or using Python's `pip`. See the [nautobot documentation](https://nautobot.readthedocs.io/en/latest/plugins/#install-the-package) for more details. The pip package name for this plugin is [`nautobot-design-builder`](https://pypi.org/project/nautobot/design-builder/).
+    Plugins can be installed manually or using Python's `pip`. See the [nautobot documentation](https://nautobot.readthedocs.io/en/latest/plugins/#install-the-package) for more details. The pip package name for this plugin is [`nautobot-design-builder`](https://pypi.org/project/nautobot-design-builder/).
 
 The plugin is available as a Python package via PyPI and can be installed with `pip`:
 
@@ -25,7 +25,7 @@ The plugin is available as a Python package via PyPI and can be installed with `
 pip install nautobot-design-builder
 ```
 
-To ensure Design Builder is automatically re-installed during future upgrades, create a file named `local_requirements.txt` (if not already existing) in the Nautobot root directory (alongside `requirements.txt`) and list the `nautobot-design-builder` package:
+To ensure Nautobot Design Builder is automatically re-installed during future upgrades, create a file named `local_requirements.txt` (if not already existing) in the Nautobot root directory (alongside `requirements.txt`) and list the `nautobot-design-builder` package:
 
 ```shell
 echo nautobot-design-builder >> local_requirements.txt

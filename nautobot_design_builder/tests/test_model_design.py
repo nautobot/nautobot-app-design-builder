@@ -46,8 +46,7 @@ class TestDesign(BaseDesignTest):
     """Test Design."""
 
     def test_create_from_signal(self):
-        # TODO: this is getting the 3 example designs on top of the two from the tests
-        self.assertEqual(5, models.Design.objects.all().count())
+        self.assertEqual(2, models.Design.objects.all().count())
         self.assertEqual(self.design1.job_id, self.job1.id)
         self.assertEqual(self.design2.job_id, self.job2.id)
         self.assertEqual(str(self.design1), self.design1.name)

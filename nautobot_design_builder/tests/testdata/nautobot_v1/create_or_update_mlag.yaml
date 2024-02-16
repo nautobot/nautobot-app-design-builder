@@ -1,0 +1,55 @@
+---
+designs:
+  - manufacturers:
+      - name: "manufacturer1"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model name"
+        u_height: 1
+
+    device_roles:
+      - name: "device role"
+
+    sites:
+      - name: "site_1"
+        status__name: "Active"
+
+    devices:
+      - name: "device_1"
+        site__name: "site_1"
+        status__name: "Active"
+        device_type__model: "model name"
+        device_role__name: "device role"
+        interfaces:
+          - name: "Ethernet1/1"
+            type: "1000base-t"
+            status__name: "Active"
+            "!ref": "ethernet11"
+          - name: "Ethernet2/1"
+            type: "1000base-t"
+            status__name: "Active"
+            "!ref": "ethernet21"
+          - name: "Ethernet3/1"
+            type: "1000base-t"
+            status__name: "Active"
+            "!ref": "ethernet31"
+          - name: "Ethernet4/1"
+            type: "1000base-t"
+            status__name: "Active"
+            "!ref": "ethernet41"
+          - name: "Port-Channel1"
+            type: "lag"
+            status__name: "Active"
+            member_interfaces:
+              - "!ref:ethernet11"
+              - "!ref:ethernet21"
+              - "!ref:ethernet31"
+              - "!ref:ethernet41"
+checks:
+  - equal:
+      - model: "nautobot.dcim.models.Interface"
+        query: {name: "Port-Channel1"}
+        attribute: "member_interfaces"
+      - model: "nautobot.dcim.models.Interface"
+        query: {name__startswith: "Ethernet"}

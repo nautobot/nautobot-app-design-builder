@@ -1,0 +1,61 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.NextPrefixExtension"
+designs:
+  - tenants:
+      - name: "Nautobot Airports"
+    roles:
+      - name: "Video"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+      - name: "Servers"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+  - prefixes:
+      - prefix: "10.0.0.0/23"
+        status__name: "Active"
+        tenant__name: "Nautobot Airports"
+        role__name: "Servers"
+      - prefix: "10.0.2.0/23"
+        status__name: "Active"
+        tenant__name: "Nautobot Airports"
+        role__name: "Video"
+      - "!next_prefix":
+          prefix:
+            - "10.0.0.0/23"
+            - "10.0.2.0/23"
+          length: 24
+        status__name: "Active"
+      - "!next_prefix":
+          prefix:
+            - "10.0.0.0/23"
+            - "10.0.2.0/23"
+          length: 24
+        status__name: "Active"
+      - "!next_prefix":
+          prefix:
+            - "10.0.0.0/23"
+            - "10.0.2.0/23"
+          length: 24
+        status__name: "Active"
+      - "!next_prefix":
+          prefix:
+            - "10.0.0.0/23"
+            - "10.0.2.0/23"
+          length: 24
+        status__name: "Active"
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {prefix: "10.0.0.0/24"}
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {prefix: "10.0.1.0/24"}
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {prefix: "10.0.2.0/24"}
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {prefix: "10.0.3.0/24"}

@@ -1,0 +1,59 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.CableConnectionExtension"
+designs:
+  - sites:
+      - "!create_or_update:name": "Site"
+        status__name: "Active"
+    device_roles:
+      - "!create_or_update:name": "test-role"
+    manufacturers:
+      - "!create_or_update:name": "test-manufacturer"
+    device_types:
+      - manufacturer__name: "test-manufacturer"
+        "!create_or_update:model": "test-type"
+    devices:
+      - "!create_or_update:name": "Device 1"
+        "!ref": "device1"
+        site__name: "Site"
+        status__name: "Active"
+        device_role__name: "test-role"
+        device_type__model: "test-type"
+        interfaces:
+          - "!create_or_update:name": "GigabitEthernet1"
+            type: "1000base-t"
+            status__name: "Active"
+      - "!create_or_update:name": "Device 2"
+        site__name: "Site"
+        status__name: "Active"
+        device_role__name: "test-role"
+        device_type__model: "test-type"
+        interfaces:
+          - "!create_or_update:name": "GigabitEthernet1"
+            type: "1000base-t"
+            status__name: "Active"
+            "!connect_cable":
+              status__name: "Planned"
+              to:
+                device: "!ref:device1"
+                name: "GigabitEthernet1"
+  # Second design, same as the first, checks for
+  # cable connection idempotence
+  - devices:
+      - "!create_or_update:name": "Device 1"
+        "!ref": "device1"
+      - "!create_or_update:name": "Device 2"
+        interfaces:
+          - "!create_or_update:name": "GigabitEthernet1"
+            "!connect_cable":
+              status__name: "Planned"
+              to:
+                device: "!ref:device1"
+                name: "GigabitEthernet1"
+
+checks:
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "Device 1", name: "GigabitEthernet1"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "Device 2", name: "GigabitEthernet1"}
