@@ -1,0 +1,63 @@
+---
+designs:
+  # Design 1
+  - secrets:
+      - "!create_or_update:name": "Device username"
+        "description": "Username for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_USERNAME"}
+        "!ref": "device_username"
+      - "!create_or_update:name": "Device password"
+        "description": "Password for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
+        "!ref": "device_password"
+
+    secrets_groups:
+      - "!create_or_update:name": "Device credentials"
+        "!ref": "device_credentials"
+
+    secrets_group_associations:
+      - "!create_or_update:group": "!ref:device_credentials"
+        "!create_or_update:secret": "!ref:device_username"
+        "access_type": "Generic"
+        "secret_type": "username"
+      - "!create_or_update:group": "!ref:device_credentials"
+        "!create_or_update:secret": "!ref:device_password"
+        "access_type": "Generic"
+        "secret_type": "password"
+  # Design 2
+  - secrets:
+      - "!create_or_update:name": "Device username"
+        "description": "Username for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_USERNAME"}
+        "!ref": "device_username"
+      - "!create_or_update:name": "Device password"
+        "description": "Password for network devices"
+        "provider": "environment-variable"
+        "parameters": {"variable": "NAUTOBOT_NAPALM_PASSWORD"}
+        "!ref": "device_password"
+    secrets_groups:
+      - "!create_or_update:name": "Device credentials"
+        "!ref": "device_credentials"
+
+    secrets_group_associations:
+      - "!create_or_update:group": "!ref:device_credentials"
+        "!create_or_update:secret": "!ref:device_username"
+        "access_type": "Generic"
+        "secret_type": "username"
+      - "!create_or_update:group": "!ref:device_credentials"
+        "!create_or_update:secret": "!ref:device_password"
+        "access_type": "Generic"
+        "secret_type": "password"
+checks:
+  - count:
+      model: "nautobot.extras.models.Secret"
+      count: 2
+  - count:
+      model: "nautobot.extras.models.SecretsGroup"
+      count: 1
+  - count:
+      model: "nautobot.extras.models.SecretsGroupAssociation"
+      count: 2

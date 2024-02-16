@@ -1,0 +1,68 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.CableConnectionExtension"
+designs:
+  - location_types:
+      - "!create_or_update:name": "Site"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+    locations:
+      - location_type__name: "Site"
+        "!create_or_update:name": "Site"
+        status__name: "Active"
+    roles:
+      - "!create_or_update:name": "test-role"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+    manufacturers:
+      - "!create_or_update:name": "test-manufacturer"
+    device_types:
+      - manufacturer__name: "test-manufacturer"
+        "!create_or_update:model": "test-type"
+    devices:
+      - "!create_or_update:name": "Device 1"
+        "!ref": "device1"
+        location__name: "Site"
+        status__name: "Active"
+        role__name: "test-role"
+        device_type__model: "test-type"
+        interfaces:
+          - "!create_or_update:name": "GigabitEthernet1"
+            type: "1000base-t"
+            status__name: "Active"
+      - "!create_or_update:name": "Device 2"
+        location__name: "Site"
+        status__name: "Active"
+        role__name: "test-role"
+        device_type__model: "test-type"
+        interfaces:
+          - "!create_or_update:name": "GigabitEthernet1"
+            type: "1000base-t"
+            status__name: "Active"
+            "!connect_cable":
+              status__name: "Planned"
+              to:
+                device: "!ref:device1"
+                name: "GigabitEthernet1"
+  # Second design, same as the first, checks for
+  # cable connection idempotence
+  - devices:
+      - "!create_or_update:name": "Device 1"
+        "!ref": "device1"
+      - "!create_or_update:name": "Device 2"
+        interfaces:
+          - "!create_or_update:name": "GigabitEthernet1"
+            "!connect_cable":
+              status__name: "Planned"
+              to:
+                device: "!ref:device1"
+                name: "GigabitEthernet1"
+
+checks:
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "Device 1", name: "GigabitEthernet1"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "Device 2", name: "GigabitEthernet1"}

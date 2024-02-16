@@ -1,0 +1,25 @@
+---
+designs:
+  - location_types:
+      - name: "Site"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+        locations:
+          name: "site_1"
+          status__name: "Active"
+
+    prefixes:
+      - location__name: "site_1"
+        status__name: "Active"
+        prefix: "192.168.0.0/24"
+      - "!create_or_update:location__name": "site_1"
+        "!create_or_update:prefix": "192.168.56.0/24"
+        status__name: "Active"
+
+checks:
+  - equal:
+      - model: "nautobot.ipam.models.Prefix"
+        query: {location__name: "site_1"}
+        attribute: "__str__"
+      - value: ["192.168.0.0/24", "192.168.56.0/24"]

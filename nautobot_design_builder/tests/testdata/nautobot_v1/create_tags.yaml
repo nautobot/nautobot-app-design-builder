@@ -1,0 +1,10 @@
+---
+designs:
+  - tags:
+      - name: "Test Tag"
+        slug: "test_tag"
+        description: "Some Description"
+checks:
+  - model_exists:
+      model: "nautobot.extras.models.Tag"
+      query: {name: "Test Tag"}

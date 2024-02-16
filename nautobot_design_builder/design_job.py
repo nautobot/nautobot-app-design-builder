@@ -4,6 +4,7 @@ import traceback
 from abc import ABC, abstractmethod
 from os import path
 from datetime import datetime
+from typing import Dict
 import yaml
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
@@ -69,11 +70,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         transaction has been committed.
 
         Args:
-            context (Context): The render context that was used for rendering the
-            design files.
-
-            builder (Builder): The builder object that consumed the rendered design
-            files. This is useful for accessing the design journal.
+            context (Context): The render context that was used for rendering the design files.
+            builder (Builder): The builder object that consumed the rendered design files. This is useful for accessing the design journal.
         """
 
     def post_run(self):
@@ -83,7 +81,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.job_result.data["designs"] = self.designs
 
-    def render(self, context, filename):
+    def render(self, context: Context, filename: str) -> str:
         """High level function to render the Jinja design templates into YAML.
 
         Args:
@@ -135,7 +133,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.rendered = None
         return design
 
-    def render_report(self, context, journal):
+    def render_report(self, context: Context, journal: Dict) -> str:
         """Wrapper function to create rendered markdown report from the design job's Jinja report template.
 
         Args:
@@ -247,6 +245,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.log_failure(message="Failed to implement design")
             self.log_failure(message=str(ex))
             self.failed = True
+            if nautobot_version >= "2":
+                raise ex
         except Exception as ex:
             transaction.savepoint_rollback(sid)
             self.failed = True

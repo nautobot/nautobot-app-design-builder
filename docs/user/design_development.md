@@ -14,51 +14,61 @@ For the remainder of this tutorial we will focus solely on the Design Job, Desig
 
 ## Design Components
 
-Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. All designs will be loaded from a top-level directory called `designs`. That directory must be defined as a Python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `designs` module or be imported to it. The following directory layout is from the sample designs provided in the [project repository](https://github.com/networktocode-llc/nautobot-plugin-design-builder/tree/develop/examples/backbone_designs):
+Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. Since, fundamentally, all designs are Nautobot Jobs, everything must be in a top level `jobs` python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `jobs` module or be imported to it. The following directory layout is from the [demo designs repository](hhttps://github.com/nautobot/demo-designs):
 
 ``` bash
-.
-├── designs
-│   ├── __init__.py
-│   ├── core_site
-│   │   ├── __init__.py
-│   │   ├── context
-│   │   │   ├── __init__.py
-│   │   │   └── context.yaml
-│   │   ├── jobs.py
-│   │   └── designs
-│   │       └── 0001_design.yaml.j2
-│   ├── jobs.py
-│   └── initial_data
-│       ├── __init__.py
-│       ├── context
-│       │   └── __init__.py
-│       ├── jobs.py
-│       └── designs
-│           └── 0001_design.yaml.j2
-└── jobs
+jobs
+├── __init__.py
+├── core_site
+│   ├── __init__.py
+│   ├── context
+│   │   ├── __init__.py
+│   │   └── context.yaml
+│   └── designs
+│       └── 0001_design.yaml.j2
+├── edge_site
+│   ├── __init__.py
+│   ├── context
+│   │   ├── __init__.py
+│   │   └── context.yaml
+│   └── designs
+│       └── 0001_design.yaml.j2
+└── initial_data
     ├── __init__.py
-    └── designs.py
+    ├── context
+    │   ├── __init__.py
+    └── designs
+        └── 0001_design.yaml.j2
 ```
 
-The `designs` directory contains everything that is needed for implementing a design. In the above case, the directory contains two designs:
+The `jobs` directory contains everything that is needed for implementing a design. In the above case, the directory contains three designs:
 
 - Initial Design
 - Core Site
+- Edge Site
 
-Within the `designs` directory, the naming of modules and files is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there is are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
+Within the `jobs` directory, the naming of modules and files is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there is are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
 
-Since the entrypoint for designs is a specialized Nautobot job, we must configure our designs in such a way that the job can be imported into Nautobot. Nautobot jobs are always loaded from a `jobs` module, therefore Design Jobs must also be in the `jobs` module. However, Nautobot does not allow jobs to import Python modules that are not installed into the system. Since design jobs are not full Python packages, they are not installed into the underlying Nautobot Python environment. Therefore, the Design Builder app provides some helper functions to overcome this. To load any design that is defined in the `designs` top level module, simply load the designs in any module located within the `jobs` package. In this case, the `designs.py` is used to load the designs:
+Designs are just specialized Nautobot jobs. Any design must inherit from `DesignJob`, and just like any other job, design jobs must be registered using `register_jbos`. An example design follows:
 
 ```python
-"""Module for design jobs"""
+from nautobot.apps.jobs import register_jobs
+from nautobot_design_builder.design_job import DesignJob
 
-from nautobot_design_builder.util import load_jobs
 
-load_jobs()
+class BasicDesign(DesignJob):
+    """A basic design for design builder."""
+
+    class Meta:
+        """Metadata describing this design job."""
+
+        name = "Basic Design"
+        commit_default = False
+        design_file = "designs/0001_design.yaml.j2"
+
+
+register_jobs(BasicDesign)
 ```
-
-This is a critical step, and without it Nautobot will not be able to find any designs that are located in the `designs` directory. The remainder of this tutorial will look at each of the three design components (Design Job, Design Context, and Design Template) in detail.
 
 ## DesignJob
 
@@ -71,7 +81,7 @@ Primary Purpose:
 As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
---8<-- "examples/backbone_design/designs/initial_data/jobs.py"
+--8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/initial_data/__init__.py"
 ```
 
 This particular design job does not collect any input from the user, it will use `InitialDesignContext` for its render context and it will consume the `templates/initial_design.yaml.j2` file for its design. When this job is run, the Design Builder will create an instance of `InitialDesignContext`, read `templates/initial_design.yaml.j2` and then render the template with Jinja using the design context as a render context.
@@ -79,14 +89,14 @@ This particular design job does not collect any input from the user, it will use
 Here is another, more interesting design:
 
 ```python
---8<-- "examples/backbone_design/designs/core_site/jobs.py"
+--8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/core_site/__init__.py"
 ```
 
-In this case, we have a design that will create a site, populate it with two racks, each rack will have a core router and each router will be populated with routing engines and switch fabric cards. The design job specifies that the user needs to supply a region for the new site, a site name and an IP prefix. These inputs will be combined in the design context to be used for building out a new site.
+In this case, we have a design that will create a site, populate it with two racks, each rack will have a core router and each router will be populated with routing engines and switch fabric cards. The design job specifies that the user needs to supply a location for the new site, a site name and an IP prefix. These inputs will be combined in the design context to be used for building out a new site.
 
 ### Class Metadata Attributes
 
-The design jobs above include standard metadata (`name` and `commit_default` for instance) attributes needed by Nautobot. Additionally, there are attributes specific to the design job. The `design_file`, `context_class` are required attributes specifying the design template and design context. A more detailed description of these attributes follows in the next section.
+The design jobs above include standard metadata (`name` and `commit_default` for instance) attributes needed by Nautobot. Additionally, there are attributes specific to the design job. The `design_file` is a required require attribute specifying the design template. An optional `context_class` attribute can be given to specify the design context Python class. A more detailed description of these attributes follows in the next section.
 
 ### `design_file`
 
@@ -118,7 +128,7 @@ That's a lot to digest, so let's break it down to the net effect of the design c
 A context is essentially a mapping (similar to a dictionary) where the context's instance properties can be retrieved using the index operator (`[]`). YAML files that are included in the context will have their values added to the context as instance attributes. When design builder is rendering the design template it will use the context to resolve any unknown variables. One feature of the design context is that values in YAML contexts can include Jinja templates. For instance, consider the core site context from the design above:
 
 ```python
---8<-- "examples/backbone_design/designs/core_site/context/__init__.py"
+--8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/core_site/context/__init__.py"
 ```
 
 This context has instance variables `region`, `site_name` and `site_prefix`. These instance variables will be populated from the user input provided by the design job. Additionally note the class decorator `@context_file`. This decorator indicates that the `core_site_context.yaml` file should be used to also populate values of the design context. The context includes a method called `validate_new_site` to perform some pre-implementation validation (see the [next section](#context-validations) for details). The context also includes a method called `get_serial_number`. The implementation of this method is there only to demonstrate that some dynamic processing can occur to retrieve context values. For example, there may be an external CMDB that contains serial numbers for the devices. The `get_serial_number` method could connect to that system and lookup the serial number to populate the Nautobot object.
@@ -126,7 +136,7 @@ This context has instance variables `region`, `site_name` and `site_prefix`. The
 Now let's inspect the context YAML file:
 
 ```python
---8<-- "examples/backbone_design/designs/core_site/context/context.yaml"
+--8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/core_site/context/context.yaml"
 ```
 
 This context YAML creates two variables that will be added to the design context: `core_1_loopback` and `core_2_loopback`. The values of both of these variables are computed using a jinja template. The template uses a jinja filter from the `netutils` project to compute the address using the user-supplied `site_prefix`. When the design context is created, the variables will be added to the context. The values (from the jinja template) are rendered when the variables are looked up during the design template rendering process.
@@ -141,21 +151,24 @@ Primary Purpose:
 
 - Generate YAML files that conform to Design Builder's design file format.
 
-Design templates are Jinja templates that render to YAML. The YAML file represents a dictionary of objects that the design builder will create or update. The design builder supports all data models that exist within Nautobot, including any data models that are defined by applications installed within Nautobot. Top level keys in a design file map to the verbose plural name of the model. For instance, the `dcim.Device` model maps to the top level `devices` key within a design. Similarly, `dcim.Site` maps to `sites`.
+Design templates are Jinja templates that render to YAML. The YAML file represents a dictionary of objects that the design builder will create or update. The design builder supports all data models that exist within Nautobot, including any data models that are defined by applications installed within Nautobot. Top level keys in a design file map to the verbose plural name of the model. For instance, the `dcim.Device` model maps to the top level `devices` key within a design. Similarly, `dcim.Location` maps to `locations`.
 
 Design templates support object hierarchy where relationship mapping takes place automatically during the design build process. For instance, consider the following:
 
 ```yaml
-regions:
-    - "name": "US-East-1"
-    sites:
-    - "name": "IAD5"
+locations:
+  - "name": "US-East-1"
+    location_type__name: "Region"
+    children:
+      - "name": "IAD5"
+        location_type__name: "Site"
         status__name: "Active"
-    - "name": "LGA1"
+      - "name": "LGA1"
+        location_type__name: "Site"
         status__name: "Active"
 ```
 
-This design template will create a region with two sites. The Design Builder automatically takes care of the underlying relationships so that `IAD5` and `LGA1` are correctly associated with the `US-East-1` region. All relationships that are defined on the underlying database models are supported as nested objects within design templates.
+This design template will create location types and several locations. The Design Builder automatically takes care of the underlying relationships so that `IAD5` and `LGA1` are correctly associated with the `US-East-1` location. All relationships that are defined on the underlying database models are supported as nested objects within design templates.
 
 ### Special Syntax - Query Fields
 
@@ -166,7 +179,7 @@ Double underscores between a `field` and a `relatedfield` cause design builder t
 ```yaml
 devices:
 - name: "switch1"
-    platform__name: "Arista EOS"
+  platform__name: "Arista EOS"
 ```
 
 This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`. The value for query fields can be a scalar or a dictionary. In the case above (`platform__name`) the scalar value `"Arista EOS"` expands the the equivalent ORM query: `Platform.objects.get(name="Arista EOS")` with the returned object being assigned to the `platform` attribute of the device.
@@ -176,9 +189,9 @@ If a query field's value is a dictionary, then more complex lookups can be perfo
 ```yaml
 devices:
 - name: "switch1"
-    platform: 
-        name: "Arista EOS"
-        napalm_driver: "eos"
+  platform: 
+    name: "Arista EOS"
+    napalm_driver: "eos"
 ```
 
 The above query expands to the following ORM code: `Platform.objects.get(name="Arista EOS", napalm_driver="eos")` with the returned value being assigned to the `platform` attribute of the device.
@@ -187,7 +200,7 @@ The above query expands to the following ORM code: `Platform.objects.get(name="A
 
 In addition to the object mapping described above, some additional syntax, in what are called `Action Tags` are available in YAML design templates. These actions tags have special meaning to the design builder. Sometimes additional information is needed before the Design Builder can determine how to update the database or how to map a relationship. These special cases are handled with action tags within the YAML design templates. Any mapping key that begins with an exclamation point (`!`) is considered an action tag and carries special meaning in the design template. An example of a situation where an action tag is required is when updating, rather than creating, an object in the database. If Nautobot already has an instance of a data model and a design only requires updating that model then the `update:` action tag can be used. This instructs the builder to update the object, rather than try to create it. The available action tags are documented below.
 
-> Note: Any YAML key that begins with an exclamation point (`!`) must be quoted or a YAML syntax error will be raised. 
+> Note: Any YAML key that begins with an exclamation point (`!`) must be quoted or a YAML syntax error will be raised.
 
 #### Action Tag - Update
 
@@ -197,7 +210,7 @@ This syntax is used when you know an object already exists and indicates to desi
 
 ```yaml
 - "!update:name": "Ethernet1/1"
-    description: "new description for Ethernet1/1"
+  description: "new description for Ethernet1/1"
 ```
 
 This template will find the interface with the name `Ethernet1/1` and then set the `description` field.
@@ -210,10 +223,10 @@ Similar to `!update` this is used before a field name but will also create the o
 
 ```yaml
 devices:
-    - "!create_or_update:name": bb-rtr-1
-        "interfaces":
-        - "!create_or_update:name": Ethernet1/1
-            description: "Uplink to provider"
+  - "!create_or_update:name": bb-rtr-1
+    "interfaces":
+      - "!create_or_update:name": Ethernet1/1
+        description: "Uplink to provider"
 ```
 
 This template will cause design builder to attempt to first lookup the device by the name `bb-rtr-1`, if not found it will be created. Subsequently, the device interface named `Ethernet1/1` will also be either created or updated. Note that when being created all required fields must be specified. The above example would fail during creation since both the device and the interface are missing required fields. Design Builder performs model validation prior to saving any model to the database.
@@ -247,7 +260,7 @@ When used as a YAML mapping key, `!ref` will store a reference to the current Na
 #
 #
 - "!create_or_update:name": "{{ interface }}"
-    "!ref": "{{ spine.name }}:{{ interface }}"
+  "!ref": "{{ spine.name }}:{{ interface }}"
 ```
 
 ### Special YAML Values
@@ -270,8 +283,8 @@ When used as the value for a key `!ref:<reference_name>` will return the the pre
 #
 {% for leaf,interface in spine_to_leaf[loop.index0].items() %}
 - termination_a: "!ref:{{ spine.name }}:{{ interface }}"
-    termination_b: "!ref:{{ leaf }}:{{ leaf_to_spine[leaf_index][spine_index] }}"
-    status__name: "Planned"
+  termination_b: "!ref:{{ leaf }}:{{ leaf_to_spine[leaf_index][spine_index] }}"
+  status__name: "Planned"
 {% endfor %}
 ```
 
@@ -300,7 +313,7 @@ The path to the included template is relative to the directory where the design 
 
 ### Extensions
 
-Custom action tags can be created using template extensions. If a design needs custom functionality implemented as an action tag, the design developer can simply create a new tag (see the [extension](../dev/template_extensions.md) documentation). The new tag class can be added to the design using the extensions attribute in the design Meta class:
+Custom action tags can be created using template extensions. If a design needs custom functionality implemented as an action tag, the design developer can simply create a new tag (see the [extension](../dev/extending.md) documentation). The new tag class can be added to the design using the extensions attribute in the design Meta class:
 
 ```python
 class DesignJobWithExtensions(DesignJob):
