@@ -1,0 +1,6 @@
+{
+    "vrfs": [["d34f89aa-0199-4352-aa2f-311203bae138", "64501:1"]],
+    "devices": [["c8454078-d3d7-4243-a07f-99750d06c595", "core0.lax11"]],
+    "interfaces": [["0d95bbfc-4438-42e8-b24c-d5d878dd0880", "GigabitEthernet1/1"]],
+    "ip_addresses": [["ceaabdd5-811a-4981-aa83-c2c2ff52b081", "192.0.2.1/30"]]
+}

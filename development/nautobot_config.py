@@ -1,4 +1,5 @@
 """Nautobot development configuration file."""
+
 from importlib import metadata
 from importlib.util import find_spec
 import os

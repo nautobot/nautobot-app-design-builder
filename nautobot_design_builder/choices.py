@@ -1,4 +1,5 @@
 """Choices used within Design Builder."""
+
 from nautobot.utilities.choices import ChoiceSet
 
 

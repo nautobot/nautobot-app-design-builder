@@ -1,4 +1,5 @@
 """Design jobs used for unit testing."""
+
 from nautobot.dcim.models import Manufacturer
 from nautobot.extras.jobs import StringVar, ObjectVar
 

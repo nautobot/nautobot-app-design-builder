@@ -1,4 +1,5 @@
 """Module containing error Exception classes specific to Design Builder."""
+
 from collections import defaultdict
 from inspect import isclass
 

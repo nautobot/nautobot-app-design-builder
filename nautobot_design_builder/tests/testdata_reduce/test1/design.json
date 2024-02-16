@@ -1,0 +1,107 @@
+{
+    "prefixes": [
+        {
+            "!create_or_update:prefix": "10.255.0.0/32",
+            "status__name": "Active",
+            "description": "co-intraprefix-01 Instance:a"
+        },
+        {
+            "!create_or_update:prefix": "10.255.0.1/32",
+            "status__name": "Active",
+            "description": "ce01-intraprefix Instance:a"
+        },
+        {
+            "!create_or_update:prefix": "10.250.0.4/30",
+            "status__name": "Active",
+            "description": "ce-ces Mgmt Instance:a"
+        },
+        {
+            "!create_or_update:prefix": "10.250.100.4/30",
+            "status__name": "Active",
+            "description": "co-cer Mgmt Instance:a"
+        }
+    ],
+    "devices": [
+        {
+            "!update:name": "Device 1",
+            "site__name": "Site 1",
+            "location__name": "Location 1",
+            "device_role__slug": "ces",
+            "status__name": "Planned",
+            "interfaces": [
+                {
+                    "!update:name": "GigabitEthernet1/0/1",
+                    "!connect_cable": {
+                        "status__name": "Planned",
+                        "to": {"device__name": "Device 2", "name": "GigabitEthernet0/0/0"}
+                    }
+                },
+                {
+                    "!update:name": "GigabitEthernet1/0/14",
+                    "!connect_cable": {
+                        "status__name": "Planned",
+                        "to": {"device__name": "Device 4", "name": "GigabitEthernet0/0/0"}
+                    }
+                },
+                {
+                    "!create_or_update:name": "Vlan1",
+                    "status__name": "Planned",
+                    "type": "virtual",
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.250.0.6/30", "status__name": "Reserved"}
+                    ]
+                }
+            ]
+        },
+        {
+            "!update:name": "Device 2",
+            "site__name": "Site 1",
+            "location__name": "Location 1",
+            "device_role__slug": "ce",
+            "status__name": "Planned",
+            "interfaces": [
+                {
+                    "!update:name": "Ethernet0/2/0",
+                    "!connect_cable": {
+                        "status__name": "Planned",
+                        "to": {"device__name": "Device 3", "name": "Ethernet0/2/0"}
+                    },
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.250.100.5/30", "status__name": "Reserved"}
+                    ]
+                },
+                {
+                    "!create_or_update:name": "lo10",
+                    "status__name": "Planned",
+                    "type": "virtual",
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.255.0.0/32", "status__name": "Reserved"}
+                    ]
+                }
+            ]
+        },
+        {
+            "!update:name": "Device 3",
+            "site__name": "Site 2",
+            "location__name": "Location 2",
+            "device_role__slug": "cer",
+            "status__name": "Planned",
+            "interfaces": [
+                {
+                    "!update:name": "Ethernet0/2/0",
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.250.100.6/30", "status__name": "Reserved"}
+                    ]
+                },
+                {
+                    "!create_or_update:name": "lo10",
+                    "status__name": "Planned",
+                    "type": "virtual",
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.255.0.1/32", "status__name": "Reserved"}
+                    ]
+                }
+            ]
+        }
+    ]
+}

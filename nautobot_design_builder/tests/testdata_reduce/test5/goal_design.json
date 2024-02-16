@@ -1,0 +1,39 @@
+{
+    "vrfs": [
+        {
+            "!create_or_update:name": "64501:1",
+            "description": "VRF for customer abc",
+            "!ref": "my_vrf",
+            "nautobot_identifier": "4757e7e5-2362-4199-adee-20cfa1a5b2fc"
+        }
+    ],
+    "prefixes": [
+        {
+            "!create_or_update:prefix": "192.0.2.0/30",
+            "status__name": "Reserved",
+            "vrf": "!ref:my_vrf",
+            "description": "sadfasd",
+            "nautobot_identifier": "05540529-6ade-417c-88af-a9b1f4ae75f7"
+        }
+    ],
+    "devices": [
+        {
+            "!update:name": "core0.lax11",
+            "local_context_data": {"mpls_router": true},
+            "interfaces": [
+                {
+                    "!create_or_update:name": "GigabitEthernet1/1",
+                    "status__name": "Planned",
+                    "type": "other",
+                    "description": "sadfasd",
+                    "!connect_cable": {
+                        "nautobot_identifier": "36f26409-5d65-4b50-8934-111f9aafa9ec",
+                        "status__name": "Planned",
+                        "to": {"device__name": "core1.lax11", "name": "GigabitEthernet1/1"}
+                    },
+                    "ip_addresses": [{"!create_or_update:address": "192.0.2.2/30", "status__name": "Reserved"}]
+                }
+            ]
+        }
+    ]
+}

@@ -46,6 +46,7 @@ pylint-nautobot = "*"
 yamllint = "*"
 toml = "*"
 Markdown = "*"
+parameterized = "*"
 
 # Rendering docs to HTML
 mkdocs = "1.5.2"

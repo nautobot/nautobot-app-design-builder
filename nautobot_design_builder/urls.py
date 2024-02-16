@@ -1,4 +1,5 @@
 """UI URLs for design builder."""
+
 from nautobot.core.views.routers import NautobotUIViewSetRouter
 
 from nautobot_design_builder.views import (

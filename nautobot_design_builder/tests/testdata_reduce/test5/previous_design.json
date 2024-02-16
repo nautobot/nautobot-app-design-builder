@@ -1,0 +1,73 @@
+{
+    "vrfs": [
+        {
+            "!ref": "my_vrf",
+            "description": "VRF for customer abc",
+            "nautobot_identifier": "4757e7e5-2362-4199-adee-20cfa1a5b2fc",
+            "!create_or_update:name": "64501:1"
+        }
+    ],
+    "devices": [
+        {
+            "interfaces": [
+                {
+                    "type": "other",
+                    "description": "sadfasd",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "8f9a5073-2975-4b9a-86d1-ebe54e73ca6c",
+                            "!create_or_update:address": "192.0.2.1/30"
+                        }
+                    ],
+                    "status__name": "Planned",
+                    "nautobot_identifier": "b95378bd-5580-4eeb-9542-c298e8424399",
+                    "!create_or_update:name": "GigabitEthernet1/1"
+                }
+            ],
+            "!update:name": "core1.lax11",
+            "local_context_data": {"mpls_router": true},
+            "nautobot_identifier": "aee92e54-4763-4d76-9390-b3a714931a47"
+        },
+        {
+            "interfaces": [
+                {
+                    "type": "other",
+                    "description": "sadfasd",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "053289c3-1469-4682-9b95-9e499b8563fb",
+                            "!create_or_update:address": "192.0.2.2/30"
+                        }
+                    ],
+                    "status__name": "Planned",
+                    "!connect_cable": {
+                        "to": {"name": "GigabitEthernet1/1", "device__name": "core1.lax11"},
+                        "status__name": "Planned",
+                        "nautobot_identifier": "36f26409-5d65-4b50-8934-111f9aafa9ec"
+                    },
+                    "nautobot_identifier": "30b6689c-8ca6-47d0-8dbe-9c1d300860a6",
+                    "!create_or_update:name": "GigabitEthernet1/1"
+                }
+            ],
+            "!update:name": "core0.iad5",
+            "local_context_data": {"mpls_router": true},
+            "nautobot_identifier": "a46729d6-6e71-4905-9833-24dd7841f98a"
+        }
+    ],
+    "prefixes": [
+        {
+            "status__name": "Reserved",
+            "nautobot_identifier": "7909ae9d-02de-4034-9ef9-12e1499bc563",
+            "!create_or_update:prefix": "192.0.2.0/24"
+        },
+        {
+            "vrf": "!ref:my_vrf",
+            "description": "sadfasd",
+            "status__name": "Reserved",
+            "nautobot_identifier": "05540529-6ade-417c-88af-a9b1f4ae75f7",
+            "!create_or_update:prefix": "192.0.2.0/30"
+        }
+    ]
+}
