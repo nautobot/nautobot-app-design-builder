@@ -33,7 +33,10 @@ class L3vpnDesign(DesignJob):
 
         name = "L3VPN Design"
         commit_default = False
-        design_file = "designs/0001_design.yaml.j2"
+        design_files = [
+            "designs/0001_ipam.yaml.j2",
+            "designs/0002_devices.yaml.j2",
+        ]
         context_class = L3VPNContext
         extensions = [ext.CableConnectionExtension]
 

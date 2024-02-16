@@ -1,17 +1,5 @@
 ---
 
-vrfs:
-  - "!create_or_update:name": "{{ l3vpn_asn }}:{{ get_customer_id(customer_name, l3vpn_asn) }}"
-    description: "VRF for customer {{ customer_name }}"
-    "!ref": "my_vrf"
-
-
-prefixes:
-    - "!create_or_update:prefix": "{{ l3vpn_prefix }}"
-      status__name: "Reserved"
-    - "!create_or_update:prefix": "{{ get_l3vpn_prefix(l3vpn_prefix, l3vpn_prefix_length) }}"
-      status__name: "Reserved"
-      vrf: "!ref:my_vrf"
 
 
 {% macro device_edit(device, other_device, offset) -%}
