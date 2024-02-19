@@ -120,8 +120,8 @@ def builder_test_case(data_dir):
                         commit = design.pop("commit", True)
                         fake_file_name = "whatever"
                         builder.builder_output[fake_file_name] = design.copy()
-                        builder.implement_design(
-                            design=design, deprecated_design={}, commit=commit, design_file=fake_file_name
+                        builder.implement_design_changes(
+                            design=design, deprecated_design={}, design_file=fake_file_name, commit=commit
                         )
                         if not commit:
                             roll_back.assert_called()

@@ -161,7 +161,7 @@ def _map_query_values(query: Mapping) -> Mapping:
     return retval
 
 
-def calculate_changes(current_state, initial_state=None, created=False, pre_change=False):
+def calculate_changes(current_state, initial_state=None, created=False, pre_change=False) -> Dict:
     """Determine the differences between the original instance and the current.
 
     This will calculate the changes between the instance's initial state
@@ -178,11 +178,11 @@ def calculate_changes(current_state, initial_state=None, created=False, pre_chan
         state. The dictionary has the following values:
 
         dict: {
-            "prechange": dict(),
-            "postchange": dict(),
+            "pre_change": dict(),
+            "post_change": dict(),
             "differences": {
-                "removed": dict(),
                 "added": dict(),
+                "removed": dict(),
             }
         }
     """
@@ -614,7 +614,7 @@ class Builder(LoggingMixin):
         return extn["object"]
 
     @transaction.atomic
-    def implement_design(self, design: Dict, deprecated_design: Dict, commit: bool = False, design_file: str = ""):
+    def implement_design_changes(self, design: Dict, deprecated_design: Dict, design_file: str, commit: bool = False):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -624,7 +624,9 @@ class Builder(LoggingMixin):
 
         Args:
             design (Dict): An iterable mapping of design changes.
+            deprecated_design (Dict): An iterable mapping of deprecated design changes.
             commit (bool): Whether or not to commit the transaction. Defaults to False.
+            design_file (str): Name of the design file.
 
         Raises:
             DesignImplementationError: if the model is not in the model map

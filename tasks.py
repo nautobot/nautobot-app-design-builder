@@ -527,8 +527,7 @@ def docs(context):
 @task
 def build_and_check_docs(context):
     """Build documentation to be available within Nautobot."""
-    # TODO: relaxed the docs checking
-    command = "mkdocs build --no-directory-urls"
+    command = "mkdocs build --no-directory-urls --strict"
     run_command(context, command)
 
 

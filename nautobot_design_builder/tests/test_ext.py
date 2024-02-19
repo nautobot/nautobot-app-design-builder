@@ -83,7 +83,7 @@ class TestExtensionCommitRollback(TestCase):
         builder = Builder(extensions=[CommitExtension])
         builder.builder_output["whatever"] = copy.deepcopy(design)
         try:
-            builder.implement_design(design, {}, commit=commit, design_file="whatever")
+            builder.implement_design_changes(design, {}, design_file="whatever", commit=commit)
         except DesignImplementationError:
             pass
         return committed, rolled_back

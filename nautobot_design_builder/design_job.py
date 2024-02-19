@@ -188,7 +188,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.log_debug(f"Design to implement after reduction: {design}")
             self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")
 
-        self.builder.implement_design(design, deprecated_design, commit, design_file)
+        self.builder.implement_design_changes(design, deprecated_design, design_file, commit)
 
     def _setup_journal(self, instance_name: str, design_owner: str):
         try:

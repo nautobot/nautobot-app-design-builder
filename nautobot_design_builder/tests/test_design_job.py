@@ -94,7 +94,7 @@ class TestDesignJobLogging(DesignTestCase):
     def test_simple_design_implementation_error(
         self, object_creator: Mock, design_model_mock, design_instance_mock, journal_mock
     ):
-        object_creator.return_value.implement_design.side_effect = DesignImplementationError("Broken")
+        object_creator.return_value.implement_design_changes.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(test_designs.SimpleDesign)
         if nautobot_version < "2":
             job.run(data=self.data, commit=True)
