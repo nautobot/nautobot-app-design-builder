@@ -1,4 +1,5 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
+
 import logging
 from typing import List
 from django.contrib.contenttypes.models import ContentType
@@ -104,6 +105,7 @@ class Design(PrimaryModel):
 
     # TODO: Add version field (future feature)
     # TODO: Add saved graphql query (future feature)
+    # TODO: Add a template mapping to get custom payload (future feature)
     job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
 
     objects = DesignQuerySet.as_manager()
@@ -169,7 +171,7 @@ class DesignInstance(PrimaryModel, StatusModel):
     #       this instance is on. (future feature)
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
-    owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, null=True)
+    owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, default="")
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
     live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
@@ -203,25 +205,27 @@ class DesignInstance(PrimaryModel, StatusModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
-    def decommission(self, local_logger=logger):
+    def decommission(self, local_logger=logger, object_id=None):
         """Decommission a design instance.
 
         This will reverse the journal entries for the design instance and
         reset associated objects to their pre-design state.
         """
-        local_logger.info("Decommissioning design", extra={"obj": self})
-        self.__class__.pre_decommission.send(self.__class__, design_instance=self)
+        if not object_id:
+            local_logger.info("Decommissioning design", extra={"obj": self})
+            self.__class__.pre_decommission.send(self.__class__, design_instance=self)
         # Iterate the journals in reverse order (most recent first) and
         # revert each journal.
-        for journal in self.journals.all().order_by("created"):
-            journal.revert(local_logger=local_logger)
+        for journal in self.journals.filter(active=True).order_by("-last_updated"):
+            journal.revert(local_logger=local_logger, object_id=object_id)
 
-        content_type = ContentType.objects.get_for_model(DesignInstance)
-        self.status = Status.objects.get(
-            content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
-        )
-        self.save()
-        self.__class__.post_decommission.send(self.__class__, design_instance=self)
+        if not object_id:
+            content_type = ContentType.objects.get_for_model(DesignInstance)
+            self.status = Status.objects.get(
+                content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
+            )
+            self.save()
+            self.__class__.post_decommission.send(self.__class__, design_instance=self)
 
     def delete(self, *args, **kwargs):
         """Protect logic to remove Design Instance."""
@@ -254,6 +258,8 @@ class Journal(PrimaryModel):
         related_name="journals",
     )
     job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
+    builder_output = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
+    active = models.BooleanField(editable=False, default=True)
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
@@ -323,7 +329,7 @@ class Journal(PrimaryModel):
             )
         return entry
 
-    def revert(self, local_logger: logging.Logger = logger):
+    def revert(self, local_logger: logging.Logger = logger, object_id=None):
         """Revert the changes represented in this Journal.
 
         Raises:
@@ -335,13 +341,21 @@ class Journal(PrimaryModel):
         # Without a design object we cannot have changes, right? I suppose if the
         # object has been deleted since the change was made then it wouldn't exist,
         # but I think we need to discuss the implications of this further.
-        local_logger.info("Reverting journal", extra={"obj": self})
-        for journal_entry in self.entries.exclude(_design_object_id=None).order_by("-last_updated"):
+        if not object_id:
+            local_logger.info("Reverting journal", extra={"obj": self})
+        for journal_entry in (
+            self.entries.exclude(_design_object_id=None).exclude(active=False).order_by("-last_updated")
+        ):
             try:
-                journal_entry.revert(local_logger=local_logger)
+                journal_entry.revert(local_logger=local_logger, object_id=object_id)
             except (ValidationError, DesignValidationError) as ex:
                 local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
-                raise ValueError(ex)
+                raise ValueError from ex
+
+        if not object_id:
+            # When the Journal is reverted, we mark is as not active anymore
+            self.active = False
+            self.save()
 
 
 class JournalEntryQuerySet(RestrictedQuerySet):
@@ -355,6 +369,12 @@ class JournalEntryQuerySet(RestrictedQuerySet):
         """Returns JournalEntries which have the same object ID but excluding itself."""
         return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
             id=entry.id
+        )
+
+    def filter_same_parent_design_instance(self, entry: "JournalEntry"):
+        """Returns JournalEntries which have the same parent design instance."""
+        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
+            journal__design_instance__id=entry.journal.design_instance.id
         )
 
 
@@ -391,6 +411,7 @@ class JournalEntry(BaseModel):
     design_object = ct_fields.GenericForeignKey(ct_field="_design_object_type", fk_field="_design_object_id")
     changes = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
     full_control = models.BooleanField(editable=False)
+    active = models.BooleanField(editable=False, default=True)
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
@@ -415,7 +436,7 @@ class JournalEntry(BaseModel):
             if key not in added_value:
                 current_value[key] = removed_value[key]
 
-    def revert(self, local_logger: logging.Logger = logger):  # pylint: disable=too-many-branches
+    def revert(self, local_logger: logging.Logger = logger, object_id=None):  # pylint: disable=too-many-branches
         """Revert the changes that are represented in this journal entry.
 
         Raises:
@@ -425,7 +446,11 @@ class JournalEntry(BaseModel):
 
         """
         if not self.design_object:
-            raise ValidationError(f"No reference object found for this JournalEntry: {str(self.id)}")
+            # This is something that may happen when a design has been updated and object was deleted
+            return
+
+        if object_id and str(self.design_object.id) != object_id:
+            return
 
         # It is possible that the journal entry contains a stale copy of the
         # design object. Consider this example: A journal entry is create and
@@ -440,9 +465,13 @@ class JournalEntry(BaseModel):
         object_str = str(self.design_object)
 
         local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
-
         if self.full_control:
-            related_entries = JournalEntry.objects.filter_related(self).exclude_decommissioned()
+            related_entries = (
+                JournalEntry.objects.filter(active=True)
+                .filter_related(self)
+                .filter_same_parent_design_instance(self)
+                .exclude_decommissioned()
+            )
             if related_entries:
                 active_journal_ids = ",".join([str(j.id) for j in related_entries])
                 raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
@@ -482,11 +511,9 @@ class JournalEntry(BaseModel):
                         try:
                             current_value = current_value_type.objects.get(id=removed_value["id"])
                         except ObjectDoesNotExist:
-                            local_logger.error(
-                                "%s object with ID %s, doesn't exist.",
-                                current_value_type,
-                                removed_value["id"],
-                            )
+                            current_value = None
+                    elif current_value is None:
+                        pass
                     else:
                         # TODO: cover other use cases, such as M2M relationship
                         local_logger.error(
@@ -515,3 +542,6 @@ class JournalEntry(BaseModel):
                     object_str,
                     extra={"obj": self.design_object},
                 )
+
+        self.active = False
+        self.save()

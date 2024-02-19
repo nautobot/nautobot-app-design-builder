@@ -1,4 +1,5 @@
 """Navigation."""
+
 from nautobot.apps.ui import (
     NavMenuGroup,
     NavMenuItem,

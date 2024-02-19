@@ -1,4 +1,5 @@
 """Provides ORM interaction for design builder."""
+
 from types import FunctionType
 from collections import defaultdict, OrderedDict
 from typing import Any, Dict, List, Mapping, Type, Union
@@ -21,10 +22,13 @@ from nautobot.extras.models import Status
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
-from nautobot_design_builder.logging import LoggingMixin
+from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
 from nautobot_design_builder import models
-from nautobot_design_builder.util import nautobot_version
+from nautobot_design_builder.constants import NAUTOBOT_ID
+from nautobot_design_builder.util import nautobot_version, custom_delete_order
+from nautobot_design_builder.recursive import inject_nautobot_uuids, get_object_identifier
+
 
 if nautobot_version < "2.0.0":
     # This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
@@ -109,8 +113,6 @@ class Journal:
 
         Args:
             model (BaseModel): The model that has been created or updated
-            created (bool, optional): If the object has just been created
-            then this argument should be True. Defaults to False.
         """
         instance = model.instance
         model_type = instance.__class__
@@ -159,7 +161,7 @@ def _map_query_values(query: Mapping) -> Mapping:
     return retval
 
 
-def calculate_changes(current_state, initial_state=None, created=False, pre_change=False):
+def calculate_changes(current_state, initial_state=None, created=False, pre_change=False) -> Dict:
     """Determine the differences between the original instance and the current.
 
     This will calculate the changes between the instance's initial state
@@ -168,20 +170,19 @@ def calculate_changes(current_state, initial_state=None, created=False, pre_chan
     initial state.
 
     Args:
-        pre_change (dict, optional): Initial state for comparison. If not
-        supplied then the initial state from this instance is used.
+        pre_change (dict, optional): Initial state for comparison. If not supplied then the initial state from this instance is used.
 
     Returns:
         Return a dictionary with the changed object's serialized data compared
         with either the model instance initial state, or the supplied pre_change
-        state. The dicionary has the following values:
+        state. The dictionary has the following values:
 
         dict: {
-            "prechange": dict(),
-            "postchange": dict(),
+            "pre_change": dict(),
+            "post_change": dict(),
             "differences": {
-                "removed": dict(),
                 "added": dict(),
+                "removed": dict(),
             }
         }
     """
@@ -230,8 +231,12 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         attributes: dict,
         relationship_manager=None,
         parent=None,
+        ext_tag=None,
+        ext_value=None,
     ):  # pylint:disable=too-many-arguments
         """Constructor for a ModelInstance."""
+        self.ext_tag = ext_tag
+        self.ext_value = ext_value
         self.creator = creator
         self.model_class = model_class
         self.name = model_class.__name__
@@ -260,6 +265,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             self.instance_fields[field.name] = field_factory(self, field)
 
         self.created = False
+        self.nautobot_id = None
         self._parse_attributes()
         self.relationship_manager = relationship_manager
         if self.relationship_manager is None:
@@ -315,6 +321,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         attribute_names = list(self.attributes.keys())
         while attribute_names:
             key = attribute_names.pop(0)
+            if key == NAUTOBOT_ID:
+                self.nautobot_id = self.attributes[key]
+                continue
+
             self.attributes[key] = self.creator.resolve_values(self.attributes[key])
             if key.startswith("!"):
                 value = self.attributes.pop(key)
@@ -369,7 +379,14 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         """
         self.signals[signal].connect(handler, self)
 
-    def _load_instance(self):
+    def _load_instance(self):  # pylint: disable=too-many-branches
+        # If the objects is already an existing Nautobot object, just get it.
+        if self.nautobot_id:
+            self.created = False
+            self.instance = self.model_class.objects.get(id=self.nautobot_id)
+            self._initial_state = serialize_object_v2(self.instance)
+            return
+
         query_filter = _map_query_values(self.filter)
         if self.action == self.GET:
             self.instance = self.model_class.objects.get(**query_filter)
@@ -392,7 +409,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     queryset = rel.get_queryset()
                     model = self.create_child(queryset.model, value, relationship_manager=queryset)
                     if model.action != self.GET:
-                        model.save()
+                        model.save(value)
                     query_filter[query_param] = model.instance
 
             try:
@@ -444,7 +461,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         for key, value in self.custom_fields.items():
             self.set_custom_field(key, value)
 
-    def save(self):
+    def save(self, output_dict):
         """Save the model instance to the database."""
         # The reason we call _update_fields at this point is
         # that some attributes passed into the constructor
@@ -474,13 +491,19 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             for item in items:
                 field = self.instance_fields[field_name]
                 if isinstance(item, ModelInstance):
+                    item_dict = output_dict
                     related_object = item
+                    if item.ext_tag:
+                        # If the item is a Design Builder extension, we get the ID
+                        item_dict[item.ext_tag][NAUTOBOT_ID] = str(item.instance.id)
                 else:
+                    item_dict = item
                     relationship_manager = None
                     if hasattr(self.instance, field_name):
                         relationship_manager = getattr(self.instance, field_name)
                     related_object = self.create_child(field.model, item, relationship_manager)
-                related_object.save()
+                # The item_dict is recursively updated
+                related_object.save(item_dict)
                 # BEWARE
                 # DO NOT REMOVE THE FOLLOWING LINE, IT WILL BREAK THINGS
                 # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
@@ -488,6 +511,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
                 field.set_value(related_object.instance)
         self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
+        output_dict[NAUTOBOT_ID] = str(self.instance.id)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
@@ -533,7 +557,10 @@ class Builder(LoggingMixin):
         self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
     ):
         """Constructor for Builder."""
+        # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
+        self.builder_output = {}
         self.job_result = job_result
+        self.logger = get_logger(__name__, self.job_result)
 
         self.extensions = {
             "extensions": [],
@@ -560,6 +587,13 @@ class Builder(LoggingMixin):
 
         self.journal = Journal(design_journal=journal)
 
+    def decommission_object(self, object_id, object_name):
+        """This method decommissions an specific object_id from the design instance."""
+        self.journal.design_journal.design_instance.decommission(local_logger=self.logger, object_id=object_id)
+        self.log_success(
+            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.design_instance}."
+        )
+
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:
         """Looks up an extension based on its tag name and returns an instance of that Extension type.
 
@@ -579,7 +613,7 @@ class Builder(LoggingMixin):
         return extn["object"]
 
     @transaction.atomic
-    def implement_design(self, design: Dict, commit: bool = False):
+    def implement_design_changes(self, design: Dict, deprecated_design: Dict, design_file: str, commit: bool = False):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -589,7 +623,9 @@ class Builder(LoggingMixin):
 
         Args:
             design (Dict): An iterable mapping of design changes.
+            deprecated_design (Dict): An iterable mapping of deprecated design changes.
             commit (bool): Whether or not to commit the transaction. Defaults to False.
+            design_file (str): Name of the design file.
 
         Raises:
             DesignImplementationError: if the model is not in the model map
@@ -600,9 +636,14 @@ class Builder(LoggingMixin):
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
-                    self._create_objects(self.model_map[key], value)
-                else:
+                    self._create_objects(self.model_map[key], value, key, design_file)
+                elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
+
+            sorted_keys = sorted(deprecated_design, key=custom_delete_order)
+            for key in sorted_keys:
+                self._deprecate_objects(deprecated_design[key])
+
             if commit:
                 self.commit()
             else:
@@ -647,14 +688,35 @@ class Builder(LoggingMixin):
                 value[k] = self.resolve_value(item, unwrap_model_instances)
         return value
 
-    def _create_objects(self, model_cls, objects):
+    def _create_objects(self, model_cls, objects, key, design_file):
         if isinstance(objects, dict):
             model = ModelInstance(self, model_cls, objects)
-            model.save()
+            model.save(self.builder_output[design_file][key])
+            # TODO: I feel this is not used at all
+            if model.deferred_attributes:
+                self.builder_output[design_file][key].update(model.deferred_attributes)
         elif isinstance(objects, list):
             for model_instance in objects:
-                model = ModelInstance(self, model_cls, model_instance)
-                model.save()
+                model_identifier = get_object_identifier(model_instance)
+                future_object = None
+                for obj in self.builder_output[design_file][key]:
+                    obj_identifier = get_object_identifier(obj)
+                    if obj_identifier == model_identifier:
+                        future_object = obj
+                        break
+
+                if future_object:
+                    # Recursive function to update the created Nautobot UUIDs into the final design for future reference
+                    model = ModelInstance(self, model_cls, model_instance)
+                    model.save(future_object)
+
+                    if model.deferred_attributes:
+                        inject_nautobot_uuids(model.deferred_attributes, future_object)
+
+    def _deprecate_objects(self, objects):
+        if isinstance(objects, list):
+            for obj in objects:
+                self.decommission_object(obj[0], obj[1])
 
     def commit(self):
         """Method to commit all changes to the database."""

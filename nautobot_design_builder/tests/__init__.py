@@ -35,7 +35,6 @@ class DesignTestCase(TestCase):
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
-        job._setup_journal = lambda *args: None  # pylint: disable=protected-access
 
         job.job_result = mock.Mock()
         if nautobot_version < "2.0.0":

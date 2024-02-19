@@ -1,0 +1,87 @@
+{
+    "manufacturers": [],
+    "device_types": [],
+    "device_roles": [],
+    "regions": {
+        "!create_or_update:name": "Americas",
+        "children": [
+            {
+                "!create_or_update:name": "United States",
+                "children": [
+                    {
+                        "!create_or_update:name": "US-East-1",
+                        "sites": [
+                            {
+                                "!create_or_update:name": "IAD5",
+                                "status__name": "Active",
+                                "!ref": "iad5",
+                                "nautobot_identifier": "cf3c08fe-11b7-45b0-9aab-09f8df7bfc89"
+                            },
+                            {
+                                "!create_or_update:name": "LGA1",
+                                "status__name": "Active",
+                                "!ref": "lga1",
+                                "nautobot_identifier": "4eef1fe2-d519-4c9d-ad45-feb04cdcba57"
+                            }
+                        ],
+                        "nautobot_identifier": "0a43260d-0a95-4f2e-93d0-3ecef49069ef"
+                    },
+                    {
+                        "!create_or_update:name": "US-West-1",
+                        "sites": [
+                            {
+                                "!create_or_update:name": "LAX11",
+                                "status__name": "Active",
+                                "!ref": "lax11",
+                                "nautobot_identifier": "8d1ed8a1-b503-49e5-99f4-20140f7cd255"
+                            },
+                            {
+                                "!create_or_update:name": "SEA1",
+                                "status__name": "Active",
+                                "!ref": "sea1",
+                                "nautobot_identifier": "6118a8a4-332a-4b04-a0d6-57170ee0e475"
+                            }
+                        ],
+                        "nautobot_identifier": "2889485e-6222-4634-9f86-bff0afd90939"
+                    }
+                ],
+                "nautobot_identifier": "da9b46cd-1fc1-4d7b-b5e2-cf382df02b3b"
+            }
+        ],
+        "nautobot_identifier": "e7540dd8-7079-4b25-ad10-8681dd64a69f"
+    },
+    "devices": [
+        {
+            "!create_or_update:name": "core0.iad5",
+            "site": "!ref:iad5",
+            "device_type__slug": "ptx10016",
+            "device_role__slug": "core_router",
+            "status__name": "Planned",
+            "nautobot_identifier": "7d90ac27-3444-4c48-9669-4745c0fe4ffa"
+        },
+        {
+            "!create_or_update:name": "core0.lga1",
+            "site": "!ref:lga1",
+            "device_type__slug": "ptx10016",
+            "device_role__slug": "core_router",
+            "status__name": "Planned",
+            "nautobot_identifier": "0a9382a4-6cb0-4fa7-834a-0ea9fba1a825"
+        },
+        {
+            "!create_or_update:name": "core0.lax11",
+            "site": "!ref:lax11",
+            "device_type__slug": "ptx10016",
+            "device_role__slug": "core_router",
+            "status__name": "Planned",
+            "nautobot_identifier": "2d3c1d1a-df00-4f0e-bc3c-8899f12ab2cd"
+        },
+        {
+            "!create_or_update:name": "core0.sea1",
+            "site": "!ref:sea1",
+            "device_type__slug": "ptx10016",
+            "device_role__slug": "core_router",
+            "status__name": "Planned",
+            "nautobot_identifier": "faa7b89b-a0da-4516-8c75-6d485288f08d"
+        }
+    ]
+}

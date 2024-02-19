@@ -1,4 +1,5 @@
 """Unit tests related to template extensions."""
+
 import os
 
 from django.test import TestCase

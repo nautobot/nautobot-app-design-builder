@@ -1,4 +1,5 @@
 """Model fields."""
+
 from abc import ABC, abstractmethod
 from typing import Mapping, Type
 
@@ -150,7 +151,9 @@ class ManyToOneField(RelationshipField):
                     value = {f"!get:{key}": value for key, value in value.items()}
                 value = self.instance.create_child(self.model, value)
                 if value.created:
-                    value.save()
+                    # TODO: Here, we may need to store the uuid in the output?
+                    # Not found yet the need for.
+                    value.save({})
                 value = value.instance.pk
             except MultipleObjectsReturned:
                 # pylint: disable=raise-missing-from

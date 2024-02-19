@@ -1,18 +1,21 @@
 """Module that contains classes and functions for use with Design Builder context available when using Jinja templating."""
+
 from functools import cached_property
 from collections import UserList, UserDict, UserString
 import inspect
-from typing import Any
+from typing import Any, Union
 import yaml
 
 from jinja2.nativetypes import NativeEnvironment
 
 from nautobot.extras.models import JobResult
+from nautobot.extras.models import Tag
 
 from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.util import load_design_yaml
+from nautobot_design_builder.util import nautobot_version
 
 
 class ContextNodeMixin:
@@ -298,10 +301,11 @@ class Context(_DictNode, LoggingMixin):
               or their native type.
     """
 
-    def __init__(self, data: dict = None, job_result: JobResult = None):
+    def __init__(self, data: dict = None, job_result: JobResult = None, design_name: str = ""):
         """Constructor for Context class that creates data nodes from input data."""
         super().__init__(data)
         self.job_result = job_result
+        self.design_name = design_name
 
         for base, filename in self.base_context_files():
             context = load_design_yaml(base, filename)
@@ -366,3 +370,17 @@ class Context(_DictNode, LoggingMixin):
 
         if len(errors) > 0:
             raise DesignValidationError("\n".join(errors))
+
+    @property
+    def design_instance_tag(self) -> Union[Tag, None]:
+        """Returns the `Tag` of the design instance if exists."""
+        try:
+            return Tag.objects.get(name__contains=self._instance_name)
+        except Tag.DoesNotExist:
+            return None
+
+    @property
+    def _instance_name(self):
+        if nautobot_version < "2.0.0":
+            return f"{self.design_name} - {self.job_result.job_kwargs['data']['instance_name']}"
+        return f"{self.design_name} - {self.job_result.job_kwargs['instance_name']}"

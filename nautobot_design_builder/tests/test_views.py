@@ -1,8 +1,11 @@
 """Test Views."""
+
 from nautobot.utilities.testing import ViewTestCases
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 from nautobot_design_builder.tests.util import create_test_view_data
+
+# pylint: disable=missing-class-docstring
 
 
 class TestCaseDesign(

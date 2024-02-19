@@ -1,0 +1,55 @@
+{
+    "prefixes": [
+        {
+            "!create_or_update:prefix": "10.250.0.4/30",
+            "description": "ce-ces Mgmt Instance:a",
+            "status__name": "Active"
+        },
+        {
+            "!create_or_update:prefix": "10.250.100.4/30",
+            "description": "co-cer Mgmt Instance:a",
+            "status__name": "Active"
+        }
+    ],
+    "devices": [
+        {
+            "!update:name": "Device 1",
+            "interfaces": [
+                {
+                    "!create_or_update:name": "Vlan1",
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.250.0.6/30", "status__name": "Reserved"}
+                    ],
+                    "nautobot_identifier": "ed91b2fc-cc4a-4726-82fc-07facbb429bb"
+                }
+            ],
+            "nautobot_identifier": "a6165def-a1a7-4c0d-8f96-aa6f7e3b83d2"
+        },
+        {
+            "!update:name": "Device 2",
+            "interfaces": [
+                {
+                    "!update:name": "Ethernet0/2/0",
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.250.100.5/30", "status__name": "Reserved"}
+                    ],
+                    "nautobot_identifier": "259a7a35-5336-4a45-aa74-27be778358a2"
+                }
+            ],
+            "nautobot_identifier": "1cc796cd-4c2c-47c4-af60-3c56f69965f8"
+        },
+        {
+            "!update:name": "Device 3",
+            "interfaces": [
+                {
+                    "!update:name": "Ethernet0/2/0",
+                    "ip_addresses": [
+                        {"!create_or_update:address": "10.250.100.6/30", "status__name": "Reserved"}
+                    ],
+                    "nautobot_identifier": "c9ae176d-ea86-4844-a5e7-cd331b9c9491"
+                }
+            ],
+            "nautobot_identifier": "2509af45-70e0-4708-87ca-8203b8570819"
+        }
+    ]
+}

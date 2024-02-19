@@ -1,4 +1,5 @@
 """Test object creator methods."""
+
 import importlib
 from operator import attrgetter
 import os
@@ -41,7 +42,14 @@ class BuilderChecks:
         value1 = _get_value(check[1])
         if len(value0) == 1 and len(value1) == 1:
             test.assertEqual(value0[0], value1[0], msg=f"Check {index}")
-        test.assertEqual(value0, value1, msg=f"Check {index}")
+
+        # TODO: Mysql tests fail due to unordered lists
+        if isinstance(value0, list) and isinstance(value1, list):
+            test.assertEqual(len(value0), len(value1))
+            for item0 in value0:
+                test.assertIn(item0, value1)
+        else:
+            test.assertEqual(value0, value1, msg=f"Check {index}")
 
     @staticmethod
     def check_model_exists(test, check, index):
@@ -117,7 +125,11 @@ def builder_test_case(data_dir):
                     for design in testcase["designs"]:
                         builder = Builder(extensions=extensions)
                         commit = design.pop("commit", True)
-                        builder.implement_design(design=design, commit=commit)
+                        fake_file_name = "whatever"
+                        builder.builder_output[fake_file_name] = design.copy()
+                        builder.implement_design_changes(
+                            design=design, deprecated_design={}, design_file=fake_file_name, commit=commit
+                        )
                         if not commit:
                             roll_back.assert_called()
 

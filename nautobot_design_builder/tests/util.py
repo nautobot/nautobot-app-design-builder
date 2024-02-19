@@ -1,4 +1,5 @@
 """Utilities for setting up tests and test data."""
+
 from django.contrib.contenttypes.models import ContentType
 from nautobot.extras.models import JobResult, Job
 from nautobot.tenancy.models import Tenant

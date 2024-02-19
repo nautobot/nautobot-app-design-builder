@@ -1,4 +1,5 @@
 """Extensions API for the object creator."""
+
 import os
 from abc import ABC, abstractmethod
 from functools import reduce

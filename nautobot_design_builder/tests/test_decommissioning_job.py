@@ -1,4 +1,5 @@
 """Decommissioning Tests."""
+
 from unittest import mock
 import uuid
 

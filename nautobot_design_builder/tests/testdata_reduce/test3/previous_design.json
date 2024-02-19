@@ -1,0 +1,68 @@
+{
+    "vrfs": [
+        {
+            "!ref": "my_vrf",
+            "description": "VRF for customer abc",
+            "nautobot_identifier": "d34f89aa-0199-4352-aa2f-311203bae138",
+            "!create_or_update:name": "64501:1"
+        }
+    ],
+    "devices": [
+        {
+            "interfaces": [
+                {
+                    "type": "other",
+                    "description": "ertewr",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "ceaabdd5-811a-4981-aa83-c2c2ff52b081",
+                            "!create_or_update:address": "192.0.2.1/30"
+                        }
+                    ],
+                    "status__name": "Planned",
+                    "nautobot_identifier": "0d95bbfc-4438-42e8-b24c-d5d878dd0880",
+                    "!create_or_update:name": "GigabitEthernet1/1"
+                }
+            ],
+            "!update:name": "core0.lax11",
+            "local_context_data": {"mpls_router": true},
+            "nautobot_identifier": "c8454078-d3d7-4243-a07f-99750d06c595"
+        },
+        {
+            "interfaces": [
+                {
+                    "type": "other",
+                    "description": "ertewr",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "bb27bc76-2973-42db-8e6d-5f79e1aecf92",
+                            "!create_or_update:address": "192.0.2.2/30"
+                        }
+                    ],
+                    "status__name": "Planned",
+                    "nautobot_identifier": "4506fe8d-71a9-445e-9bf6-7127e84a3d22",
+                    "!create_or_update:name": "GigabitEthernet1/1"
+                }
+            ],
+            "!update:name": "core0.iad5",
+            "local_context_data": {"mpls_router": true},
+            "nautobot_identifier": "d14133b0-85dd-440b-99e8-4410078df052"
+        }
+    ],
+    "prefixes": [
+        {
+            "status__name": "Reserved",
+            "nautobot_identifier": "22a1b725-a371-4130-8b2b-6b95b9b913ae",
+            "!create_or_update:prefix": "192.0.2.0/24"
+        },
+        {
+            "vrf": "!ref:my_vrf",
+            "description": "ertewr",
+            "status__name": "Reserved",
+            "nautobot_identifier": "180df48c-7c39-4da2-ac18-6f335cbd2a0e",
+            "!create_or_update:prefix": "192.0.2.0/30"
+        }
+    ]
+}

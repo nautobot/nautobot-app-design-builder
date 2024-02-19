@@ -1,4 +1,5 @@
 """UI Views for design builder."""
+
 from django_tables2 import RequestConfig
 from nautobot.core.views.mixins import (
     ObjectDetailViewMixin,

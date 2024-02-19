@@ -1,6 +1,7 @@
 """Unit tests related to template extensions."""
-import sys
 
+import sys
+import copy
 from django.test import TestCase
 
 from nautobot_design_builder import ext
@@ -80,8 +81,9 @@ class TestExtensionCommitRollback(TestCase):
                 rolled_back = True
 
         builder = Builder(extensions=[CommitExtension])
+        builder.builder_output["whatever"] = copy.deepcopy(design)
         try:
-            builder.implement_design(design, commit=commit)
+            builder.implement_design_changes(design, {}, design_file="whatever", commit=commit)
         except DesignImplementationError:
             pass
         return committed, rolled_back
@@ -90,7 +92,7 @@ class TestExtensionCommitRollback(TestCase):
         design = {
             "manufacturers": [
                 {
-                    "name": "Test Manufacturer",
+                    "!create_or_update:name": "Test Manufacturer",
                     "!extension": True,
                 }
             ]
@@ -104,7 +106,7 @@ class TestExtensionCommitRollback(TestCase):
             "manufacturers": [
                 {
                     "!extension": True,
-                    "name": "!ref:noref",
+                    "!create_or_update:name": "!ref:noref",
                 }
             ]
         }
@@ -116,7 +118,7 @@ class TestExtensionCommitRollback(TestCase):
         design = {
             "manufacturers": [
                 {
-                    "name": "Test Manufacturer",
+                    "!create_or_update:name": "Test Manufacturer",
                     "!extension": True,
                 }
             ]

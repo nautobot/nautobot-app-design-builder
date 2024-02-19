@@ -1,0 +1,144 @@
+{
+    "devices": [
+        {
+            "interfaces": [
+                {
+                    "!update:name": "GigabitEthernet1/0/1",
+                    "!connect_cable": {
+                        "to": {"name": "GigabitEthernet0/0/0", "device__name": "Device 2"},
+                        "status__name": "Planned",
+                        "nautobot_identifier": "0fd83863-6bf6-4a32-b056-1c14970307e1"
+                    },
+                    "nautobot_identifier": "91772985-9564-4176-9232-94b12d30c0c3"
+                },
+                {
+                    "!update:name": "GigabitEthernet1/0/14",
+                    "!connect_cable": {
+                        "to": {"name": "GigabitEthernet0/0/0", "device__name": "Device 4"},
+                        "status__name": "Planned",
+                        "nautobot_identifier": "5e2cc3a6-b47e-4070-8ca2-5df738e29774"
+                    },
+                    "nautobot_identifier": "b783c298-c398-4498-9ecc-50ffcb9d0364"
+                },
+                {
+                    "type": "virtual",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "c844e64d-b8e1-4226-80ef-c938f8177793",
+                            "!create_or_update:address": "10.250.0.2/30"
+                        }
+                    ],
+                    "status__name": "Planned",
+                    "nautobot_identifier": "ed91b2fc-cc4a-4726-82fc-07facbb429bb",
+                    "!create_or_update:name": "Vlan1"
+                }
+            ],
+            "site__name": "Site 1",
+            "!update:name": "Device 1",
+            "status__name": "Planned",
+            "location__name": "Location 1",
+            "device_role__slug": "ces",
+            "nautobot_identifier": "a6165def-a1a7-4c0d-8f96-aa6f7e3b83d2"
+        },
+        {
+            "interfaces": [
+                {
+                    "!update:name": "Ethernet0/2/0",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "33943833-8ab4-473c-a64d-5b45d54d1d46",
+                            "!create_or_update:address": "10.250.100.1/30"
+                        }
+                    ],
+                    "!connect_cable": {
+                        "to": {"name": "Ethernet0/2/0", "device__name": "Device 3"},
+                        "status__name": "Planned",
+                        "nautobot_identifier": "f321b2b4-421f-481a-9955-1f4347e14f6c"
+                    },
+                    "nautobot_identifier": "259a7a35-5336-4a45-aa74-27be778358a2"
+                },
+                {
+                    "type": "virtual",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "6a4e36f2-9231-4618-b091-9f5fbebfb387",
+                            "!create_or_update:address": "10.255.0.0/32"
+                        }
+                    ],
+                    "status__name": "Planned",
+                    "nautobot_identifier": "65832777-e48e-4d5d-984c-e9fa32e3f7df",
+                    "!create_or_update:name": "lo10"
+                }
+            ],
+            "site__name": "Site 1",
+            "!update:name": "Device 2",
+            "status__name": "Planned",
+            "location__name": "Location 1",
+            "device_role__slug": "ce",
+            "nautobot_identifier": "1cc796cd-4c2c-47c4-af60-3c56f69965f8"
+        },
+        {
+            "interfaces": [
+                {
+                    "!update:name": "Ethernet0/2/0",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "d50d3b01-e59d-431f-b91d-46c5a933afe8",
+                            "!create_or_update:address": "10.250.100.2/30"
+                        }
+                    ],
+                    "nautobot_identifier": "c9ae176d-ea86-4844-a5e7-cd331b9c9491"
+                },
+                {
+                    "type": "virtual",
+                    "ip_addresses": [
+                        {
+                            "status__name": "Reserved",
+                            "nautobot_identifier": "be9b9a70-78ee-407c-93cf-55231718e5c7",
+                            "!create_or_update:address": "10.255.0.1/32"
+                        }
+                    ],
+                    "status__name": "Planned",
+                    "nautobot_identifier": "2e4bc2ec-a837-4fc0-87b7-5fa6b9847532",
+                    "!create_or_update:name": "lo10"
+                }
+            ],
+            "site__name": "Site 2",
+            "!update:name": "Device 3",
+            "status__name": "Planned",
+            "location__name": "Location 2",
+            "device_role__slug": "cer",
+            "nautobot_identifier": "2509af45-70e0-4708-87ca-8203b8570819"
+        }
+    ],
+    "prefixes": [
+        {
+            "description": "co-intraprefix-01 Instance:a",
+            "status__name": "Active",
+            "nautobot_identifier": "4f2e9d74-3e3b-4231-a8b8-430726db0e1c",
+            "!create_or_update:prefix": "10.255.0.0/32"
+        },
+        {
+            "description": "ce01-intraprefix Instance:a",
+            "status__name": "Active",
+            "nautobot_identifier": "6a109931-9194-4748-95d8-042156b786d8",
+            "!create_or_update:prefix": "10.255.0.1/32"
+        },
+        {
+            "description": "ce-ces Mgmt Instance:a",
+            "status__name": "Active",
+            "nautobot_identifier": "0804b67b-ec96-4f79-96c0-e7750fd42b5a",
+            "!create_or_update:prefix": "10.250.0.0/30"
+        },
+        {
+            "description": "co-cer Mgmt Instance:a",
+            "status__name": "Active",
+            "nautobot_identifier": "9806c31b-a01d-4537-bf08-ba2db697052e",
+            "!create_or_update:prefix": "10.250.100.0/30"
+        }
+    ]
+}

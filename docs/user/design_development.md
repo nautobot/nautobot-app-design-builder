@@ -16,7 +16,7 @@ For the remainder of this tutorial we will focus solely on the Design Job, Desig
 
 Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. Since, fundamentally, all designs are Nautobot Jobs, everything must be in a top level `jobs` python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `jobs` module or be imported to it. The following directory layout is from the [demo designs repository](hhttps://github.com/nautobot/demo-designs):
 
-``` bash
+```bash
 jobs
 ├── __init__.py
 ├── core_site
@@ -78,7 +78,7 @@ Primary Purpose:
 - Provide the user inputs
 - Define the Design Context and Design Templates
 
-As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
+As previously stated, the entry point for all designs is the `DesignJob` class. New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
 --8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/initial_data/__init__.py"
@@ -141,6 +141,8 @@ Now let's inspect the context YAML file:
 
 This context YAML creates two variables that will be added to the design context: `core_1_loopback` and `core_2_loopback`. The values of both of these variables are computed using a jinja template. The template uses a jinja filter from the `netutils` project to compute the address using the user-supplied `site_prefix`. When the design context is created, the variables will be added to the context. The values (from the jinja template) are rendered when the variables are looked up during the design template rendering process.
 
+> Note: The `Context` class also contains a property to retrieve the `Tag` associated with the design and attached to all the objects with full_control. With this tag you can check for data in objects already created when the design is updated, for example: `.filter(tags__in=[self.design_instance_tag]`.
+
 ### Context Validations
 
 Sometimes design data needs to be validated before a design can be built. The Design Builder provides a means for a design context to determine if it is valid and can/should the implementation proceed. After a design job creates and populates a design context, the job will call any methods on the context where the method name begins with `validate_`. These methods should not accept any arguments other than `self` and should either return `None` when valid or should raise `nautobot_design_builder.DesignValidationError`. In the above Context example, the design context checks to see if a site with the same name already exists, and if so it raises an error. Any number of validation methods can exist in a design context. Each will be called in the order it is defined in the class.
@@ -178,8 +180,8 @@ Double underscores between a `field` and a `relatedfield` cause design builder t
 
 ```yaml
 devices:
-- name: "switch1"
-  platform__name: "Arista EOS"
+  - name: "switch1"
+    platform__name: "Arista EOS"
 ```
 
 This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`. The value for query fields can be a scalar or a dictionary. In the case above (`platform__name`) the scalar value `"Arista EOS"` expands the the equivalent ORM query: `Platform.objects.get(name="Arista EOS")` with the returned object being assigned to the `platform` attribute of the device.
@@ -188,10 +190,10 @@ If a query field's value is a dictionary, then more complex lookups can be perfo
 
 ```yaml
 devices:
-- name: "switch1"
-  platform: 
-    name: "Arista EOS"
-    napalm_driver: "eos"
+  - name: "switch1"
+    platform:
+      name: "Arista EOS"
+      napalm_driver: "eos"
 ```
 
 The above query expands to the following ORM code: `Platform.objects.get(name="Arista EOS", napalm_driver="eos")` with the returned value being assigned to the `platform` attribute of the device.
@@ -255,7 +257,7 @@ When used as a YAML mapping key, `!ref` will store a reference to the current Na
 ```jinja
 # Creating a reference to spine interfaces.
 #
-# In the rendered YAML this ends up being something like 
+# In the rendered YAML this ends up being something like
 # "spine_switch1:Ethernet1", "spine_switch1:Ethernet2", etc
 #
 #
@@ -275,7 +277,7 @@ When used as the value for a key `!ref:<reference_name>` will return the the pre
 
 ```jinja
 # Looking up a reference to previously created spine interfaces.
-# 
+#
 # In the rendered YAML "!ref:{{ spine.name }}:{{ interface }}" will become something like
 # "!ref:spine_switch1:Ethernet1", "!ref:spine_switch1:Ethernet2", etc
 # ObjectCreator will be able to assign the cable termination A side to the previously created objects.
@@ -336,3 +338,42 @@ class DesignJobWithExtensions(DesignJob):
         design_file = "templates/simple_design.yaml.j2"
         extensions = [ext.BGPPeeringExtension]
 ```
+
+## Design LifeCycle
+
+Design implementations can have a full life cycle: creation, update, and decommission.
+
+<!-- TODO: without an identifier: IDENTIFIER_KEYS = ["!create_or_update", "!create", "!update", "!get"],
+the update features are not working as expected.
+I would propose to use explicit action tags even for create: "!create:name"
+ -->
+
+Once a design is "deployed" in Nautobot, a Design Instance is created with the report of the changes implemented, and with actions to decommission or update it.
+
+### Design Decommission
+
+This feature allows to rollback all the changes implemented by a design instance to the previous state. This rollback depends on the scope of the change:
+
+- If the object was created by the design implementation, this object will be removed.
+- If only some attributes were changes, the affected attributes will be rolled back to the previous state.
+
+The decommissioning feature takes into account potential dependencies between design implementations. For example, if a new l3vpn design depends on devices that were created by another design, this previous design won't be decommissioned until the l3vpn dependencies are also decommissioned to warrant consistency.
+
+Once a design instance is decommissioned, it's still visible in the API/UI to check the history of changes but without any active relationship with Nautobot objects. After decommissioning, the design instance can be deleted completely from Nautobot.
+
+### Design Updates
+
+This feature allows to re run a design instance with different input data to update the implemented design with the new changes: additions and removals.
+
+It leverages a complete tracking of previous design implementation and a reduce function for the new design to understand the changes to be implemented and the objects to be decommissioned (leveraging the previous decommissioning feature for only a specific object).
+
+The update feature comes with a few assumptions:
+
+- All the design objects that have an identifier have to use identifier keys to identify the object to make them comparable across designs.
+- Object identifiers should keep consistent in multiple design runs. For example, you can't target a device with the device name and update the name on the same design.
+- When design provides a list of objects, the objects are assumed to be in the same order. For example, if the first design creates `[deviceA1, deviceB1]`, if expanded, it should be `[deviceA1, deviceB1, deviceA2, deviceB2]`, not `[deviceA1, deviceA2, deviceB1, deviceB2]`.
+
+<!--
+TODO:
+- We could check design for update capabilities? to disable when not possible
+-->

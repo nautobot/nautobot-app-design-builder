@@ -1,0 +1,40 @@
+{
+    "vrfs": [{"!create_or_update:name": "64501:2", "description": "VRF for customer xyz", "!ref": "my_vrf"}],
+    "prefixes": [
+        {"!create_or_update:prefix": "192.0.2.0/24", "status__name": "Reserved"},
+        {
+            "!create_or_update:prefix": "192.0.2.0/30",
+            "status__name": "Reserved",
+            "vrf": "!ref:my_vrf",
+            "description": "ertewr"
+        }
+    ],
+    "devices": [
+        {
+            "!update:name": "core0.sea1",
+            "local_context_data": {"mpls_router": true},
+            "interfaces": [
+                {
+                    "!create_or_update:name": "GigabitEthernet1/1",
+                    "status__name": "Planned",
+                    "type": "other",
+                    "description": "ertewr",
+                    "ip_addresses": [{"!create_or_update:address": "192.0.2.1/30", "status__name": "Reserved"}]
+                }
+            ]
+        },
+        {
+            "!update:name": "core0.iad5",
+            "local_context_data": {"mpls_router": true},
+            "interfaces": [
+                {
+                    "!create_or_update:name": "GigabitEthernet1/1",
+                    "status__name": "Planned",
+                    "type": "other",
+                    "description": "ertewr",
+                    "ip_addresses": [{"!create_or_update:address": "192.0.2.2/30", "status__name": "Reserved"}]
+                }
+            ]
+        }
+    ]
+}

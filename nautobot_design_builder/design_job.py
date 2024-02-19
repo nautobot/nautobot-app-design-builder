@@ -1,5 +1,7 @@
 """Base Design Job class definition."""
+
 import sys
+import copy
 import traceback
 from abc import ABC, abstractmethod
 from os import path
@@ -22,6 +24,7 @@ from nautobot_design_builder.design import Builder
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
 from nautobot_design_builder import choices
+from nautobot_design_builder.recursive import reduce_design
 
 from .util import nautobot_version
 
@@ -152,13 +155,44 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         )
 
     def implement_design(self, context, design_file, commit):
-        """Render the design_file template using the provided render context."""
+        """Render the design_file template using the provided render context.
+
+        It considers reduction if a previous design instance exists.
+        """
         design = self.render_design(context, design_file)
-        self.builder.implement_design(design, commit)
+        self.log_debug(f"New Design to be implemented: {design}")
+        deprecated_design = {}
+
+        # The design to apply will take into account the previous journal that keeps track (in the builder_output)
+        # of the design used (i.e., the YAML) including the Nautobot IDs that will help to reference them
+        self.builder.builder_output[design_file] = copy.deepcopy(design)
+        last_journal = (
+            self.builder.journal.design_journal.design_instance.journals.filter(active=True)
+            .exclude(id=self.builder.journal.design_journal.id)
+            .exclude(builder_output={})
+            .order_by("-last_updated")
+            .first()
+        )
+        if last_journal and last_journal.builder_output:
+            # The last design output is used as the reference to understand what needs to be changed
+            # The design output store the whole set of attributes, not only the ones taken into account
+            # in the implementation
+            previous_design = last_journal.builder_output[design_file]
+            self.log_debug(f"Design from previous Journal: {previous_design}")
+
+            for key, new_value in design.items():
+                old_value = previous_design[key]
+                future_value = self.builder.builder_output[design_file][key]
+                reduce_design(new_value, old_value, future_value, deprecated_design, key)
+
+            self.log_debug(f"Design to implement after reduction: {design}")
+            self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")
+
+        self.builder.implement_design_changes(design, deprecated_design, design_file, commit)
 
     def _setup_journal(self, instance_name: str, design_owner: str):
         try:
-            instance = models.DesignInstance.objects.get(name=instance_name)
+            instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
             instance.last_implemented = datetime.now()
         except models.DesignInstance.DoesNotExist:
@@ -188,7 +222,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """Method to validate the input data logic that is already valid as a form by the `validate_data` method."""
 
     @transaction.atomic
-    def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
+    def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches,too-many-statements
         """Render the design and implement it with a Builder object."""
         if nautobot_version < "2.0.0":
             commit = kwargs["commit"]
@@ -198,6 +232,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             data = kwargs
 
         self.validate_data_logic(data)
+
+        if nautobot_version < "2.0.0":
+            self.job_result.job_kwargs = {"data": self.serialize_data(data)}
+        else:
+            self.job_result.job_kwargs = self.serialize_data(data)
 
         journal = self._setup_journal(data.pop("instance_name"), data.pop("owner"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -211,7 +250,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design_files = None
 
         if hasattr(self.Meta, "context_class"):
-            context = self.Meta.context_class(data=data, job_result=self.job_result)
+            context = self.Meta.context_class(data=data, job_result=self.job_result, design_name=self.Meta.name)
             context.validate()
         else:
             context = {}
@@ -232,6 +271,16 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 self.implement_design(context, design_file, commit)
             if commit:
                 self.post_implementation(context, self.builder)
+
+                # The Journal stores the design (with Nautobot identifiers from post_implementation)
+                # for future operations (e.g., updates)
+                journal.builder_output = self.builder.builder_output
+                journal.design_instance.status = Status.objects.get(
+                    content_types=ContentType.objects.get_for_model(models.DesignInstance),
+                    name=choices.DesignInstanceStatusChoices.ACTIVE,
+                )
+                journal.design_instance.save()
+                journal.save()
                 if hasattr(self.Meta, "report"):
                     self.job_result.data["report"] = self.render_report(context, self.builder.journal)
                     self.log_success(message=self.job_result.data["report"])
