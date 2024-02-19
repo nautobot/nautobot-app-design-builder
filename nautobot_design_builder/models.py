@@ -507,14 +507,10 @@ class JournalEntry(BaseModel):
                             removed_value=removed_value,
                         )
                     elif isinstance(current_value, models.Model):
+                        # The attribute is a Foreign Key that is represented as a dict
                         try:
                             current_value = current_value_type.objects.get(id=removed_value["id"])
                         except ObjectDoesNotExist:
-                            # local_logger.warning(
-                            #     "%s object with ID %s, doesn't exist, so setting to Null",
-                            #     current_value_type,
-                            #     removed_value["id"],
-                            # )
                             current_value = None
                     elif current_value is None:
                         pass
@@ -524,7 +520,7 @@ class JournalEntry(BaseModel):
                             "%s can't be reverted because decommission of type %s is not supported yet.",
                             current_value,
                             current_value_type,
-                        )  # The attribute is a Foreign Key that is represented as a dict
+                        )
 
                     setattr(self.design_object, attribute, current_value)
                 else:

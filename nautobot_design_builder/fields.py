@@ -26,7 +26,6 @@ class ModelField(ABC):
 
         Args:
             value (Any): Value that should be set on the model field.
-            output_dict (Dict): Mutable object to save the Nautobot identifier.
         """
 
     @property

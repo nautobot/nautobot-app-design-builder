@@ -35,16 +35,6 @@ class DesignTestCase(TestCase):
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
-        # journal_mock = mock.Mock()
-        # job._setup_journal = journal_mock
-        # journal_objects = mock.Mock()
-        # # journal_mock.design_journal = mock.Mock()
-        # # journal_mock.design_journal.design_instance = mock.Mock()
-        # # journal_mock.design_journal.design_instance.journals = journal_objects
-        # journal_mock.design_journal.design_instance.journals.filter.side_effect = lambda active: journal_objects
-        # journal_mock.design_journal.design_instance.journals.exclude.side_effect = lambda _: journal_objects
-        # journal_mock.design_journal.design_instance.journals.order_by.side_effect = lambda _: journal_objects
-        # journal_mock.design_journal.design_instance.journals.first.return_value = None
 
         job.job_result = mock.Mock()
         if nautobot_version < "2.0.0":

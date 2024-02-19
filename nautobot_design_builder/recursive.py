@@ -1,13 +1,20 @@
 """Temporal file that includes the recursive functions used to manipulate designs."""
 
 import itertools
+from typing import Dict, Union
 from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.constants import NAUTOBOT_ID, IDENTIFIER_KEYS
 
 
-def get_object_identifier(obj):
-    """Returns de object identifier value, if it exists."""
-    # The object identifier should be consistent in all the design implementations, not updating it
+def get_object_identifier(obj: Dict) -> Union[str, None]:
+    """Returns de object identifier value, if it exists.
+
+    Args:
+        value (Union[list,dict,str]): The value to attempt to resolve.
+
+    Returns:
+        Union[str, None]: the identifier value or None.
+    """
     for key in obj:
         if any(identifier_key in key for identifier_key in IDENTIFIER_KEYS):
             return obj[key]
@@ -42,7 +49,6 @@ def inject_nautobot_uuids(initial_data, final_data, only_ext=False):  # pylint: 
             elif "!" in key and not any(identifier_key in key for identifier_key in IDENTIFIER_KEYS):
                 inject_nautobot_uuids(initial_data[key], final_data[key], only_ext)
 
-        # TODO: for ext:connect_cable how do I know is the same object? both identifiers are None
         if data_identifier == new_data_identifier and NAUTOBOT_ID in initial_data:
             if not only_ext:
                 final_data[NAUTOBOT_ID] = initial_data[NAUTOBOT_ID]
@@ -71,9 +77,7 @@ def reduce_design(
         for new_element, old_element, future_element in itertools.zip_longest(
             new_value.copy(), old_value, future_value
         ):
-            # TODO: add a note in the docs about design best practices
             # It's assumed that the design will generated lists where the objects are on the same place
-
             if new_element is None:
                 # This means that this is one element that was existing before, but it's no longer in the design
                 # Therefore, it must be decommissioned if it's a dictionary, that's a potential design object
@@ -95,9 +99,9 @@ def reduce_design(
 
                     objects_to_decommission.append((old_nautobot_identifier, old_elem_identifier))
 
-                    # TODO: One possible situation is that a cable of a nested interface in the same object
+                    # One possible situation is that a cable of a nested interface in the same object
                     # is added into the nested reduce design, but the nautobot identifier is lost to
-                    # be taken into account to be decommissioned before. Maybe we could move the nautobot identifiers to the new object?
+                    # be taken into account to be decommissioned before.
                     inject_nautobot_uuids(old_element, new_element, only_ext=True)
 
                     reduce_design({}, old_element, {}, decommissioned_objects, type_key)
@@ -155,8 +159,8 @@ def reduce_design(
             if inner_old_key == NAUTOBOT_ID and "!" in inner_old_key:
                 continue
 
-            # Reseting desired values for attributes not included in the new design implementation
-            # TODO: not sure why do we need this
+            # Resetting desired values for attributes not included in the new design implementation
+            # This makes them into account for decommissioning nested objects (e.g., interfaces, ip_addresses)
             if inner_old_key not in new_value:
                 new_value[inner_old_key] = None
 
@@ -173,7 +177,7 @@ def reduce_design(
                 and inner_key in old_value
                 and new_value[inner_key] == old_value[inner_key]
             ):
-                # If the values of the attribute in the design are the same, remove it for simplification
+                # If the values of the attribute in the design are the same, remove it for design reduction
                 del new_value[inner_key]
 
             elif not inner_value and isinstance(old_value[inner_key], list):
@@ -201,7 +205,7 @@ def reduce_design(
         if old_nautobot_identifier and identifier_new_value == identifier_old_value:
             future_value[NAUTOBOT_ID] = old_nautobot_identifier
 
-        # If at this point we only have an identifier, remove the object, no need to mess it up
+        # If at this point we only have an identifier, remove the object, no need to take it into account
         if len(new_value) <= 1:
             return True
 
