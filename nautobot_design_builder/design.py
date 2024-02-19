@@ -1,7 +1,7 @@
 """Provides ORM interaction for design builder."""
 
-from collections import defaultdict, OrderedDict
 from types import FunctionType
+from collections import defaultdict, OrderedDict
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
@@ -427,11 +427,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.attributes.update(query_filter)
         elif self.action != "create":
             raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
-
-        self._initial_state = {}
-        if not self.instance:
-            self.created = True
         try:
+            self._initial_state = {}
+            if not self.instance:
+                self.created = True
             self.instance = self.model_class(**self._kwargs)
         except TypeError as ex:
             raise errors.DesignImplementationError(str(ex), self.model_class)
