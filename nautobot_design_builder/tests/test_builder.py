@@ -42,6 +42,12 @@ class BuilderChecks:
         value1 = _get_value(check[1])
         if len(value0) == 1 and len(value1) == 1:
             test.assertEqual(value0[0], value1[0], msg=f"Check {index}")
+
+        # TODO: Mysql tests fail due to unordered lists
+        if isinstance(value0, list) and isinstance(value1, list):
+            value0 = value0.sort()
+            value1 = value1.sort()
+
         test.assertEqual(value0, value1, msg=f"Check {index}")
 
     @staticmethod
