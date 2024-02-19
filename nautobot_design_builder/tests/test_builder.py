@@ -45,10 +45,11 @@ class BuilderChecks:
 
         # TODO: Mysql tests fail due to unordered lists
         if isinstance(value0, list) and isinstance(value1, list):
-            value0 = value0.sort()
-            value1 = value1.sort()
-
-        test.assertEqual(value0, value1, msg=f"Check {index}")
+            test.assertEqual(len(value0), len(value1))
+            for item0 in value0:
+                test.assertIn(item0, value1)
+        else:
+            test.assertEqual(value0, value1, msg=f"Check {index}")
 
     @staticmethod
     def check_model_exists(test, check, index):
