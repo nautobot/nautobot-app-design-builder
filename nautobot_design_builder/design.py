@@ -26,7 +26,7 @@ from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
 from nautobot_design_builder import models
 from nautobot_design_builder.constants import NAUTOBOT_ID
-from nautobot_design_builder.util import nautobot_version
+from nautobot_design_builder.util import nautobot_version, custom_delete_order
 from nautobot_design_builder.recursive import inject_nautobot_uuids, get_object_identifier
 
 
@@ -435,7 +435,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         except TypeError as ex:
             raise errors.DesignImplementationError(str(ex), self.model_class)
 
-    def _update_fields(self, output_dict):  # pylint: disable=too-many-branches
+    def _update_fields(self):  # pylint: disable=too-many-branches
         if self.action == self.GET and self.attributes:
             raise ValueError("Cannot update fields when using the GET action")
 
@@ -446,13 +446,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     self.deferred.append(field_name)
                     self.deferred_attributes[field_name] = self.creator.resolve_values(value)
                 else:
-                    field.set_value(value, output_dict)
+                    field.set_value(value)
             elif (
                 hasattr(self.relationship_manager, "field")
                 and (isinstance(field, (OneToOneField, ManyToOneField)))
                 and self.instance_fields[field_name].field == self.relationship_manager.field
             ):
-                field.set_value(self.relationship_manager.instance, output_dict)
+                field.set_value(self.relationship_manager.instance)
 
         for key, value in self.attributes.items():
             if hasattr(self.instance, key):
@@ -469,7 +469,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         # deferring the update until just before save, we can
         # ensure that parent instances have been saved and
         # assigned a primary key
-        self._update_fields(output_dict)
+        self._update_fields()
         self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
 
         msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
@@ -509,7 +509,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
                 self.instance.refresh_from_db()
 
-                field.set_value(related_object.instance, item_dict)
+                field.set_value(related_object.instance)
         self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
         output_dict[NAUTOBOT_ID] = str(self.instance.id)
 
@@ -640,8 +640,9 @@ class Builder(LoggingMixin):
                 elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
 
-            for _, value in deprecated_design.items():
-                self._deprecate_objects(value)
+            sorted_keys = sorted(deprecated_design, key=custom_delete_order)
+            for key in sorted_keys:
+                self._deprecate_objects(deprecated_design[key])
 
             if commit:
                 self.commit()

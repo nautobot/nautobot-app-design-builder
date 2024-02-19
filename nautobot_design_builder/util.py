@@ -322,6 +322,34 @@ def get_design_class(path: str, module_name: str, class_name: str) -> Type["Desi
     return getattr(module, class_name)
 
 
+def custom_delete_order(key: str) -> int:
+    """Helper function to customize the order to decommission objects following Nautobot data model.
+
+    Args:
+        key (str): key to evaluate.
+
+    Returns:
+        (int): represents the ordering .
+    """
+    ordered_list = [
+        "tags",
+        "ip_addresses",
+        "prefixes",
+        "vrf",
+        "inventoryitems",
+        "interfaces",
+        "devices",
+        "racks",
+        "locations",
+        "sites",
+        "regions",
+    ]
+    if key in ordered_list:
+        return ordered_list.index(key)
+    # If not covered, return the lowest
+    return 0
+
+
 @functools.total_ordering
 class _NautobotVersion:
     """Utility for comparing Nautobot versions."""

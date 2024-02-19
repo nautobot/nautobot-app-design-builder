@@ -1,30 +1,30 @@
 ---
 sites:
-  - name: "{{ site_name }}"
+  - "!create_or_update:name": "{{ site_name }}"
     region__slug: "{{ region.slug }}"
     status__name: "Planned"
     "!ref": "site"
 
 racks:
-  - name: "{{ site_name }}-101"
+  - "!create_or_update:name": "{{ site_name }}-101"
     "!ref": "rack1"
     site: "!ref:site"
     status__name: "Planned"
 
-  - name: "{{ site_name }}-201"
+  - "!create_or_update:name": "{{ site_name }}-201"
     "!ref": "rack2"
     site: "!ref:site"
     status__name: "Planned"
 
 {% macro inventory_item(name, part_id, description) -%}
-      - name: "{{ name }}"
+      - "!create_or_update:name": "{{ name }}"
         manufacturer__slug: "juniper"
         part_id: "{{ part_id }}"
         description: "{{ description }}"
 {% endmacro %}
 
 {% macro device(device_name, rack_ref, lo_address) -%}
-  - name: "{{ device_name }}.{{ site_name | lower }}"
+  - "!create_or_update:name": "{{ device_name }}.{{ site_name | lower }}"
     site: "!ref:site"
     device_type__slug: "ptx10016"
     device_role__slug: "core_router"
@@ -43,7 +43,7 @@ racks:
       {{ inventory_item("SIB 4", "JNP10016-SF3", "Switch Fabric 3") }}
       {{ inventory_item("SIB 5", "JNP10016-SF3", "Switch Fabric 3") }}
     interfaces:
-      - name: "lo0.0"
+      - "!create_or_update:name": "lo0.0"
         status__name: "Planned"
         type: "virtual"
         ip_addresses:
