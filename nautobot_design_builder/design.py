@@ -561,6 +561,7 @@ class Builder(LoggingMixin):
         # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
         self.builder_output = {}
         self.job_result = job_result
+        self.logger = get_logger(__name__, self.job_result)
 
         self.extensions = {
             "extensions": [],
@@ -589,9 +590,7 @@ class Builder(LoggingMixin):
 
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""
-        self.journal.design_journal.design_instance.decommission(
-            local_logger=get_logger(__name__, self.job_result), object_id=object_id
-        )
+        self.journal.design_journal.design_instance.decommission(local_logger=self.logger, object_id=object_id)
         self.log_success(
             message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.design_instance}."
         )
