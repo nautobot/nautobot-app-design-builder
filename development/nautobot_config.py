@@ -25,6 +25,9 @@ if DEBUG and not _TESTING:
     if "debug_toolbar.middleware.DebugToolbarMiddleware" not in MIDDLEWARE:  # noqa: F405
         MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")  # noqa: F405
 
+# FIXME: Add documentation to add it to Nautobot deployments
+MIDDLEWARE.append("nautobot_design_builder.middleware.PreDeleteMiddleware")  # noqa: F405
+
 #
 # Misc. settings
 #
@@ -173,6 +176,8 @@ PLUGINS_CONFIG = {
     "nautobot_design_builder": {
         "context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None),
         "pre_decommission_hook": pre_decommission_hook_example,
+        "protected_models": [],
+        "protected_superuser_bypass": True,
     }
 }
 

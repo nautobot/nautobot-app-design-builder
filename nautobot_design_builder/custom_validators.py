@@ -1,4 +1,9 @@
-from nautobot.extras.plugins import CustomValidator, PluginCustomValidator
+"""Design Builder custom validators to protect refernced objects."""
+
+from django.conf import settings
+from nautobot.extras.registry import registry
+from nautobot.extras.plugins import PluginCustomValidator
+from nautobot_design_builder.models import JournalEntry
 
 
 class BaseValidator(PluginCustomValidator):
@@ -6,54 +11,71 @@ class BaseValidator(PluginCustomValidator):
 
     model = None
 
-    def clean(self, exclude_disabled_rules=True):
+    def clean(self):
         """The clean method executes the actual rule enforcement logic for each model."""
+        if (
+            settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_superuser_bypass"]
+            and self.context["user"].is_superuser
+        ):
+            return
+
         obj = self.context["object"]
+        obj_class = obj.__class__
 
-        _f = [True] if exclude_disabled_rules else [True, False]
+        # If it's a create operation there is nothing to protect against
+        if not obj.present_in_database:
+            return
 
-        # Min/Max rules
-        for rule in MinMaxValidationRule.objects.get_for_model(self.model).filter(enabled__in=_f):
-            field_value = getattr(obj, rule.field)
+        existing_object = obj_class.objects.get(id=obj.id)
 
-            if field_value is None:
-                self.validation_error(
-                    {
-                        rule.field: rule.error_message
-                        or f"Value does not conform to mix/max validation: min {rule.min}, max {rule.max}"
-                    }
-                )
+        # TODO: the update of region drops some info like the parent region!!!
+        # TODO: how to protect local_context
 
-            elif not isinstance(field_value, (int, float)):
-                self.validation_error(
-                    {
-                        rule.field: f"Unable to validate against min/max rule {rule} because the field value is not numeric."
-                    }
-                )
+        # TODO: how to manage updates of designs?, we should know if this comes from a design instance
+        for journal_entry in JournalEntry.objects.filter(
+            _design_object_id=obj.id, active=True
+        ).exclude_decommissioned():
 
-            elif rule.min is not None and field_value is not None and field_value < rule.min:
-                self.validation_error(
-                    {rule.field: rule.error_message or f"Value is less than minimum value: {rule.min}"}
-                )
+            for attribute in obj._meta.fields:
+                attribute_name = attribute.name
 
-            elif rule.max is not None and field_value is not None and field_value > rule.max:
-                self.validation_error(
-                    {rule.field: rule.error_message or f"Value is more than maximum value: {rule.max}"}
-                )
+                # Excluding private attributes
+                if attribute_name.startswith("_"):
+                    continue
+
+                if getattr(obj, attribute_name) != getattr(existing_object, attribute_name):
+                    if (
+                        attribute_name in journal_entry.changes["differences"].get("added", {})
+                        and journal_entry.changes["differences"]["added"][attribute_name]
+                    ):
+                        # If the update is coming from the design instance owner, it can be updated
+                        if (
+                            hasattr(obj, "_current_design")
+                            and obj._current_design  # pylint: disable=protected-access
+                            == journal_entry.journal.design_instance
+                        ):
+                            continue
+
+                        self.validation_error(
+                            {
+                                attribute_name: f"The attribute is managed by the Design Instance {journal_entry.journal.id}"
+                            }
+                        )
 
 
-class CustomValidatorIterator:
+class CustomValidatorIterator:  # pylint: disable=too-few-public-methods
     """Iterator that generates PluginCustomValidator classes for each model registered in the extras feature query registry 'custom_validators'."""
 
     def __iter__(self):
         """Return a generator of PluginCustomValidator classes for each registered model."""
         for app_label, models in registry["model_features"]["custom_validators"].items():
             for model in models:
-                yield type(
-                    f"{app_label.capitalize()}{model.capitalize()}CustomValidator",
-                    (BaseValidator,),
-                    {"model": f"{app_label}.{model}"},
-                )
+                if (app_label, model) in settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_models"]:
+                    yield type(
+                        f"{app_label.capitalize()}{model.capitalize()}CustomValidator",
+                        (BaseValidator,),
+                        {"model": f"{app_label}.{model}"},
+                    )
 
 
 custom_validators = CustomValidatorIterator()

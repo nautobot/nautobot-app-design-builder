@@ -474,6 +474,9 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
         msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
         try:
+            self.instance._current_design = (  # pylint: disable=protected-access
+                self.creator.journal.design_journal.design_instance
+            )
             self.instance.full_clean()
             self.instance.save()
             if self.parent is None:
@@ -612,6 +615,7 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
+    # TODO: this is a breaking change that needs to be revisited because it's used by Django commands directly
     @transaction.atomic
     def implement_design_changes(self, design: Dict, deprecated_design: Dict, design_file: str, commit: bool = False):
         """Iterates through items in the design and creates them.
