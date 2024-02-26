@@ -390,6 +390,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         query_filter = _map_query_values(self.filter)
         if self.action == self.GET:
             self.instance = self.model_class.objects.get(**query_filter)
+            self._initial_state = serialize_object_v2(self.instance)
             return
 
         if self.action in [self.UPDATE, self.CREATE_OR_UPDATE]:
