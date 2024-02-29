@@ -19,19 +19,19 @@ menu_items = (
                     NavMenuItem(
                         link="plugins:nautobot_design_builder:design_list",
                         name="Designs",
-                        permissions=["nautobot_design_builder.view_designs"],
+                        permissions=["nautobot_design_builder.view_design"],
                         buttons=(),
                     ),
                     NavMenuItem(
                         link="plugins:nautobot_design_builder:designinstance_list",
                         name="Design Instances",
-                        permissions=["nautobot_design_builder.view_designinstances"],
+                        permissions=["nautobot_design_builder.view_designinstance"],
                         buttons=(),
                     ),
                     NavMenuItem(
                         link="plugins:nautobot_design_builder:journal_list",
                         name="Journals",
-                        permissions=["design_builder.view_journals"],
+                        permissions=["nautobot_design_builder.view_journal"],
                         buttons=(),
                     ),
                 ),
