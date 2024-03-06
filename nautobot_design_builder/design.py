@@ -3,7 +3,7 @@ from types import FunctionType
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
-from django.db.models import Model, Manager
+from django.db.models import Model, Manager, ForeignKey
 from django.db.models.fields import Field as DjangoField
 from django.dispatch.dispatcher import Signal
 from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
@@ -15,7 +15,7 @@ from nautobot.extras.models import JobResult, Relationship
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin
-from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
+from nautobot_design_builder.fields import field_factory
 
 
 class Journal:
@@ -57,7 +57,7 @@ class Journal:
         if instance.pk not in self.index:
             self.index.add(instance.pk)
 
-            if model.created:
+            if model._created:
                 index = self.created
             else:
                 index = self.updated
@@ -97,7 +97,43 @@ def _map_query_values(query: Mapping) -> Mapping:
     return retval
 
 
-class ModelInstance:  # pylint: disable=too-many-instance-attributes
+class ModelClass:
+    name: str
+    model_class: Type[Model]
+    instance_fields: Dict[str, Any]
+
+    def refresh_custom_relationships(self):
+        for direction in Relationship.objects.get_for_model(self.model_class):
+            for relationship in direction:
+                field = field_factory(self, relationship)
+                field.__set_name__(self, relationship.slug)
+                self.__class__.instance_fields[relationship.slug] = field
+                setattr(self.__class__, relationship.slug, field)
+
+    @classmethod
+    def has_field(cls, key):
+        return hasattr(cls.model_class, key) or key in cls.instance_fields
+
+    def __str__(self):
+        return str(self.model_class)
+
+    @classmethod
+    def factory(cls, django_class: Type[Model]):
+        cls_attributes = {
+            "model_class": django_class,
+            "name": django_class.__name__,
+            "instance_fields": {},
+        }
+
+        field: DjangoField
+        for field in django_class._meta.get_fields():
+            cls_attributes[field.name] = field_factory(None, field)
+            cls_attributes["instance_fields"][field.name] = cls_attributes[field.name]
+        model_class = type(django_class.__name__, (ModelInstance,), cls_attributes)
+        return model_class
+
+
+class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
     """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file."""
 
     # Action Definitions
@@ -115,40 +151,30 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         creator: "Builder",
-        model_class: Type[Model],
         attributes: dict,
         relationship_manager=None,
         parent=None,
     ):  # pylint:disable=too-many-arguments
         """Constructor for a ModelInstance."""
         self.creator = creator
-        self.model_class = model_class
-        self.name = model_class.__name__
         self.instance: Model = None
         # Make a copy of the attributes so the original
         # design attributes are not overwritten
         self.attributes = {**attributes}
         self.parent = parent
         self.deferred = []
+        self.deferred_saves = []
         self.deferred_attributes = {}
         self.signals = {
             self.PRE_SAVE: Signal(),
             self.POST_SAVE: Signal(),
         }
 
-        self.filter = {}
-        self.action = None
-        self.instance_fields = {}
+        self._filter = {}
+        self._action = None
         self._kwargs = {}
-        for direction in Relationship.objects.get_for_model(model_class):
-            for relationship in direction:
-                self.instance_fields[relationship.slug] = field_factory(self, relationship)
-
-        field: DjangoField
-        for field in self.model_class._meta.get_fields():
-            self.instance_fields[field.name] = field_factory(self, field)
-
-        self.created = False
+        self.refresh_custom_relationships()
+        self._created = False
         self._parse_attributes()
         self.relationship_manager = relationship_manager
         if self.relationship_manager is None:
@@ -163,7 +189,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     def create_child(
         self,
-        model_class: Type[Model],
+        model_class: ModelClass,
         attributes: Dict,
         relationship_manager: Manager = None,
     ) -> "ModelInstance":
@@ -177,17 +203,28 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         Returns:
             ModelInstance: Model instance that has its parent correctly set.
         """
-        return ModelInstance(
-            self.creator,
-            model_class,
-            attributes,
-            relationship_manager,
-            parent=self,
-        )
+        if not issubclass(model_class, ModelClass):
+            model_class = self.creator.model_class_index[model_class]
+        try:
+            return model_class(
+                self.creator,
+                attributes,
+                relationship_manager,
+                parent=self,
+            )
+        except MultipleObjectsReturned:
+            # pylint: disable=raise-missing-from
+            raise errors.DesignImplementationError(
+                f"Expected exactly 1 object for {model_class.__name__}({attributes}) but got more than one"
+            )
+        except ObjectDoesNotExist:
+            query = ",".join([f'{k}="{v}"' for k, v in attributes.items()])
+            # pylint: disable=raise-missing-from
+            raise errors.DesignImplementationError(f"Could not find {model_class.__name__}: {query}")
+
 
     def _parse_attributes(self):  # pylint: disable=too-many-branches
         self.custom_fields = self.attributes.pop("custom_fields", {})
-        self.custom_relationships = self.attributes.pop("custom_relationships", {})
         attribute_names = list(self.attributes.keys())
         while attribute_names:
             key = attribute_names.pop(0)
@@ -198,7 +235,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
                 extn = self.creator.get_extension("attribute", args[0])
                 if extn:
-                    result = extn.attribute(*args[1:], value=self.creator.resolve_values(value), model_instance=self)
+                    result = extn.attribute(*args[1:], value=value, model_instance=self)
                     if isinstance(result, tuple):
                         self.attributes[result[0]] = result[1]
                     elif isinstance(result, dict):
@@ -207,14 +244,14 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                     elif result is not None:
                         raise errors.DesignImplementationError(f"Cannot handle extension return type {type(result)}")
                 elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
-                    self.action = args[0]
-                    self.filter[args[1]] = value
+                    self._action = args[0]
+                    self._filter[args[1]] = value
 
-                    if self.action is None:
-                        self.action = args[0]
-                    elif self.action != args[0]:
+                    if self._action is None:
+                        self._action = args[0]
+                    elif self._action != args[0]:
                         raise errors.DesignImplementationError(
-                            f"Can perform only one action for a model, got both {self.action} and {args[0]}",
+                            f"Can perform only one action for a model, got both {self._action} and {args[0]}",
                             self.model_class,
                         )
                 else:
@@ -223,18 +260,17 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 fieldname, search = key.split("__", 1)
                 if not hasattr(self.model_class, fieldname):
                     raise errors.DesignImplementationError(f"{fieldname} is not a property", self.model_class)
-                self.attributes[fieldname] = {search: self.attributes.pop(key)}
-            elif not hasattr(self.model_class, key) and key not in self.instance_fields:
-                value = self.creator.resolve_values(self.attributes.pop(key))
+                self.attributes[fieldname] = {f"!get:{search}": self.attributes.pop(key)}
+            elif not hasattr(self, key):
+                value = self.attributes.pop(key)
                 if isinstance(value, ModelInstance):
                     value = value.instance
                 self._kwargs[key] = value
-                # raise errors.DesignImplementationError(f"{key} is not a property", self.model_class)
 
-        if self.action is None:
-            self.action = self.CREATE
-        if self.action not in self.ACTION_CHOICES:
-            raise errors.DesignImplementationError(f"Unknown action {self.action}", self.model_class)
+        if self._action is None:
+            self._action = self.CREATE
+        if self._action not in self.ACTION_CHOICES:
+            raise errors.DesignImplementationError(f"Unknown action {self._action}", self.model_class)
 
     def connect(self, signal: Signal, handler: FunctionType):
         """Connect a handler between this model instance (as sender) and signal.
@@ -246,12 +282,12 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         self.signals[signal].connect(handler, self)
 
     def _load_instance(self):
-        query_filter = _map_query_values(self.filter)
-        if self.action == self.GET:
+        query_filter = _map_query_values(self._filter)
+        if self._action == self.GET:
             self.instance = self.model_class.objects.get(**query_filter)
             return
 
-        if self.action in [self.UPDATE, self.CREATE_OR_UPDATE]:
+        if self._action in [self.UPDATE, self.CREATE_OR_UPDATE]:
             # perform nested lookups. First collect all the
             # query params for top-level relationships, then
             # perform the actual lookup
@@ -266,8 +302,13 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 if isinstance(value, Mapping):
                     rel = getattr(self.model_class, query_param)
                     queryset = rel.get_queryset()
-                    model = self.create_child(queryset.model, value, relationship_manager=queryset)
-                    if model.action != self.GET:
+
+                    model = self.create_child(
+                        self.creator.model_class_index[queryset.model],
+                        value,
+                        relationship_manager=queryset,
+                    )
+                    if model._action != self.GET:
                         model.save()
                     query_filter[query_param] = model.instance
 
@@ -275,43 +316,36 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
                 self.instance = self.relationship_manager.get(**query_filter)
                 return
             except ObjectDoesNotExist:
-                if self.action == "update":
+                if self._action == "update":
                     # pylint: disable=raise-missing-from
                     raise errors.DesignImplementationError(f"No match with {query_filter}", self.model_class)
-                self.created = True
+                self._created = True
                 # since the object was not found, we need to
                 # put the search criteria back into the attributes
                 # so that they will be set when the object is created
                 self.attributes.update(query_filter)
-        elif self.action != "create":
-            raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
+        elif self._action != "create":
+            raise errors.DesignImplementationError(f"Unknown database action {self._action}", self.model_class)
         try:
             self.instance = self.model_class(**self._kwargs)
+            self._created = True
         except TypeError as ex:
             raise errors.DesignImplementationError(str(ex), self.model_class)
 
     def _update_fields(self):  # pylint: disable=too-many-branches
-        if self.action == self.GET and self.attributes:
+        if self._action == self.GET and self.attributes:
             raise ValueError("Cannot update fields when using the GET action")
 
-        for field_name, field in self.instance_fields.items():
-            if field_name in self.attributes:
-                value = self.attributes.pop(field_name)
+        for field_name, value in self.attributes.items():
+            if field_name in self.instance_fields:
+                field = self.instance_fields[field_name]
                 if field.deferrable:
                     self.deferred.append(field_name)
                     self.deferred_attributes[field_name] = self.creator.resolve_values(value)
                 else:
-                    field.set_value(value)
-            elif (
-                hasattr(self.relationship_manager, "field")
-                and (isinstance(field, (OneToOneField, ManyToOneField)))
-                and self.instance_fields[field_name].field == self.relationship_manager.field
-            ):
-                field.set_value(self.relationship_manager.instance)
-
-        for key, value in self.attributes.items():
-            if hasattr(self.instance, key):
-                setattr(self.instance, key, value)
+                    setattr(self, field.field_name, value)
+            elif hasattr(self.instance, field_name):
+                setattr(self.instance, field_name, value)
 
         for key, value in self.custom_fields.items():
             self.set_custom_field(key, value)
@@ -334,31 +368,40 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             if self.parent is None:
                 self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
             self.creator.journal.log(self)
+            # Refresh from DB so that we update based on any
+            # post save signals that may have fired.
             self.instance.refresh_from_db()
         except ValidationError as validation_error:
             raise errors.DesignValidationError(self) from validation_error
 
         for field_name in self.deferred:
             items = self.deferred_attributes[field_name]
-            if isinstance(items, dict):
+            if isinstance(items, (dict, Model, ModelInstance)):
                 items = [items]
 
             for item in items:
                 field = self.instance_fields[field_name]
-                if isinstance(item, ModelInstance):
+                if isinstance(item, (Model, ModelInstance)):
                     related_object = item
                 else:
-                    relationship_manager = None
-                    if hasattr(self.instance, field_name):
-                        relationship_manager = getattr(self.instance, field_name)
-                    related_object = self.create_child(field.model, item, relationship_manager)
+                    relationship_manager = getattr(self.instance, field_name, None)
+                    if relationship_manager and getattr(relationship_manager, "field", None):
+                        item[relationship_manager.field.name] = self.instance
+                    related_object = self.create_child(
+                        self.creator.model_class_index[field.related_model],
+                        item,
+                        relationship_manager,
+                    )
                 related_object.save()
                 # BEWARE
                 # DO NOT REMOVE THE FOLLOWING LINE, IT WILL BREAK THINGS
                 # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
                 self.instance.refresh_from_db()
+                if isinstance(related_object, Model):
+                    setattr(self, field.field_name, related_object)
+                else:
+                    setattr(self, field.field_name, related_object.instance)
 
-                field.set_value(related_object.instance)
         self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
 
     def set_custom_field(self, field, value):
@@ -388,17 +431,20 @@ class Builder(LoggingMixin):
     """Iterates through a design and creates and updates the objects defined within."""
 
     model_map: Dict[str, Type[Model]]
+    model_class_index: Dict[Type, "ModelClass"]
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder initialized."""
         # only populate the model_map once
         if not hasattr(cls, "model_map"):
             cls.model_map = {}
+            cls.model_class_index = {}
             for model_class in apps.get_models():
                 if model_class._meta.app_label in _OBJECT_TYPES_APP_FILTER:
                     continue
                 plural_name = str_to_var_name(model_class._meta.verbose_name_plural)
-                cls.model_map[plural_name] = model_class
+                cls.model_map[plural_name] = ModelClass.factory(model_class)
+                cls.model_class_index[model_class] = cls.model_map[plural_name]
         return object.__new__(cls)
 
     def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None):
@@ -518,11 +564,11 @@ class Builder(LoggingMixin):
 
     def _create_objects(self, model_cls, objects):
         if isinstance(objects, dict):
-            model = ModelInstance(self, model_cls, objects)
+            model = model_cls(self, objects)
             model.save()
         elif isinstance(objects, list):
             for model_instance in objects:
-                model = ModelInstance(self, model_cls, model_instance)
+                model = model_cls(self, model_instance)
                 model.save()
 
     def commit(self):

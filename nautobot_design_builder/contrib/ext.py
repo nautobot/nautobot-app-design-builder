@@ -12,7 +12,7 @@ from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
 import netaddr
-from nautobot_design_builder.design import Builder
+from nautobot_design_builder.design import Builder, ModelClass
 from nautobot_design_builder.design import ModelInstance
 
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
@@ -290,9 +290,8 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
 
         model_instance.deferred.append("cable")
         model_instance.deferred_attributes["cable"] = [
-            model_instance.__class__(
+            self.builder.model_class_index[dcim.Cable](
                 self.builder,
-                model_class=dcim.Cable,
                 attributes=cable_attributes,
             )
         ]
@@ -468,8 +467,8 @@ class BGPPeeringExtension(AttributeExtension):
         try:
             from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
 
-            self.PeerEndpoint = PeerEndpoint  # pylint:disable=invalid-name
-            self.Peering = Peering  # pylint:disable=invalid-name
+            self.PeerEndpoint = ModelClass.factory(PeerEndpoint)  # pylint:disable=invalid-name
+            self.Peering = ModelClass.factory(Peering)  # pylint:disable=invalid-name
         except ModuleNotFoundError:
             # pylint:disable=raise-missing-from
             raise DesignImplementationError(
@@ -532,14 +531,14 @@ class BGPPeeringExtension(AttributeExtension):
         # copy the value so it won't be modified in later
         # use
         retval = {**value}
-        endpoint_a = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_a"))
-        endpoint_z = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_z"))
+        endpoint_a = self.PeerEndpoint(self.builder, retval.pop("endpoint_a"))
+        endpoint_z = self.PeerEndpoint(self.builder, retval.pop("endpoint_z"))
         peering_a = None
         peering_z = None
         try:
             peering_a = endpoint_a.instance.peering
             peering_z = endpoint_z.instance.peering
-        except self.Peering.DoesNotExist:
+        except self.Peering.model_class.DoesNotExist:
             pass
 
         # try to prevent empty peerings
