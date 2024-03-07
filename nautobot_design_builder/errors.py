@@ -79,7 +79,7 @@ class DesignModelError(Exception):
                 # hasn't been set or something. Whatever it is commonly is
                 # the cause of the original exception, we don't want to
                 # cause *another* exception because of that.
-                instance_str = model.__class__.__name__
+                instance_str = "unknown"
         model_str = model_class._meta.verbose_name.capitalize()
         if instance_str:
             model_str = f"{model_str} {instance_str}"
@@ -111,8 +111,8 @@ class DesignModelError(Exception):
         model = self.model
         while model is not None:
             path_msg.insert(0, DesignModelError._model_str(model))
-            if not isclass(model) and hasattr(model, "parent"):
-                model = model.parent
+            if not isclass(model) and hasattr(model, "_parent"):
+                model = model._parent
             elif self.parent:
                 model = self.parent
                 self.parent = None
@@ -192,7 +192,7 @@ class DesignQueryError(DesignModelError):
         elif self.query_filter:
             msg.append(DesignModelError._object_to_markdown(self.query_filter, indentation=f"{indentation}    "))
         else:
-            msg.append(DesignModelError._object_to_markdown(self.model.filter, indentation=f"{indentation}    "))
+            msg.append(DesignModelError._object_to_markdown(self.model._filter, indentation=f"{indentation}    "))
         return "\n".join(msg)
 
 

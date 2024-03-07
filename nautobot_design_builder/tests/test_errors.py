@@ -18,7 +18,7 @@ class TestDesignModelError(unittest.TestCase):
             self.model_class = self
             self._meta = self
             self.verbose_name = "verbose name"
-            self.parent = parent
+            self._parent = parent
 
         def __str__(self):
             return self.title

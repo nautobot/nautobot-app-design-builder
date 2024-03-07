@@ -1,6 +1,7 @@
 """Model fields."""
 from abc import ABC, abstractmethod
-from typing import Mapping, Type
+from functools import partial
+from typing import Mapping, Type, TYPE_CHECKING
 
 from django.db import models as django_models
 from django.contrib.contenttypes.models import ContentType
@@ -13,6 +14,58 @@ from nautobot.extras.models import Relationship, RelationshipAssociation
 
 from nautobot_design_builder.errors import DesignImplementationError
 
+if TYPE_CHECKING:
+    from .design import ModelInstance
+
+indent = ""
+DEBUG = False
+class ObjDetails:
+    def __init__(self, obj):
+        self.instance = obj
+        if hasattr(obj, "instance"):
+            self.instance = obj.instance
+        try:
+            description = str(obj)
+            if description.startswith("<class"):
+                description = None
+        except Exception:
+            description = None
+        
+        self.obj = obj
+        self.obj_class = obj.__class__.__name__
+        self.obj_id = str(getattr(self.instance, "id", None))
+        if hasattr(self.instance, "name"):
+            self.name = getattr(self.instance, "name")
+        else:
+            self.name = None
+        self.description = description
+
+    def __str__(self):
+        if isinstance(self.instance, django_models.Model):
+            string = self.obj_class + " "
+            if self.name is not None:
+                string += '"' + self.name + '"' + ":"
+            elif self.description:
+                string += self.description + ":"
+            string += self.obj_id
+            return string
+        elif isinstance(self.instance, dict):
+            return str(self.obj)
+        return self.description or self.name or self.obj_class
+
+def debug(wrapped):
+    def wrapper(self, obj, value, *args, **kwargs):
+        obj_details = ObjDetails(obj)
+        value_details = ObjDetails(value)
+        global indent
+        print(indent, self.__class__.__name__, "setting", self.field_name, "on", obj_details, "to", value_details)
+        indent += "  "
+        wrapped(self, obj, value, *args, **kwargs)
+        indent = indent[0:-2]
+        print(indent, "Exit", self.__class__.__name__)
+    if DEBUG:
+        return wrapper
+    return wrapped
 
 class ModelField(ABC):
     """This represents any type of field (attribute or relationship) on a Nautobot model.
@@ -32,17 +85,12 @@ class ModelField(ABC):
         return getattr(obj.instance, self.field_name)
 
     @abstractmethod
-    def __set__(self, obj, value):
+    def __set__(self, obj: "ModelInstance", value):
         """Method used to set the value of the field.
 
         Args:
             value (Any): Value that should be set on the model field.
         """
-
-    @property
-    @abstractmethod
-    def deferrable(self):
-        """Determine whether the saving of this field should be deferred."""
 
 
 class BaseModelField(ModelField):
@@ -50,7 +98,6 @@ class BaseModelField(ModelField):
 
     field: django_models.Field
     related_model: Type[object]
-    deferrable = False
 
     def __init__(self, model_class, field: django_models.Field):
         """Create a base model field.
@@ -68,55 +115,53 @@ class BaseModelField(ModelField):
 class SimpleField(BaseModelField):
     """A field that accepts a scalar value."""
 
-    def __set__(self, obj, value):  # noqa:D102
+    @debug
+    def __set__(self, obj: "ModelInstance", value):  # noqa:D102
         setattr(obj.instance, self.field_name, value)
 
 
 class RelationshipField(BaseModelField):
     """Field that represents a relationship to another model."""
-    deferrable = True
 
-    def _get_instance(self, obj, value):
+    def _get_instance(self, obj:"ModelInstance", value, relationship_manager=None):
         if isinstance(value, Mapping):
-            value = obj.create_child(self.related_model, value)
-            if value._created:
-                value.save()
-            value = value.instance
-        if hasattr(value, "instance"):
-            value = value.instance
-        elif value is not None and not isinstance(value, django_models.Model):
-            raise DesignImplementationError(
-                f"Expecting input field '{self.field.name}' to be a mapping or reference, got {type(value)}: {value}"
-            )
+            value = obj.create_child(self.related_model, value, relationship_manager)
         return value
 
 
 class ForeignKeyField(RelationshipField):
     """One to one relationship field."""
 
-    @property
-    def deferrable(self):
-        return self.field.null and self.field.blank
+    @debug
+    def __set__(self, obj: "ModelInstance", value):  # noqa:D102
+        @debug
+        def setter(self, obj:"ModelInstance", value:"ModelInstance", save=False):
+            value = self._get_instance(obj, value)
+            if value._created:
+                value.save()
+            value: django_models.Model = value.instance
+            setattr(obj.instance, self.field_name, value)
+            if save:
+                obj.instance.save(update_fields=[self.field_name])
 
-    def __set__(self, obj, value):  # noqa:D102
-        setattr(obj.instance, self.field_name, self._get_instance(obj, value))
-        if self.deferrable:
-            obj.instance.save()
+        if getattr(value, "deferred", False):
+            obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value, True))
+        else:
+            setter(self, obj, value)
 
 class RelatedForeignKeyField(RelationshipField):
     """One to one relationship field."""
 
-    def __set__(self, obj, value):  # noqa:D102
-        if hasattr(value, "instance"):
-            value = value.instance
-        elif not isinstance(value, (type(None), django_models.Model)):
-            raise DesignImplementationError(
-                f"Expecting input field '{self.field.name}' to be a mapping or reference, got {type(value)}: {value}"
-            )
+    @debug
+    def __set__(self, obj:"ModelInstance", values):  # noqa:D102
+        @debug
+        def setter(self, obj:"ModelInstance", value):
+            value = self._get_instance(obj, value, getattr(obj, self.field_name))
+            setattr(value.instance, self.field.field.name, obj.instance)
+            value.save()
 
-        setattr(value, self.field.field.name, obj.instance)
-        value.save()
-
+        for value in values:
+            obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value))
 
 class ManyToManyField(RelationshipField):
     """Many to many relationship field."""
@@ -128,8 +173,17 @@ class ManyToManyField(RelationshipField):
             if not through._meta.auto_created:
                 self.related_model = through
 
-    def __set__(self, obj, value):  # noqa:D102
-        getattr(obj.instance, self.field_name).add(value)
+    @debug
+    def __set__(self, obj:"ModelInstance", values):  # noqa:D102
+        @debug
+        def setter(self, obj:"ModelInstance", value):
+            value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
+            if value._created:
+                value.save()
+            getattr(obj.instance, self.field_name).add(value.instance)
+
+        for value in values:
+            obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value))
 
 
 class RelatedManyToManyField(RelationshipField):
@@ -142,33 +196,38 @@ class RelatedManyToManyField(RelationshipField):
             if not through._meta.auto_created:
                 self.related_model = through
 
-    def __set__(self, obj, value):  # noqa:D102
-        getattr(obj.instance, self.field_name).add(value)
+    @debug
+    def __set__(self, obj:"ModelInstance", value):  # noqa:D102
+        @debug
+        def setter(self, obj:"ModelInstance", value):
+            # TODO: should this be reversed based on how ManyToManyField works?
+            #       if not, can this class be eliminated completely?
+            getattr(obj.instance, self.field_name).add(value)
+        obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value))
 
 
 class GenericRelationField(RelationshipField):
     """Generic relationship field."""
 
-    deferrable = False
-
-    def __set__(self, obj, values):  # noqa:D102
+    @debug
+    def __set__(self, obj:"ModelInstance", values):  # noqa:D102
         if not isinstance(values, list):
             values = [values]
         for value in values:
-            getattr(obj.instance, self.field_name).add(self._get_instance(obj, value))
+            value = self._get_instance(obj, value)
+            if value._created:
+                value.save()
+            getattr(obj.instance, self.field_name).add(value.instance)
 
 class GenericForeignKeyField(RelationshipField):
     """Generic foreign key field."""
 
-    deferrable = False
-
-    def __set__(self, obj, value):  # noqa:D102
+    @debug
+    def __set__(self, obj:"ModelInstance", value):  # noqa:D102
         fk_field = self.field.fk_field
         ct_field = self.field.ct_field
-        if hasattr(value, "instance"):
-            value = value.instance
-        setattr(obj.instance, fk_field, value.pk)
-        setattr(obj.instance, ct_field, ContentType.objects.get_for_model(value))
+        setattr(obj.instance, fk_field, value.instance.pk)
+        setattr(obj.instance, ct_field, ContentType.objects.get_for_model(value.instance))
 
 class TagField(ManyToManyField):
     """Taggit field."""
@@ -181,16 +240,13 @@ class TagField(ManyToManyField):
 class GenericRelField(RelationshipField):
     """Field used as part of content-types generic relation."""
 
-    deferrable = False
-
-    def __set__(self, obj, value):  # noqa:D102
+    @debug
+    def __set__(self, obj:"ModelInstance", value):  # noqa:D102
         setattr(obj.instance, self.field.attname, self._get_instance(obj, value))
 
 
-class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-methods
+class CustomRelationshipField(RelationshipField):  # pylint: disable=too-few-public-methods
     """This class models a Nautobot custom relationship."""
-
-    deferrable = True
 
     def __init__(self, model_class, relationship: Relationship):
         """Create a new custom relationship field.
@@ -212,27 +268,34 @@ class CustomRelationshipField(ModelField):  # pylint: disable=too-few-public-met
         else:
             self.related_model = relationship.source_type.model_class()
 
-    def __set__(self, obj, value):  # noqa:D102
+    @debug
+    def __set__(self, obj:"ModelInstance", values):  # noqa:D102
         """Add an association between the created object and the given value.
 
         Args:
             value (Model): The related object to add.
         """
-        source = obj.instance
-        destination = value
-        if self.relationship.source_type == ContentType.objects.get_for_model(value):
-            source = value
-            destination = obj.instance
+        def setter(self, obj:"ModelInstance", value):
+            value = self._get_instance(obj, value)
+            if value._created:
+                value.save()
 
-        source_type = ContentType.objects.get_for_model(source)
-        destination_type = ContentType.objects.get_for_model(destination)
-        RelationshipAssociation.objects.update_or_create(
-            relationship=self.relationship,
-            source_id=source.id,
-            source_type=source_type,
-            destination_id=destination.id,
-            destination_type=destination_type,
-        )
+            source = obj.instance
+            destination = value.instance
+            if self.relationship.source_type == ContentType.objects.get_for_model(destination):
+                source, destination = destination, source
+
+            source_type = ContentType.objects.get_for_model(source)
+            destination_type = ContentType.objects.get_for_model(destination)
+            RelationshipAssociation.objects.update_or_create(
+                relationship=self.relationship,
+                source_id=source.id,
+                source_type=source_type,
+                destination_id=destination.id,
+                destination_type=destination_type,
+            )
+        for value in values:
+            obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value))
 
 
 def field_factory(arg1, arg2) -> ModelField:

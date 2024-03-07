@@ -65,7 +65,10 @@ class LookupMixin:
             if isinstance(value, dict):
                 yield from LookupMixin._flatten(value, f"{prefix}{key}__")
             else:
-                yield (f"{prefix}{key}", value)
+                if isinstance(value, ModelInstance):
+                    yield (f"!get:{prefix}{key}", value.instance)
+                else:
+                    yield (f"!get:{prefix}{key}", value)
 
     @staticmethod
     def flatten_query(query: dict) -> Dict[str, Any]:
@@ -96,7 +99,7 @@ class LookupMixin:
         """
         return dict(LookupMixin._flatten(query))
 
-    def lookup(self, queryset, query, parent=None):
+    def lookup(self, queryset, query, parent: ModelInstance=None):
         """Perform a single object lookup from a queryset.
 
         Args:
@@ -113,10 +116,13 @@ class LookupMixin:
         Returns:
             Any: The object matching the query.
         """
-        query = self.builder.resolve_values(query, unwrap_model_instances=True)
+        query = self.builder.resolve_values(query)
         query = self.flatten_query(query)
         try:
-            return queryset.get(**query)
+            model_class = self.builder.model_class_index[queryset.model]
+            if parent:
+                return parent.create_child(model_class, query, queryset)
+            return model_class(self.builder, query, queryset)
         except ObjectDoesNotExist:
             # pylint: disable=raise-missing-from
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
@@ -241,8 +247,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             termination was found.
 
         Returns:
-            None: This tag does not return a value, as it adds a deferred object
-            representing the cable connection.
+            dict: All of the information needed to lookup or create a cable instance.
 
         Example:
             ```yaml
@@ -283,18 +288,12 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         cable_attributes.update(
             {
                 "termination_a": model_instance,
-                "!create_or_update:termination_b_type": ContentType.objects.get_for_model(remote_instance),
-                "!create_or_update:termination_b_id": remote_instance.id,
+                "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(remote_instance.instance).id,
+                "!create_or_update:termination_b_id": remote_instance.instance.id,
+                "deferred": True,
             }
         )
-
-        model_instance.deferred.append("cable")
-        model_instance.deferred_attributes["cable"] = [
-            self.builder.model_class_index[dcim.Cable](
-                self.builder,
-                attributes=cable_attributes,
-            )
-        ]
+        return ("cable", cable_attributes)
 
 
 class NextPrefixExtension(AttributeExtension):
@@ -475,15 +474,6 @@ class BGPPeeringExtension(AttributeExtension):
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
 
-    @staticmethod
-    def _post_save(sender, instance, **kwargs) -> None:  # pylint:disable=unused-argument
-        peering_instance: ModelInstance = instance
-        endpoint_a = peering_instance.instance.endpoint_a
-        endpoint_z = peering_instance.instance.endpoint_z
-        endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
-        endpoint_a.save()
-        endpoint_z.save()
-
     def attribute(self, value, model_instance) -> None:
         """This attribute tag creates or updates a BGP peering for two endpoints.
 
@@ -492,7 +482,7 @@ class BGPPeeringExtension(AttributeExtension):
         Design Builder syntax.
 
         Args:
-            value (dict): dictionary containing the keys `entpoint_a`
+            value (dict): dictionary containing the keys `endpoint_a`
             and `endpoint_z`. Both of these keys must be dictionaries
             specifying a way to either lookup or create the appropriate
             peer endpoints.
@@ -555,5 +545,13 @@ class BGPPeeringExtension(AttributeExtension):
         endpoint_a.attributes["peering"] = model_instance
         endpoint_z.attributes["peering"] = model_instance
 
-        model_instance.connect(ModelInstance.POST_SAVE, BGPPeeringExtension._post_save)
+        def post_save():
+            peering_instance: ModelInstance = model_instance
+            endpoint_a = peering_instance.instance.endpoint_a
+            endpoint_z = peering_instance.instance.endpoint_z
+            endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
+            endpoint_a.save()
+            endpoint_z.save()
+
+        model_instance.connect(model_instance.POST_SAVE, post_save)
         return retval

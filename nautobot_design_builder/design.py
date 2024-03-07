@@ -3,9 +3,8 @@ from types import FunctionType
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
-from django.db.models import Model, Manager, ForeignKey
+from django.db.models import Model, Manager
 from django.db.models.fields import Field as DjangoField
-from django.dispatch.dispatcher import Signal
 from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
 
 
@@ -100,19 +99,14 @@ def _map_query_values(query: Mapping) -> Mapping:
 class ModelClass:
     name: str
     model_class: Type[Model]
-    instance_fields: Dict[str, Any]
+    deferred = False
 
     def refresh_custom_relationships(self):
         for direction in Relationship.objects.get_for_model(self.model_class):
             for relationship in direction:
                 field = field_factory(self, relationship)
                 field.__set_name__(self, relationship.slug)
-                self.__class__.instance_fields[relationship.slug] = field
                 setattr(self.__class__, relationship.slug, field)
-
-    @classmethod
-    def has_field(cls, key):
-        return hasattr(cls.model_class, key) or key in cls.instance_fields
 
     def __str__(self):
         return str(self.model_class)
@@ -122,13 +116,11 @@ class ModelClass:
         cls_attributes = {
             "model_class": django_class,
             "name": django_class.__name__,
-            "instance_fields": {},
         }
 
         field: DjangoField
         for field in django_class._meta.get_fields():
             cls_attributes[field.name] = field_factory(None, field)
-            cls_attributes["instance_fields"][field.name] = cls_attributes[field.name]
         model_class = type(django_class.__name__, (ModelInstance,), cls_attributes)
         return model_class
 
@@ -146,6 +138,7 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
 
     # Callback Event types
     PRE_SAVE = "PRE_SAVE"
+    POST_INSTANCE_SAVE = "POST_INSTANCE_SAVE"
     POST_SAVE = "POST_SAVE"
 
     def __init__(
@@ -161,13 +154,11 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
         # Make a copy of the attributes so the original
         # design attributes are not overwritten
         self.attributes = {**attributes}
-        self.parent = parent
-        self.deferred = []
-        self.deferred_saves = []
-        self.deferred_attributes = {}
+        self._parent = parent
         self.signals = {
-            self.PRE_SAVE: Signal(),
-            self.POST_SAVE: Signal(),
+            self.PRE_SAVE: [],
+            self.POST_INSTANCE_SAVE: [],
+            self.POST_SAVE: [],
         }
 
         self._filter = {}
@@ -186,6 +177,7 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
             raise errors.MultipleObjectsReturnedError(self) from ex
+        self._update_fields()
 
     def create_child(
         self,
@@ -224,7 +216,7 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
 
 
     def _parse_attributes(self):  # pylint: disable=too-many-branches
-        self.custom_fields = self.attributes.pop("custom_fields", {})
+        self._custom_fields = self.attributes.pop("custom_fields", {})
         attribute_names = list(self.attributes.keys())
         while attribute_names:
             key = attribute_names.pop(0)
@@ -272,17 +264,22 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
         if self._action not in self.ACTION_CHOICES:
             raise errors.DesignImplementationError(f"Unknown action {self._action}", self.model_class)
 
-    def connect(self, signal: Signal, handler: FunctionType):
+    def connect(self, signal: str, handler: FunctionType):
         """Connect a handler between this model instance (as sender) and signal.
 
         Args:
             signal (Signal): Signal to listen for.
             handler (FunctionType): Callback function
         """
-        self.signals[signal].connect(handler, self)
+        self.signals[signal].append(handler)
+
+    def _send(self, signal: str):
+        for handler in self.signals[signal]:
+            handler()
 
     def _load_instance(self):
         query_filter = _map_query_values(self._filter)
+        field_values = {**self._filter}
         if self._action == self.GET:
             self.instance = self.model_class.objects.get(**query_filter)
             return
@@ -311,7 +308,7 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
                     if model._action != self.GET:
                         model.save()
                     query_filter[query_param] = model.instance
-
+                    field_values[query_param] = model
             try:
                 self.instance = self.relationship_manager.get(**query_filter)
                 return
@@ -323,7 +320,7 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
                 # since the object was not found, we need to
                 # put the search criteria back into the attributes
                 # so that they will be set when the object is created
-                self.attributes.update(query_filter)
+                self.attributes.update(field_values)
         elif self._action != "create":
             raise errors.DesignImplementationError(f"Unknown database action {self._action}", self.model_class)
         try:
@@ -334,39 +331,33 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
 
     def _update_fields(self):  # pylint: disable=too-many-branches
         if self._action == self.GET and self.attributes:
-            raise ValueError("Cannot update fields when using the GET action")
+            # TODO: wrap this up in a metadata field
+            if len(self.attributes) != 1 and self.attributes[0] != "deferred":
+                raise ValueError("Cannot update fields when using the GET action")
 
         for field_name, value in self.attributes.items():
-            if field_name in self.instance_fields:
-                field = self.instance_fields[field_name]
-                if field.deferrable:
-                    self.deferred.append(field_name)
-                    self.deferred_attributes[field_name] = self.creator.resolve_values(value)
-                else:
-                    setattr(self, field.field_name, value)
+            if hasattr(self.__class__, field_name):
+                setattr(self, field_name, value)
             elif hasattr(self.instance, field_name):
                 setattr(self.instance, field_name, value)
 
-        for key, value in self.custom_fields.items():
-            self.set_custom_field(key, value)
+            for key, value in self._custom_fields.items():
+                self.set_custom_field(key, value)
 
     def save(self):
         """Save the model instance to the database."""
-        # The reason we call _update_fields at this point is
-        # that some attributes passed into the constructor
-        # may not have been saved yet (thus have no ID). By
-        # deferring the update until just before save, we can
-        # ensure that parent instances have been saved and
-        # assigned a primary key
-        self._update_fields()
-        self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
+        if self._action == self.GET:
+            return
+
+        self._send(ModelInstance.PRE_SAVE)
 
         msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
         try:
             self.instance.full_clean()
             self.instance.save()
-            if self.parent is None:
-                self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
+            self._created = False
+            # if self._parent is None:
+            self.creator.log_success(message=f"{msg} {self.model_class.__name__} {self.instance}", obj=self.instance)
             self.creator.journal.log(self)
             # Refresh from DB so that we update based on any
             # post save signals that may have fired.
@@ -374,35 +365,8 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
         except ValidationError as validation_error:
             raise errors.DesignValidationError(self) from validation_error
 
-        for field_name in self.deferred:
-            items = self.deferred_attributes[field_name]
-            if isinstance(items, (dict, Model, ModelInstance)):
-                items = [items]
-
-            for item in items:
-                field = self.instance_fields[field_name]
-                if isinstance(item, (Model, ModelInstance)):
-                    related_object = item
-                else:
-                    relationship_manager = getattr(self.instance, field_name, None)
-                    if relationship_manager and getattr(relationship_manager, "field", None):
-                        item[relationship_manager.field.name] = self.instance
-                    related_object = self.create_child(
-                        self.creator.model_class_index[field.related_model],
-                        item,
-                        relationship_manager,
-                    )
-                related_object.save()
-                # BEWARE
-                # DO NOT REMOVE THE FOLLOWING LINE, IT WILL BREAK THINGS
-                # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
-                self.instance.refresh_from_db()
-                if isinstance(related_object, Model):
-                    setattr(self, field.field_name, related_object)
-                else:
-                    setattr(self, field.field_name, related_object.instance)
-
-        self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
+        self._send(ModelInstance.POST_INSTANCE_SAVE)
+        self._send(ModelInstance.POST_SAVE)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
@@ -420,7 +384,7 @@ _OBJECT_TYPES_APP_FILTER = set(
         "auth",
         "taggit",
         "database",
-        "contenttypes",
+        # "contenttypes",
         "sessions",
         "social_django",
     ]
@@ -526,7 +490,7 @@ class Builder(LoggingMixin):
             self.roll_back()
             raise ex
 
-    def resolve_value(self, value, unwrap_model_instance=False):
+    def resolve_value(self, value):
         """Resolve a value using extensions, if needed."""
         if isinstance(value, str) and value.startswith("!"):
             (action, arg) = value.lstrip("!").split(":", 1)
@@ -535,11 +499,9 @@ class Builder(LoggingMixin):
                 value = extn.value(arg)
             else:
                 raise errors.DesignImplementationError(f"Unknown attribute extension {value}")
-        if unwrap_model_instance and isinstance(value, ModelInstance):
-            value = value.instance
         return value
 
-    def resolve_values(self, value: Union[list, dict, str], unwrap_model_instances: bool = False) -> Any:
+    def resolve_values(self, value: Union[list, dict, str]) -> Any:
         """Resolve a value, or values, using extensions.
 
         Args:
@@ -549,17 +511,17 @@ class Builder(LoggingMixin):
             Any: The resolved value.
         """
         if isinstance(value, str):
-            value = self.resolve_value(value, unwrap_model_instances)
+            value = self.resolve_value(value)
         elif isinstance(value, list):
             # copy the list so we don't change the input
             value = list(value)
             for i, item in enumerate(value):
-                value[i] = self.resolve_value(item, unwrap_model_instances)
+                value[i] = self.resolve_value(item)
         elif isinstance(value, dict):
             # copy the dict so we don't change the input
             value = dict(value)
             for k, item in value.items():
-                value[k] = self.resolve_value(item, unwrap_model_instances)
+                value[k] = self.resolve_value(item)
         return value
 
     def _create_objects(self, model_cls, objects):

@@ -195,6 +195,8 @@ class ReferenceExtension(AttributeExtension, ValueExtension):
         if model_instance.instance and not model_instance.instance._state.adding:  # pylint: disable=protected-access
             model_instance.instance.refresh_from_db()
         if attribute:
+            # TODO: I think the result of the reduce operation needs to (potentially)
+            # be wrapped up in a ModelInstance object
             return reduce(getattr, [model_instance.instance, *attribute.split(".")])
         return model_instance
 
