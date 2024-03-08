@@ -53,16 +53,19 @@ class ObjDetails:
             return str(self.obj)
         return self.description or self.name or self.obj_class
 
-def debug(wrapped):
+def debug(*args, **kwargs):
+    print(indent, *args, **kwargs)
+
+def debug_set(wrapped):
     def wrapper(self, obj, value, *args, **kwargs):
         obj_details = ObjDetails(obj)
         value_details = ObjDetails(value)
         global indent
-        print(indent, self.__class__.__name__, "setting", self.field_name, "on", obj_details, "to", value_details)
+        debug(self.__class__.__name__, "setting", self.field_name, "on", obj_details, "to", value_details)
         indent += "  "
         wrapped(self, obj, value, *args, **kwargs)
         indent = indent[0:-2]
-        print(indent, "Exit", self.__class__.__name__)
+        debug("Exit", self.__class__.__name__)
     if DEBUG:
         return wrapper
     return wrapped
@@ -115,7 +118,7 @@ class BaseModelField(ModelField):
 class SimpleField(BaseModelField):
     """A field that accepts a scalar value."""
 
-    @debug
+    @debug_set
     def __set__(self, obj: "ModelInstance", value):  # noqa:D102
         setattr(obj.instance, self.field_name, value)
 
@@ -132,9 +135,9 @@ class RelationshipField(BaseModelField):
 class ForeignKeyField(RelationshipField):
     """One to one relationship field."""
 
-    @debug
+    @debug_set
     def __set__(self, obj: "ModelInstance", value):  # noqa:D102
-        @debug
+        @debug_set
         def setter(self, obj:"ModelInstance", value:"ModelInstance", save=False):
             value = self._get_instance(obj, value)
             if value._created:
@@ -144,24 +147,24 @@ class ForeignKeyField(RelationshipField):
             if save:
                 obj.instance.save(update_fields=[self.field_name])
 
-        if getattr(value, "deferred", False):
+        if getattr(value, "deferred", False) or (isinstance(value, Mapping) and value.get("deferred", False)):
             obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value, True))
         else:
             setter(self, obj, value)
 
-class RelatedForeignKeyField(RelationshipField):
-    """One to one relationship field."""
+class ManyToOneRelField(RelationshipField):
+    """The reverse side of a `ForeignKey` relationship."""
 
-    @debug
+    @debug_set
     def __set__(self, obj:"ModelInstance", values):  # noqa:D102
-        @debug
-        def setter(self, obj:"ModelInstance", value):
-            value = self._get_instance(obj, value, getattr(obj, self.field_name))
-            setattr(value.instance, self.field.field.name, obj.instance)
-            value.save()
+        @debug_set
+        def setter(self, obj:"ModelInstance", values):
+            for value in values:
+                value = self._get_instance(obj, value, getattr(obj, self.field_name))
+                setattr(value.instance, self.field.field.name, obj.instance)
+                value.save()
 
-        for value in values:
-            obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value))
+        obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, values))
 
 class ManyToManyField(RelationshipField):
     """Many to many relationship field."""
@@ -173,17 +176,19 @@ class ManyToManyField(RelationshipField):
             if not through._meta.auto_created:
                 self.related_model = through
 
-    @debug
+    @debug_set
     def __set__(self, obj:"ModelInstance", values):  # noqa:D102
-        @debug
-        def setter(self, obj:"ModelInstance", value):
-            value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
-            if value._created:
-                value.save()
-            getattr(obj.instance, self.field_name).add(value.instance)
+        @debug_set
+        def setter(self, obj:"ModelInstance", values):
+            items = []
+            for value in values:
+                value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
+                if value._created:
+                    value.save()
+                items.append(value.instance)
+            getattr(obj.instance, self.field_name).add(*items)
 
-        for value in values:
-            obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, value))
+        obj.connect(obj.POST_INSTANCE_SAVE, partial(setter, self, obj, values))
 
 
 class RelatedManyToManyField(RelationshipField):
@@ -196,9 +201,9 @@ class RelatedManyToManyField(RelationshipField):
             if not through._meta.auto_created:
                 self.related_model = through
 
-    @debug
+    @debug_set
     def __set__(self, obj:"ModelInstance", value):  # noqa:D102
-        @debug
+        @debug_set
         def setter(self, obj:"ModelInstance", value):
             # TODO: should this be reversed based on how ManyToManyField works?
             #       if not, can this class be eliminated completely?
@@ -209,7 +214,7 @@ class RelatedManyToManyField(RelationshipField):
 class GenericRelationField(RelationshipField):
     """Generic relationship field."""
 
-    @debug
+    @debug_set
     def __set__(self, obj:"ModelInstance", values):  # noqa:D102
         if not isinstance(values, list):
             values = [values]
@@ -222,7 +227,7 @@ class GenericRelationField(RelationshipField):
 class GenericForeignKeyField(RelationshipField):
     """Generic foreign key field."""
 
-    @debug
+    @debug_set
     def __set__(self, obj:"ModelInstance", value):  # noqa:D102
         fk_field = self.field.fk_field
         ct_field = self.field.ct_field
@@ -240,7 +245,7 @@ class TagField(ManyToManyField):
 class GenericRelField(RelationshipField):
     """Field used as part of content-types generic relation."""
 
-    @debug
+    @debug_set
     def __set__(self, obj:"ModelInstance", value):  # noqa:D102
         setattr(obj.instance, self.field.attname, self._get_instance(obj, value))
 
@@ -268,7 +273,7 @@ class CustomRelationshipField(RelationshipField):  # pylint: disable=too-few-pub
         else:
             self.related_model = relationship.source_type.model_class()
 
-    @debug
+    @debug_set
     def __set__(self, obj:"ModelInstance", values):  # noqa:D102
         """Add an association between the created object and the given value.
 
@@ -317,7 +322,7 @@ def field_factory(arg1, arg2) -> ModelField:
     elif isinstance(arg2, django_models.ForeignKey):
         field = ForeignKeyField(arg1, arg2)
     elif isinstance(arg2, django_models.ManyToOneRel):
-        field = RelatedForeignKeyField(arg1, arg2)
+        field = ManyToOneRelField(arg1, arg2)
     elif isinstance(arg2, django_models.ManyToManyField):
         field = ManyToManyField(arg1, arg2)
     elif isinstance(arg2, django_models.ManyToManyRel):

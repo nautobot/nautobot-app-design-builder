@@ -276,6 +276,7 @@ class ModelInstance(ModelClass):  # pylint: disable=too-many-instance-attributes
     def _send(self, signal: str):
         for handler in self.signals[signal]:
             handler()
+            self.instance.refresh_from_db()
 
     def _load_instance(self):
         query_filter = _map_query_values(self._filter)
