@@ -281,6 +281,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 )
                 journal.design_instance.save()
                 journal.save()
+                self.job_result.data["related_objects"] = {
+                    "journal": journal.pk,
+                    "design_instance": journal.design_instance.pk,
+                }
                 if hasattr(self.Meta, "report"):
                     self.job_result.data["report"] = self.render_report(context, self.builder.journal)
                     self.log_success(message=self.job_result.data["report"])
