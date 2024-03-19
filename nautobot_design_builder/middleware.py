@@ -24,7 +24,7 @@ def model_delete_design_builder(instance, **kwargs):
         if (
             hasattr(instance, "_current_design")
             and instance._current_design == journal_entry.journal.design_instance  # pylint: disable=protected-access
-            and journal_entry.full_control == True
+            and journal_entry.full_control
         ):
             return
 
