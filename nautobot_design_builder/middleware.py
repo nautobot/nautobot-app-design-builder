@@ -18,12 +18,13 @@ def model_delete_design_builder(instance, **kwargs):
         return
 
     for journal_entry in JournalEntry.objects.filter(
-        _design_object_id=instance.id, active=True, full_control=True
+        _design_object_id=instance.id, active=True
     ).exclude_decommissioned():
         # If there is a design with full_control, only the design can delete it
         if (
             hasattr(instance, "_current_design")
             and instance._current_design == journal_entry.journal.design_instance  # pylint: disable=protected-access
+            and journal_entry.full_control == True
         ):
             return
 
