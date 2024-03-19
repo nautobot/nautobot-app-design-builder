@@ -474,9 +474,10 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
         msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
         try:
-            self.instance._current_design = (  # pylint: disable=protected-access
-                self.creator.journal.design_journal.design_instance
-            )
+            if self.creator.journal.design_journal:
+                self.instance._current_design = (  # pylint: disable=protected-access
+                    self.creator.journal.design_journal.design_instance
+                )
             self.instance.full_clean()
             self.instance.save()
             if self.parent is None:

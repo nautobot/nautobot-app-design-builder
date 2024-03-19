@@ -27,12 +27,7 @@ class BaseValidator(PluginCustomValidator):
             return
 
         existing_object = obj_class.objects.get(id=obj.id)
-
-        # TODO: the update of region drops some info like the parent region!!!
-        # TODO: how to protect local_context
-
-        # TODO: how to manage updates of designs?, we should know if this comes from a design instance
-        for journal_entry in JournalEntry.objects.filter(
+        for journal_entry in JournalEntry.objects.filter(  # pylint: disable=too-many-nested-blocks
             _design_object_id=obj.id, active=True
         ).exclude_decommissioned():
 
@@ -43,24 +38,37 @@ class BaseValidator(PluginCustomValidator):
                 if attribute_name.startswith("_"):
                     continue
 
-                if getattr(obj, attribute_name) != getattr(existing_object, attribute_name):
-                    if (
-                        attribute_name in journal_entry.changes["differences"].get("added", {})
-                        and journal_entry.changes["differences"]["added"][attribute_name]
-                    ):
-                        # If the update is coming from the design instance owner, it can be updated
-                        if (
-                            hasattr(obj, "_current_design")
-                            and obj._current_design  # pylint: disable=protected-access
-                            == journal_entry.journal.design_instance
-                        ):
-                            continue
+                new_attribute_value = getattr(obj, attribute_name)
+                current_attribute_value = getattr(existing_object, attribute_name)
 
-                        self.validation_error(
-                            {
-                                attribute_name: f"The attribute is managed by the Design Instance {journal_entry.journal.id}"
-                            }
-                        )
+                if new_attribute_value != current_attribute_value and (
+                    attribute_name in journal_entry.changes["differences"].get("added", {})
+                    and journal_entry.changes["differences"]["added"][attribute_name]
+                ):
+                    error_context = ""
+                    # For dict attributes (i.e., JSON fields), the design builder can own only a few keys
+                    if isinstance(current_attribute_value, dict):
+                        for key, value in journal_entry.changes["differences"]["added"][attribute_name].items():
+                            if new_attribute_value[key] != value:
+                                error_context = f"Key {key}"
+                                break
+                        else:
+                            # If all the referenced attributes are not changing, we can update it
+                            return
+
+                    # If the update is coming from the design instance owner, it can be updated
+                    if (
+                        hasattr(obj, "_current_design")
+                        and obj._current_design  # pylint: disable=protected-access
+                        == journal_entry.journal.design_instance
+                    ):
+                        continue
+
+                    self.validation_error(
+                        {
+                            attribute_name: f"The attribute is managed by the Design Instance: {journal_entry.journal.design_instance}: {error_context}"
+                        }
+                    )
 
 
 class CustomValidatorIterator:  # pylint: disable=too-few-public-methods
