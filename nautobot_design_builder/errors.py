@@ -1,4 +1,5 @@
 """Module containing error Exception classes specific to Design Builder."""
+
 from collections import defaultdict
 from inspect import isclass
 
@@ -112,7 +113,7 @@ class DesignModelError(Exception):
         while model is not None:
             path_msg.insert(0, DesignModelError._model_str(model))
             if not isclass(model) and hasattr(model, "_parent"):
-                model = model._parent
+                model = model._parent  # pylint:disable=protected-access
             elif self.parent:
                 model = self.parent
                 self.parent = None

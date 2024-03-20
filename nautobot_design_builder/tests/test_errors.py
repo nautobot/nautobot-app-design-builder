@@ -1,4 +1,5 @@
 """Test design errors."""
+
 import unittest
 
 from django.core.exceptions import ValidationError

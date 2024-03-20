@@ -1,4 +1,5 @@
 """Design jobs used for unit testing."""
+
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.ext import Extension
 

@@ -20,8 +20,8 @@ designs:
           - "!get:app_label": "dcim"
             "!get:model": "device"
         locations:
-          name: "site_1"
-          status__name: "Active"
+          - name: "site_1"
+            status__name: "Active"
 
     prefixes:
       - prefix: "192.168.56.0/24"

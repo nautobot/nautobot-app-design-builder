@@ -1,4 +1,5 @@
 """Derived context used for unit testing."""
+
 from nautobot_design_builder.context import context_file
 from nautobot_design_builder.tests.designs.context import BaseContext
 

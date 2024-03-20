@@ -1,4 +1,5 @@
 """Extra action tags that are not part of the core Design Builder."""
+
 from functools import reduce
 import operator
 from typing import Any, Dict, Iterator, Tuple
@@ -12,8 +13,7 @@ from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
 import netaddr
-from nautobot_design_builder.design import Builder, ModelClass
-from nautobot_design_builder.design import ModelInstance
+from nautobot_design_builder.design import Environment, ModelInstance, ModelMetadata
 
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
 from nautobot_design_builder.ext import AttributeExtension
@@ -23,7 +23,7 @@ from nautobot_design_builder.jinja2 import network_offset
 class LookupMixin:
     """A helper mixin that provides a way to lookup objects."""
 
-    builder: Builder
+    environment: Environment
 
     def lookup_by_content_type(self, app_label, model_name, query):
         """Perform a query on a model.
@@ -99,7 +99,7 @@ class LookupMixin:
         """
         return dict(LookupMixin._flatten(query))
 
-    def lookup(self, queryset, query, parent: ModelInstance=None):
+    def lookup(self, queryset, query, parent: ModelInstance = None):
         """Perform a single object lookup from a queryset.
 
         Args:
@@ -116,13 +116,13 @@ class LookupMixin:
         Returns:
             Any: The object matching the query.
         """
-        query = self.builder.resolve_values(query)
+        query = self.environment.resolve_values(query)
         query = self.flatten_query(query)
         try:
-            model_class = self.builder.model_class_index[queryset.model]
+            model_class = self.environment.model_class_index[queryset.model]
             if parent:
                 return parent.create_child(model_class, query, queryset)
-            return model_class(self.builder, query, queryset)
+            return model_class(self.environment, query, queryset)
         except ObjectDoesNotExist:
             # pylint: disable=raise-missing-from
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
@@ -288,7 +288,9 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         cable_attributes.update(
             {
                 "termination_a": model_instance,
-                "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(remote_instance.instance).id,
+                "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
+                    remote_instance.instance
+                ).id,
                 "!create_or_update:termination_b_id": remote_instance.instance.id,
                 "deferred": True,
             }
@@ -453,7 +455,7 @@ class BGPPeeringExtension(AttributeExtension):
 
     tag = "bgp_peering"
 
-    def __init__(self, builder: Builder):
+    def __init__(self, environment: Environment):
         """Initialize the BGPPeeringExtension.
 
         This initializer will import the necessary BGP models. If the
@@ -462,12 +464,12 @@ class BGPPeeringExtension(AttributeExtension):
         Raises:
             DesignImplementationError: Raised when the BGP Models App is not installed.
         """
-        super().__init__(builder)
+        super().__init__(environment)
         try:
             from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
 
-            self.PeerEndpoint = ModelClass.factory(PeerEndpoint)  # pylint:disable=invalid-name
-            self.Peering = ModelClass.factory(Peering)  # pylint:disable=invalid-name
+            self.PeerEndpoint = ModelInstance.factory(PeerEndpoint)  # pylint:disable=invalid-name
+            self.Peering = ModelInstance.factory(Peering)  # pylint:disable=invalid-name
         except ModuleNotFoundError:
             # pylint:disable=raise-missing-from
             raise DesignImplementationError(
@@ -521,8 +523,8 @@ class BGPPeeringExtension(AttributeExtension):
         # copy the value so it won't be modified in later
         # use
         retval = {**value}
-        endpoint_a = self.PeerEndpoint(self.builder, retval.pop("endpoint_a"))
-        endpoint_z = self.PeerEndpoint(self.builder, retval.pop("endpoint_z"))
+        endpoint_a = self.PeerEndpoint(self.environment, retval.pop("endpoint_a"))
+        endpoint_z = self.PeerEndpoint(self.environment, retval.pop("endpoint_z"))
         peering_a = None
         peering_z = None
         try:
@@ -542,8 +544,8 @@ class BGPPeeringExtension(AttributeExtension):
                 peering_z.delete()
 
         retval["endpoints"] = [endpoint_a, endpoint_z]
-        endpoint_a.attributes["peering"] = model_instance
-        endpoint_z.attributes["peering"] = model_instance
+        endpoint_a.metadata.attributes["peering"] = model_instance
+        endpoint_z.metadata.attributes["peering"] = model_instance
 
         def post_save():
             peering_instance: ModelInstance = model_instance
@@ -553,5 +555,5 @@ class BGPPeeringExtension(AttributeExtension):
             endpoint_a.save()
             endpoint_z.save()
 
-        model_instance.connect(model_instance.POST_SAVE, post_save)
+        model_instance.connect(ModelMetadata.POST_SAVE, post_save)
         return retval

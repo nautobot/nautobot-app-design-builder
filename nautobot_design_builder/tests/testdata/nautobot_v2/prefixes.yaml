@@ -6,8 +6,8 @@ designs:
           - "!get:app_label": "ipam"
             "!get:model": "prefix"
         locations:
-          name: "site_1"
-          status__name: "Active"
+          - name: "site_1"
+            status__name: "Active"
 
     prefixes:
       - location__name: "site_1"

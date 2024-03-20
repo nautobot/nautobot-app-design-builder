@@ -1,4 +1,5 @@
 """Defines logging capability for design builder."""
+
 import logging
 
 from nautobot.extras.choices import LogLevelChoices

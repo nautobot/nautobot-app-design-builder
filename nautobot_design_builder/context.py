@@ -1,4 +1,5 @@
 """Module that contains classes and functions for use with Design Builder context available when using Jinja templating."""
+
 from functools import cached_property
 from collections import UserList, UserDict, UserString
 import inspect

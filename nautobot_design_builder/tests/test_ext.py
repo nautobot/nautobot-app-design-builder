@@ -1,10 +1,11 @@
 """Unit tests related to template extensions."""
+
 import sys
 
 from django.test import TestCase
 
 from nautobot_design_builder import ext
-from nautobot_design_builder.design import Builder
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.ext import DesignImplementationError
 
 
@@ -44,14 +45,14 @@ class TestCustomExtensions(TestCase):
     """Test that custom extensions are loaded correctly."""
 
     def test_builder_called_with_custom_extensions(self):
-        builder = Builder(extensions=[Extension])
+        environment = Environment(extensions=[Extension])
         self.assertEqual(
-            builder.extensions["attribute"]["custom_extension"]["class"],
+            environment.extensions["attribute"]["custom_extension"]["class"],
             Extension,
         )
 
-    def test_builder_called_with_invalid_extensions(self):
-        self.assertRaises(DesignImplementationError, Builder, extensions=[NotExtension])
+    def test_environment_called_with_invalid_extensions(self):
+        self.assertRaises(DesignImplementationError, Environment, extensions=[NotExtension])
 
 
 class TestExtensionCommitRollback(TestCase):
@@ -79,9 +80,9 @@ class TestExtensionCommitRollback(TestCase):
                 nonlocal rolled_back
                 rolled_back = True
 
-        builder = Builder(extensions=[CommitExtension])
+        environment = Environment(extensions=[CommitExtension])
         try:
-            builder.implement_design(design, commit=commit)
+            environment.implement_design(design, commit=commit)
         except DesignImplementationError:
             pass
         return committed, rolled_back

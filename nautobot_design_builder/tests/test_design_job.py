@@ -1,4 +1,5 @@
 """Test running design jobs."""
+
 from unittest.mock import patch, Mock
 
 from django.core.exceptions import ValidationError
@@ -14,17 +15,17 @@ from nautobot_design_builder.util import nautobot_version
 class TestDesignJob(DesignTestCase):
     """Test running design jobs."""
 
-    @patch("nautobot_design_builder.design_job.Builder")
-    def test_simple_design_commit(self, object_creator: Mock):
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_simple_design_commit(self, environment: Mock):
         job = self.get_mocked_job(test_designs.SimpleDesign)
         job.run(data={}, commit=True)
         self.assertIsNotNone(job.job_result)
-        object_creator.assert_called()
+        environment.assert_called()
         self.assertDictEqual(
             {"manufacturers": {"name": "Test Manufacturer"}},
             job.designs[test_designs.SimpleDesign.Meta.design_file],
         )
-        object_creator.return_value.roll_back.assert_not_called()
+        environment.return_value.roll_back.assert_not_called()
 
     def test_simple_design_report(self):
         job = self.get_mocked_job(test_designs.SimpleDesignReport)
@@ -54,11 +55,11 @@ class TestDesignJob(DesignTestCase):
 
         self.assertEqual(0, Manufacturer.objects.all().count())
 
-    @patch("nautobot_design_builder.design_job.Builder")
-    def test_custom_extensions(self, builder_patch: Mock):
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_custom_extensions(self, environment: Mock):
         job = self.get_mocked_job(test_designs.DesignJobWithExtensions)
         job.run(data={}, commit=True)
-        builder_patch.assert_called_once_with(
+        environment.assert_called_once_with(
             job_result=job.job_result,
             extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
         )
@@ -67,9 +68,9 @@ class TestDesignJob(DesignTestCase):
 class TestDesignJobLogging(DesignTestCase):
     """Test that the design job logs errors correctly."""
 
-    @patch("nautobot_design_builder.design_job.Builder")
-    def test_simple_design_implementation_error(self, object_creator: Mock):
-        object_creator.return_value.implement_design.side_effect = DesignImplementationError("Broken")
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_simple_design_implementation_error(self, environment: Mock):
+        environment.return_value.implement_design.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(test_designs.SimpleDesign)
         if nautobot_version < "2":
             job.run(data={}, commit=True)

@@ -1,4 +1,5 @@
 """Test object creator methods."""
+
 import importlib
 from operator import attrgetter
 import os
@@ -10,7 +11,7 @@ from django.test import TestCase
 
 from nautobot.dcim.models import Cable
 
-from nautobot_design_builder.design import Builder
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.util import nautobot_version
 
 
@@ -106,7 +107,7 @@ def builder_test_case(data_dir):
 
             # Create a new closure for testcase
             def test_wrapper(testcase):
-                @patch("nautobot_design_builder.design.Builder.roll_back")
+                @patch("nautobot_design_builder.design.Environment.roll_back")
                 def test_runner(self, roll_back: Mock):
                     if testcase.get("skip", False):
                         self.skipTest("Skipping due to testcase skip=true")
@@ -115,9 +116,9 @@ def builder_test_case(data_dir):
                         extensions.append(_load_class(extension))
 
                     for design in testcase["designs"]:
-                        builder = Builder(extensions=extensions)
+                        environment = Environment(extensions=extensions)
                         commit = design.pop("commit", True)
-                        builder.implement_design(design=design, commit=commit)
+                        environment.implement_design(design=design, commit=commit)
                         if not commit:
                             roll_back.assert_called()
 
