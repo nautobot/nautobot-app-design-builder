@@ -9,16 +9,17 @@ from nautobot_design_builder.models import JournalEntry
 class BaseValidator(PluginCustomValidator):
     """Base PluginCustomValidator class that implements the core logic for enforcing validation rules defined in this app."""
 
+    # TODO: how to concatenate multiple customvalidators?
     model = None
 
     def clean(self):
         """The clean method executes the actual rule enforcement logic for each model."""
-        if (
-            settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_superuser_bypass"]
-            and self.context["user"].is_superuser
-        ):
-            return
-
+        # TODO: How to get user data into the context?
+        # if (
+        #     settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_superuser_bypass"]
+        #     and self.context["user"].is_superuser
+        # ):
+        #     return
         obj = self.context["object"]
         obj_class = obj.__class__
 
