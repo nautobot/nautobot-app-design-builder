@@ -23,7 +23,10 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     required_settings = []
     min_version = "1.6.0"
     max_version = "2.9999"
-    default_settings = {}
+    default_settings = {
+        "protected_models": [],
+        "protected_superuser_bypass": True,
+    }
     caching_config = {}
 
     def ready(self):
