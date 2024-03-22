@@ -92,8 +92,7 @@ def model_delete_design_builder(instance, **kwargs):
             and journal_entry.full_control
         ):
             return
-
-        raise ProtectedError("A design instance owns this object.", [journal_entry.journal.design_instance])
+        raise ProtectedError("A design instance owns this object.", set(journal_entry.journal.design_instance))
 
 
 def load_pre_delete_signals():

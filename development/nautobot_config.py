@@ -25,7 +25,6 @@ if DEBUG and not _TESTING:
     if "debug_toolbar.middleware.DebugToolbarMiddleware" not in MIDDLEWARE:  # noqa: F405
         MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")  # noqa: F405
 
-# FIXME: Add documentation to add it to Nautobot deployments
 MIDDLEWARE.insert(0, "nautobot_design_builder.middleware.GlobalRequestMiddleware")  # noqa: F405
 
 #
