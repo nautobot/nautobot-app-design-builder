@@ -1,4 +1,5 @@
 """This module provides some common provisioning helpers that many designs use."""
+
 from typing import List
 
 from nautobot.dcim.models import Device

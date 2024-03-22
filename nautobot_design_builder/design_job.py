@@ -1,4 +1,5 @@
 """Base Design Job class definition."""
+
 import sys
 import traceback
 from abc import ABC, abstractmethod
@@ -16,7 +17,7 @@ from nautobot.extras.jobs import Job
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
-from nautobot_design_builder.design import Builder
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.context import Context
 from .util import nautobot_version
 
@@ -42,14 +43,14 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def __init__(self, *args, **kwargs):
         """Initialize the design job."""
         # rendered designs
-        self.builder: Builder = None
+        self.environment: Environment = None
         self.designs = {}
         self.rendered = None
         self.failed = False
 
         super().__init__(*args, **kwargs)
 
-    def post_implementation(self, context: Context, builder: Builder):
+    def post_implementation(self, context: Context, environment: Environment):
         """Similar to Nautobot job's `post_run` method, but will be called after a design is implemented.
 
         Any design job that requires additional work to be completed after the design
@@ -59,7 +60,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         Args:
             context (Context): The render context that was used for rendering the design files.
-            builder (Builder): The builder object that consumed the rendered design files. This is useful for accessing the design journal.
+            environment (Environment): The build environment that consumed the rendered design files. This is useful for accessing the design journal.
         """
 
     def post_run(self):
@@ -142,14 +143,14 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def implement_design(self, context, design_file, commit):
         """Render the design_file template using the provided render context."""
         design = self.render_design(context, design_file)
-        self.builder.implement_design(design, commit)
+        self.environment.implement_design(design, commit)
 
     @transaction.atomic
     def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
-        """Render the design and implement it with a Builder object."""
+        """Render the design and implement it within a build Environment object."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
-        self.builder = Builder(job_result=self.job_result, extensions=extensions)
+        self.environment = Environment(job_result=self.job_result, extensions=extensions)
 
         design_files = None
 
@@ -181,9 +182,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
             if commit:
-                self.post_implementation(context, self.builder)
+                self.post_implementation(context, self.environment)
                 if hasattr(self.Meta, "report"):
-                    self.job_result.data["report"] = self.render_report(context, self.builder.journal)
+                    self.job_result.data["report"] = self.render_report(context, self.environment.journal)
                     self.log_success(message=self.job_result.data["report"])
             else:
                 transaction.savepoint_rollback(sid)
