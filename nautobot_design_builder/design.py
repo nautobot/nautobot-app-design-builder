@@ -202,11 +202,11 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         return self._attributes
 
     @attributes.setter
-    def attributes(self, attributes: dict[str, Any]):
+    def attributes(self, attributes: Dict[str, Any]):
         """Process and assign attributes for this metadata.
 
         Args:
-            attributes (dict[str, Any]): The input attributes to be processed.
+            attributes (Dict[str, Any]): The input attributes to be processed.
               This should be a dictionary of key/value pairs where the keys
               match the field names and properties of a given model type. The
               attributes are processed sequentially. Any action tags are looked up
@@ -279,14 +279,14 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
             self.model_instance.instance.refresh_from_db()
 
     @property
-    def custom_fields(self) -> dict[str, Any]:
+    def custom_fields(self) -> Dict[str, Any]:
         """`custom_fields` property.
 
         When attributes are processed, the `custom_fields` key is removed and assigned
         to the `custom_fields` property.
 
         Returns:
-            dict[str, Any]: A dictionary of custom fields/values.
+            Dict[str, Any]: A dictionary of custom fields/values.
         """
         return self._custom_fields
 
