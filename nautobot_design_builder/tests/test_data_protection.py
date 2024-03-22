@@ -15,6 +15,7 @@ from nautobot_design_builder.design import calculate_changes
 from .test_model_design_instance import BaseDesignInstanceTest
 from ..models import JournalEntry
 from ..custom_validators import custom_validators
+from ..signals import load_pre_delete_signals
 
 User = get_user_model()
 plugin_settings_with_defaults = copy.deepcopy(settings.PLUGINS_CONFIG)
@@ -83,6 +84,7 @@ class DataProtectionBaseTestWithDefaults(DataProtectionBaseTest):
 
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_defaults)
     def test_delete_as_user_without_protection(self):
+        load_pre_delete_signals()
         self.client.login(username="test_user", password="password123")
         response = self.client.delete(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
@@ -107,41 +109,40 @@ class DataProtectionBaseTestWithProtection(DataProtectionBaseTest):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.json()["description"][0],
-            f"The attribute is managed by the Design Instance: {self.design_instance}: ",
+            f"The attribute is managed by the Design Instance. {self.design_instance}. ",
         )
 
     # TODO: bypass protection is not ready for update yet
-    # @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
-    # def test_update_as_admin_with_protection_and_with_bypass(self):
-    #     register_custom_validators(custom_validators)
-    #     self.client.login(username="test_user_admin", password="password123")
-    #     response = self.client.patch(
-    #         reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
-    #         data={"description": "new description"},
-    #         content_type="application/json",
-    #     )
+    @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
+    def test_update_as_admin_with_protection_and_with_bypass(self):
+        register_custom_validators(custom_validators)
+        self.client.login(username="test_user_admin", password="password123")
+        response = self.client.patch(
+            reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
+            data={"description": "new description"},
+            content_type="application/json",
+        )
 
-    #     self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
-    # @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
-    # def test_delete_as_user_with_protection(self):
-    #     self.client.login(username="test_user", password="password123")
-    #     response = self.client.delete(
-    #         reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
-    #         content_type="application/json",
-    #     )
+    @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
+    def test_delete_as_user_with_protection(self):
+        load_pre_delete_signals()
+        self.client.login(username="test_user", password="password123")
+        response = self.client.delete(
+            reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
+            content_type="application/json",
+        )
 
-    #     # TODO: error
-    #     # b'{"error": "An error occurred in the current transaction. You can\'t execute queries until the end of the \'atomic\' block.", "exception": "TransactionManagementError", "nautobot_version": "1.6.0", "python_version": "3.11.4"}'
-
-    #     self.assertEqual(response.status_code, 400)
-    #     self.assertEqual(
-    #         response.json()["description"][0],
-    #         f"The attribute is managed by the Design Instance: {self.design_instance}: ",
-    #     )
+        self.assertEqual(response.status_code, 409)
+        # self.assertEqual(
+        #     response.json()["description"][0],
+        #     f"The attribute is managed by the Design Instance. {self.design_instance}: ",
+        # )
 
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
     def test_delete_as_admin_with_protection_and_with_bypass(self):
+        load_pre_delete_signals()
         self.client.login(username="test_user_admin", password="password123")
         response = self.client.delete(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
@@ -170,16 +171,17 @@ class DataProtectionBaseTestWithProtectionBypassDisabled(DataProtectionBaseTest)
             f"The attribute is managed by the Design Instance: {self.design_instance}: ",
         )
 
-    # @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection_and_superuser_bypass_disabled)
-    # def test_delete_as_admin_with_protection_and_without_bypass(self):
-    #     self.client.login(username="test_user_admin", password="password123")
-    #     response = self.client.delete(
-    #         reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
-    #         content_type="application/json",
-    #     )
+    @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection_and_superuser_bypass_disabled)
+    def test_delete_as_admin_with_protection_and_without_bypass(self):
+        load_pre_delete_signals()
+        self.client.login(username="test_user_admin", password="password123")
+        response = self.client.delete(
+            reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
+            content_type="application/json",
+        )
 
-    #     self.assertEqual(response.status_code, 400)
-    #     self.assertEqual(
-    #         response.json()["description"][0],
-    #         f"The attribute is managed by the Design Instance: {self.design_instance}: ",
-    #     )
+        self.assertEqual(response.status_code, 409)
+        # self.assertEqual(
+        #     response.json()["description"][0],
+        #     f"The attribute is managed by the Design Instance. {self.design_instance}: ",
+        # )

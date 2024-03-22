@@ -4,22 +4,23 @@ from django.conf import settings
 from nautobot.extras.registry import registry
 from nautobot.extras.plugins import PluginCustomValidator
 from nautobot_design_builder.models import JournalEntry
+from nautobot_design_builder.middleware import GlobalRequestMiddleware
 
 
 class BaseValidator(PluginCustomValidator):
     """Base PluginCustomValidator class that implements the core logic for enforcing validation rules defined in this app."""
 
-    # TODO: how to concatenate multiple customvalidators?
     model = None
 
     def clean(self):
         """The clean method executes the actual rule enforcement logic for each model."""
-        # TODO: How to get user data into the context?
-        # if (
-        #     settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_superuser_bypass"]
-        #     and self.context["user"].is_superuser
-        # ):
-        #     return
+        request = GlobalRequestMiddleware.get_current_request()
+        if (
+            request
+            and settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_superuser_bypass"]
+            and request.user.is_superuser
+        ):
+            return
         obj = self.context["object"]
         obj_class = obj.__class__
 
@@ -67,7 +68,7 @@ class BaseValidator(PluginCustomValidator):
 
                     self.validation_error(
                         {
-                            attribute_name: f"The attribute is managed by the Design Instance: {journal_entry.journal.design_instance}: {error_context}"
+                            attribute_name: f"The attribute is managed by the Design Instance: {journal_entry.journal.design_instance}. {error_context}"
                         }
                     )
 
