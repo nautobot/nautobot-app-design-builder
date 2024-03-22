@@ -318,24 +318,13 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
 
                 source_type = ContentType.objects.get_for_model(source)
                 destination_type = ContentType.objects.get_for_model(destination)
-
-                try:
-                    RelationshipAssociation.objects.get(
-                        relationship=self.relationship,
-                        source_id=source.id,
-                        source_type=source_type,
-                        destination_id=destination.id,
-                        destination_type=destination_type,
-                    )
-                except RelationshipAssociation.DoesNotExist:
-                    relationship_association = RelationshipAssociation(
-                        relationship=self.relationship,
-                        source_id=source.id,
-                        source_type=source_type,
-                        destination_id=destination.id,
-                        destination_type=destination_type,
-                    )
-                    relationship_association.validated_save()
+                RelationshipAssociation.objects.update_or_create(
+                    relationship=self.relationship,
+                    source_id=source.id,
+                    source_type=source_type,
+                    destination_id=destination.id,
+                    destination_type=destination_type,
+                )
 
         obj.connect("POST_INSTANCE_SAVE", setter)
 
