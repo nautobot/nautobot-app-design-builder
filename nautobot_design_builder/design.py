@@ -15,7 +15,7 @@ from nautobot.extras.models import JobResult, Relationship
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin
-from nautobot_design_builder.fields import field_factory
+from nautobot_design_builder.fields import CustomRelationshipField, field_factory
 
 
 class Journal:
@@ -448,8 +448,18 @@ class ModelInstance:
         for direction in Relationship.objects.get_for_model(self.model_class):
             for relationship in direction:
                 field = field_factory(self, relationship)
-                field.__set_name__(self, relationship.slug)
-                setattr(self.__class__, relationship.slug, field)
+
+                # make sure not to mask non-custom relationship fields that
+                # may have the same key name or field name
+                for attr_name in [field.key_name, field.field_name]:
+                    if hasattr(self.__class__, attr_name):
+                        # if there is already an attribute with the same name,
+                        # delete it if it is a custom relationship, that way
+                        # we reload the config from the database.
+                        if isinstance(getattr(self.__class__, attr_name), CustomRelationshipField):
+                            delattr(self.__class__, attr_name)
+                    if not hasattr(self.__class__, attr_name):
+                        setattr(self.__class__, attr_name, field)
 
     def __str__(self):
         """Get the model class name."""
