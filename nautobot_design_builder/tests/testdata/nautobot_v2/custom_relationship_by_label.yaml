@@ -57,7 +57,7 @@ checks:
       model: "nautobot.ipam.models.VLAN"
       query: {vid: "43"}
 
-  - equal:
+  - count_equal:
       - model: "nautobot.extras.models.RelationshipAssociation"
         query: {relationship__label: "Device to VLANS"}
         attribute: "destination"
