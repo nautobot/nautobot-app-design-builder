@@ -8,11 +8,12 @@ from typing import Dict
 import yaml
 
 from django.db import transaction
+from django.core.files.base import ContentFile
 
 from jinja2 import TemplateError
 
 from nautobot.extras.jobs import Job
-
+from nautobot.extras.models import FileProxy
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -145,7 +146,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
 
-    @transaction.atomic
     def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
         """Render the design and implement it within a build Environment object."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -202,3 +202,17 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             transaction.savepoint_rollback(sid)
             self.failed = True
             raise ex
+        finally:
+            if nautobot_version >= "2.0":
+                if self.rendered:
+                    self.save_design_file("renered.yaml", self.rendered)
+                for design_file, design in self.designs.items():
+                    output_file = path.basename(design_file)
+                    self.save_design_file(output_file, yaml.safe_dump(design))
+
+    def save_design_file(self, filename, content):
+        FileProxy.objects.create(
+            name=filename,
+            job_result=self.job_result,
+            file=ContentFile(content.encode("utf-8"), name=filename)
+        )
