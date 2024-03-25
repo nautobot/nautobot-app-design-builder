@@ -212,7 +212,5 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
     def save_design_file(self, filename, content):
         FileProxy.objects.create(
-            name=filename,
-            job_result=self.job_result,
-            file=ContentFile(content.encode("utf-8"), name=filename)
+            name=filename, job_result=self.job_result, file=ContentFile(content.encode("utf-8"), name=filename)
         )

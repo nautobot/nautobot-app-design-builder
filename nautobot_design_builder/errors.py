@@ -193,7 +193,9 @@ class DesignQueryError(DesignModelError):
         elif self.query_filter:
             msg.append(DesignModelError._object_to_markdown(self.query_filter, indentation=f"{indentation}    "))
         else:
-            msg.append(DesignModelError._object_to_markdown(self.model.metadata.filter, indentation=f"{indentation}    "))
+            msg.append(
+                DesignModelError._object_to_markdown(self.model.metadata.filter, indentation=f"{indentation}    ")
+            )
         return "\n".join(msg)
 
 
