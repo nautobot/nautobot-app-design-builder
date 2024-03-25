@@ -199,7 +199,6 @@ class ManyToOneRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disab
     def __set__(self, obj: "ModelInstance", values):  # noqa:D105
         if not isinstance(values, list):
             raise DesignImplementationError("Many-to-one fields must be a list", obj)
-
         def setter():
             for value in values:
                 value = self._get_instance(obj, value, getattr(obj, self.field_name))
