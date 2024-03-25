@@ -122,7 +122,7 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
 
-    def __init__(self, model_instance: "ModelInstance"):
+    def __init__(self, model_instance: "ModelInstance", **kwargs):
         """Initialize the metadata object for a given model instance.
 
         By default, the metadata object doesn't really have anything in it. In order
@@ -142,6 +142,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
             self.POST_INSTANCE_SAVE: [],
             self.POST_SAVE: [],
         }
+
+        self.save_args = kwargs.get("save_args", {})
 
         # The following attributes are dunder attributes
         # because they should only be set in the @attributes.setter
@@ -425,7 +427,7 @@ class ModelInstance:
         """
         self.environment = environment
         self.instance: Model = None
-        self.metadata = ModelMetadata(self)
+        self.metadata = ModelMetadata(self, **attributes.pop("model_metadata", {}))
 
         self._parent = parent
         self.refresh_custom_relationships()
@@ -597,7 +599,7 @@ class ModelInstance:
         msg = "Created" if self.metadata.created else "Updated"
         try:
             self.instance.full_clean()
-            self.instance.save()
+            self.instance.save(**self.metadata.save_args)
             self.metadata.created = False
             if self._parent is None:
                 self.environment.log_success(
