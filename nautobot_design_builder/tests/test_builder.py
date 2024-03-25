@@ -124,12 +124,13 @@ def builder_test_case(data_dir):
                     for extension in testcase.get("extensions", []):
                         extensions.append(_load_class(extension))
 
-                    for design in testcase["designs"]:
-                        environment = Environment(extensions=extensions)
-                        commit = design.pop("commit", True)
-                        environment.implement_design(design=design, commit=commit)
-                        if not commit:
-                            roll_back.assert_called()
+                    with self.captureOnCommitCallbacks(execute=True):
+                        for design in testcase["designs"]:
+                            environment = Environment(extensions=extensions)
+                            commit = design.pop("commit", True)
+                            environment.implement_design(design=design, commit=commit)
+                            if not commit:
+                                roll_back.assert_called()
 
                     for index, check in enumerate(testcase.get("checks", [])):
                         for check_name, args in check.items():
