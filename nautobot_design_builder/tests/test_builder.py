@@ -45,6 +45,15 @@ class BuilderChecks:
         test.assertEqual(value0, value1, msg=f"Check {index}")
 
     @staticmethod
+    def check_count_equal(test, check, index):
+        """Check that two values are equal."""
+        value0 = _get_value(check[0])
+        value1 = _get_value(check[1])
+        if len(value0) == 1 and len(value1) == 1:
+            test.assertEqual(value0[0], value1[0], msg=f"Check {index}")
+        test.assertCountEqual(value0, value1, msg=f"Check {index}")
+
+    @staticmethod
     def check_model_exists(test, check, index):
         """Check that a model exists."""
         values = _get_value(check)

@@ -47,10 +47,12 @@ from django.contrib.contenttypes import fields as ct_fields
 
 from taggit.managers import TaggableManager
 
+from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import Relationship, RelationshipAssociation
 
 from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.debug import debug_set
+from nautobot_design_builder.util import nautobot_version
 
 if TYPE_CHECKING:
     from .design import ModelInstance
@@ -282,10 +284,18 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
             relationship (Relationship): The Nautobot custom relationship backing this field.
         """
         self.relationship = relationship
+        field_name = ""
         if self.relationship.source_type == ContentType.objects.get_for_model(model_class.model_class):
             self.related_model = relationship.destination_type.model_class()
+            field_name = str(self.relationship.get_label("source"))
         else:
             self.related_model = relationship.source_type.model_class()
+            field_name = str(self.relationship.get_label("destination"))
+        self.__set_name__(model_class, str_to_var_name(field_name))
+        if nautobot_version < "2.0.0":
+            self.key_name = self.relationship.slug
+        else:
+            self.key_name = self.relationship.key
 
     @debug_set
     def __set__(self, obj: "ModelInstance", values):  # noqa:D105
