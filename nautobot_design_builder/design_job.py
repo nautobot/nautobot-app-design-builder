@@ -46,6 +46,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # rendered designs
         self.environment: Environment = None
         self.designs = {}
+        # TODO: Remove this when we no longer support Nautobot 1.x
         self.rendered = None
         self.failed = False
 
@@ -115,6 +116,15 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             design_file (str): Filename of the design file to render.
         """
         self.rendered = self.render(context, design_file)
+        # Save the rendered result for later examination from
+        # the job result/additional data tab.
+        output_file = path.basename(design_file)
+        # this should remove the .j2
+        output_file, _ = path.splitext(output_file)
+        if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
+            output_file = f"{output_file}.yaml"
+        self.save_design_file(output_file, self.rendered)
+
         design = yaml.safe_load(self.rendered)
         self.designs[design_file] = design
 
@@ -202,17 +212,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             transaction.savepoint_rollback(sid)
             self.failed = True
             raise ex
-        finally:
-            if nautobot_version >= "2.0":
-                if self.rendered:
-                    self.save_design_file("renered.yaml", self.rendered)
-                for design_file, design in self.designs.items():
-                    output_file = path.basename(design_file)
-                    # this should remove the .j2
-                    output_file, _ = path.splitext(output_file)
-                    if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
-                        output_file = f"{output_file}.yaml"
-                    self.save_design_file(output_file, yaml.safe_dump(design))
 
     def save_design_file(self, filename, content):
         """Save some content to a job file.
