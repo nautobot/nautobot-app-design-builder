@@ -8,11 +8,12 @@ from typing import Dict
 import yaml
 
 from django.db import transaction
+from django.core.files.base import ContentFile
 
 from jinja2 import TemplateError
 
 from nautobot.extras.jobs import Job
-
+from nautobot.extras.models import FileProxy
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -45,6 +46,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # rendered designs
         self.environment: Environment = None
         self.designs = {}
+        # TODO: Remove this when we no longer support Nautobot 1.x
         self.rendered = None
         self.failed = False
 
@@ -114,6 +116,15 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             design_file (str): Filename of the design file to render.
         """
         self.rendered = self.render(context, design_file)
+        # Save the rendered result for later examination from
+        # the job result/additional data tab.
+        output_file = path.basename(design_file)
+        # this should remove the .j2
+        output_file, _ = path.splitext(output_file)
+        if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
+            output_file = f"{output_file}.yaml"
+        self.save_design_file(output_file, self.rendered)
+
         design = yaml.safe_load(self.rendered)
         self.designs[design_file] = design
 
@@ -145,7 +156,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
 
-    @transaction.atomic
     def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
         """Render the design and implement it within a build Environment object."""
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -202,3 +212,21 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             transaction.savepoint_rollback(sid)
             self.failed = True
             raise ex
+
+    def save_design_file(self, filename, content):
+        """Save some content to a job file.
+
+        This is only supported on Nautobot 2.0 and greater.
+
+        Args:
+            filename (str): The name of the file to save.
+            content (str): The content to save to the file.
+        """
+        if nautobot_version < "2.0":
+            return
+
+        FileProxy.objects.create(
+            name=filename,
+            job_result=self.job_result,
+            file=ContentFile(content.encode("utf-8"), name=filename),
+        )

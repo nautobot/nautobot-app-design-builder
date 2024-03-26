@@ -35,6 +35,7 @@ class DesignTestCase(TestCase):
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
         job.job_result = mock.Mock()
+        job.save_design_file = lambda filename, content: None
         if nautobot_version < "2.0.0":
             job.request = mock.Mock()
         else:
