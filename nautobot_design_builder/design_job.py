@@ -49,6 +49,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # TODO: Remove this when we no longer support Nautobot 1.x
         self.rendered = None
         self.failed = False
+        self.report = None
 
         super().__init__(*args, **kwargs)
 
@@ -67,10 +68,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
     def post_run(self):
         """Method that will run after the main Nautobot job has executed."""
+        # TODO: This is not supported in Nautobot 2 and the entire method
+        # should be removed once we no longer support Nautobot 1.
         if self.rendered:
             self.job_result.data["output"] = self.rendered
 
         self.job_result.data["designs"] = self.designs
+        self.job_result.data["report"] = self.report
 
     def render(self, context: Context, filename: str) -> str:
         """High level function to render the Jinja design templates into YAML.
@@ -194,8 +198,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if commit:
                 self.post_implementation(context, self.environment)
                 if hasattr(self.Meta, "report"):
-                    self.job_result.data["report"] = self.render_report(context, self.environment.journal)
-                    self.log_success(message=self.job_result.data["report"])
+                    self.report = self.render_report(context, self.environment.journal)
+                    self.log_success(message=self.report)
+                    if nautobot_version >= "2.0":
+                        self.save_design_file("report.md", self.report)
             else:
                 transaction.savepoint_rollback(sid)
                 self.log_info(

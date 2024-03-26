@@ -17,3 +17,5 @@
 - Renamed `nautobot_design_builder.design.Builder` to `nautobot_design_builder.Environment` - aliased original name with deprecation warning.
 
 - Any designs that set `OneToOne` relationships (such as device `primary_ip4`) may now need a `deferred: true` statement in their design for those fields. Previously, `OneToOne` relationships were always deferred and this is usually unnecessary. Any deferrals must now be explicit.
+
+- Design reports are now saved to the file `report.md` for Nautobot 2.x installations.
