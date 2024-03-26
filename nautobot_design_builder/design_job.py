@@ -222,6 +222,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             filename (str): The name of the file to save.
             content (str): The content to save to the file.
         """
+        if nautobot_version < "2.0":
+            return
+
         FileProxy.objects.create(
-            name=filename, job_result=self.job_result, file=ContentFile(content.encode("utf-8"), name=filename)
+            name=filename,
+            job_result=self.job_result,
+            file=ContentFile(content.encode("utf-8"), name=filename),
         )
