@@ -208,9 +208,21 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     self.save_design_file("renered.yaml", self.rendered)
                 for design_file, design in self.designs.items():
                     output_file = path.basename(design_file)
+                    # this should remove the .j2
+                    output_file, _ = path.splitext(output_file)
+                    if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
+                        output_file = f"{output_file}.yaml"
                     self.save_design_file(output_file, yaml.safe_dump(design))
 
     def save_design_file(self, filename, content):
+        """Save some content to a job file.
+
+        This is only supported on Nautobot 2.0 and greater.
+
+        Args:
+            filename (str): The name of the file to save.
+            content (str): The content to save to the file.
+        """
         FileProxy.objects.create(
             name=filename, job_result=self.job_result, file=ContentFile(content.encode("utf-8"), name=filename)
         )
