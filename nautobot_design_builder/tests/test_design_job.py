@@ -31,7 +31,10 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.SimpleDesignReport)
         job.run(data={}, commit=True)
         self.assertJobSuccess(job)
-        self.assertEqual("Report output", job.job_result.data["report"])  # pylint: disable=unsubscriptable-object
+        if nautobot_version >= "2.0":
+            self.assertEqual("Report output", job.report)  # pylint: disable=unsubscriptable-object
+        else:
+            self.assertEqual("Report output", job.job_result.data["report"])  # pylint: disable=unsubscriptable-object
 
     def test_multiple_design_files(self):
         job = self.get_mocked_job(test_designs.MultiDesignJob)
