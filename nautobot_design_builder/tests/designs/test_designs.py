@@ -13,6 +13,14 @@ class SimpleDesign(DesignJob):
         design_file = "templates/simple_design.yaml.j2"
 
 
+class SimpleDesign3(DesignJob):
+    """Simple design job with extra manufacturer."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design 3"
+        design_file = "templates/simple_design_3.yaml.j2"
+
+
 class SimpleDesignReport(DesignJob):
     """Simple design job that includes a post-implementation report."""
 

@@ -48,6 +48,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.designs = {}
         # TODO: Remove this when we no longer support Nautobot 1.x
         self.rendered = None
+        self.rendered_design = None
         self.failed = False
         self.report = None
 
@@ -119,21 +120,14 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             context (Context object): a tree of variables that can include templates for values
             design_file (str): Filename of the design file to render.
         """
+        self.rendered_design = design_file
         self.rendered = self.render(context, design_file)
-        # Save the rendered result for later examination from
-        # the job result/additional data tab.
-        output_file = path.basename(design_file)
-        # this should remove the .j2
-        output_file, _ = path.splitext(output_file)
-        if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
-            output_file = f"{output_file}.yaml"
-        self.save_design_file(output_file, self.rendered)
-
         design = yaml.safe_load(self.rendered)
         self.designs[design_file] = design
 
         # no need to save the rendered content if yaml loaded
         # it okay
+        self.rendered_design = None
         self.rendered = None
         return design
 
@@ -160,8 +154,28 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
 
-    def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches
+    def run(self, **kwargs):  # pylint: disable=arguments-differ
         """Render the design and implement it within a build Environment object."""
+        try:
+            return self._run_in_transaction(**kwargs)
+        finally:
+            if self.rendered:
+                self.save_design_file(self.rendered_design, self.rendered)
+            for design_file, design in self.designs.items():
+                output_file = path.basename(design_file)
+                # this should remove the .j2
+                output_file, _ = path.splitext(output_file)
+                if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
+                    output_file = f"{output_file}.yaml"
+                self.save_design_file(output_file, yaml.safe_dump(design))
+
+    @transaction.atomic
+    def _run_in_transaction(self, **kwargs):  # pylint: disable=too-many-branches
+        """Render the design and implement it within a build Environment object.
+
+        This version of `run` is wrapped in a transaction and will roll back database changes
+        on error. In general, this method should only be called by the `run` method.
+        """
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(job_result=self.job_result, extensions=extensions)

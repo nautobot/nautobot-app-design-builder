@@ -27,6 +27,19 @@ class TestDesignJob(DesignTestCase):
         )
         environment.return_value.roll_back.assert_not_called()
 
+    def test_simple_design_rollback(self):
+        job1 = self.get_mocked_job(test_designs.SimpleDesign)
+        job1.run(data={}, commit=True)
+        self.assertFalse(job1.failed)
+        self.assertEqual(1, Manufacturer.objects.all().count())
+        job2 = self.get_mocked_job(test_designs.SimpleDesign3)
+        if nautobot_version < "2":
+            job2.run(data={}, commit=True)
+        else:
+            self.assertRaises(DesignValidationError, job2.run, data={}, commit=True)
+        self.assertTrue(job2.failed)
+        self.assertEqual(1, Manufacturer.objects.all().count())
+
     def test_simple_design_report(self):
         job = self.get_mocked_job(test_designs.SimpleDesignReport)
         job.run(data={}, commit=True)
