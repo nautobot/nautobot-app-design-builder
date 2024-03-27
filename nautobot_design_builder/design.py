@@ -600,12 +600,12 @@ class ModelInstance:
         try:
             self.instance.full_clean()
             self.instance.save(**self.metadata.save_args)
+            self.environment.journal.log(self)
             self.metadata.created = False
             if self._parent is None:
                 self.environment.log_success(
                     message=f"{msg} {self.model_class.__name__} {self.instance}", obj=self.instance
                 )
-            self.environment.journal.log(self)
             # Refresh from DB so that we update based on any
             # post save signals that may have fired.
             self.instance.refresh_from_db()
