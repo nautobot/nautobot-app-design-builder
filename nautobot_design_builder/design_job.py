@@ -160,7 +160,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             return self._run_in_transaction(**kwargs)
         finally:
             if self.rendered:
-                self.save_design_file(self.rendered_design, self.rendered)
+                rendered_design = path.basename(self.rendered_design)
+                rendered_design, _ = path.splitext(rendered_design)
+                if not rendered_design.endswith(".yaml") and not rendered_design.endswith(".yml"):
+                    rendered_design = f"{rendered_design}.yaml"
+                self.save_design_file(rendered_design, self.rendered)
             for design_file, design in self.designs.items():
                 output_file = path.basename(design_file)
                 # this should remove the .j2
