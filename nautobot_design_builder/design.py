@@ -187,7 +187,7 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
               specified action is different than what was previously set.
         """
         if action not in self.ACTION_CHOICES:
-            raise errors.DesignImplementationError(f"Unknown action {self._action}", self.model_instance.model_class)
+            raise errors.DesignImplementationError(f"Unknown action {action}", self.model_instance.model_class)
 
         if self._action is None or self._action == action:
             self._action = action
