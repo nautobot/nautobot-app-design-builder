@@ -1,4 +1,5 @@
 """Jinja2 related filters and environment methods."""
+
 import json
 from typing import TYPE_CHECKING
 import yaml

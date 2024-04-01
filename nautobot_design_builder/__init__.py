@@ -1,4 +1,5 @@
 """Plugin declaration for nautobot_design_builder."""
+
 # Metadata is inherited from Nautobot. If not including Nautobot in the environment, this should be added
 from importlib import metadata
 

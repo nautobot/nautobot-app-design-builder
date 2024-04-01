@@ -1,4 +1,5 @@
 """Test object creator methods."""
+
 import importlib
 from operator import attrgetter
 import os
@@ -10,7 +11,7 @@ from django.test import TestCase
 
 from nautobot.dcim.models import Cable
 
-from nautobot_design_builder.design import Builder
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.util import nautobot_version
 
 
@@ -42,6 +43,15 @@ class BuilderChecks:
         if len(value0) == 1 and len(value1) == 1:
             test.assertEqual(value0[0], value1[0], msg=f"Check {index}")
         test.assertEqual(value0, value1, msg=f"Check {index}")
+
+    @staticmethod
+    def check_count_equal(test, check, index):
+        """Check that two values are equal."""
+        value0 = _get_value(check[0])
+        value1 = _get_value(check[1])
+        if len(value0) == 1 and len(value1) == 1:
+            test.assertEqual(value0[0], value1[0], msg=f"Check {index}")
+        test.assertCountEqual(value0, value1, msg=f"Check {index}")
 
     @staticmethod
     def check_model_exists(test, check, index):
@@ -106,7 +116,7 @@ def builder_test_case(data_dir):
 
             # Create a new closure for testcase
             def test_wrapper(testcase):
-                @patch("nautobot_design_builder.design.Builder.roll_back")
+                @patch("nautobot_design_builder.design.Environment.roll_back")
                 def test_runner(self, roll_back: Mock):
                     if testcase.get("skip", False):
                         self.skipTest("Skipping due to testcase skip=true")
@@ -114,12 +124,13 @@ def builder_test_case(data_dir):
                     for extension in testcase.get("extensions", []):
                         extensions.append(_load_class(extension))
 
-                    for design in testcase["designs"]:
-                        builder = Builder(extensions=extensions)
-                        commit = design.pop("commit", True)
-                        builder.implement_design(design=design, commit=commit)
-                        if not commit:
-                            roll_back.assert_called()
+                    with self.captureOnCommitCallbacks(execute=True):
+                        for design in testcase["designs"]:
+                            environment = Environment(extensions=extensions)
+                            commit = design.pop("commit", True)
+                            environment.implement_design(design=design, commit=commit)
+                            if not commit:
+                                roll_back.assert_called()
 
                     for index, check in enumerate(testcase.get("checks", [])):
                         for check_name, args in check.items():

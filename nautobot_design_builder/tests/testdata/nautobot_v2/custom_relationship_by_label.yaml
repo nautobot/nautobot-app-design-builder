@@ -1,0 +1,64 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.LookupExtension"
+designs:
+  - relationships:
+      - label: "Device to VLANS"
+        key: "device_to_vlans"
+        type: "many-to-many"
+        "!lookup:source_type":
+          app_label: "dcim"
+          model: "device"
+        "!lookup:destination_type":
+          app_label: "ipam"
+          model: "vlan"
+
+    manufacturers:
+      - name: "manufacturer1"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model name"
+        u_height: 1
+
+    roles:
+      - name: "device role"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+
+    location_types:
+      - name: "Site"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+        locations:
+          - name: "site_1"
+            status__name: "Active"
+
+    vlans:
+      - "!create_or_update:vid": 42
+        name: "The Answer"
+        status__name: "Active"
+
+    devices:
+      - name: "device_1"
+        location__name: "site_1"
+        status__name: "Active"
+        device_type__model: "model name"
+        role__name: "device role"
+        vlans:
+          - "!get:vid": 42
+          - vid: "43"
+            name: "Better Answer"
+            status__name: "Active"
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.VLAN"
+      query: {vid: "43"}
+
+  - count_equal:
+      - model: "nautobot.extras.models.RelationshipAssociation"
+        query: {relationship__label: "Device to VLANS"}
+        attribute: "destination"
+      - model: "nautobot.ipam.models.VLAN"

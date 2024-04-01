@@ -1,0 +1,11 @@
+---
+designs:
+  - git_repositories:
+      - name: "backups"
+        remote_url: "https://github.com/nautobot/demo-gc-backups"
+        branch: "main"
+
+checks:
+  - model_exists:
+      model: "nautobot.extras.models.GitRepository"
+      query: {name: "backups"}

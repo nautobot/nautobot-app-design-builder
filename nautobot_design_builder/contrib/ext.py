@@ -1,4 +1,5 @@
 """Extra action tags that are not part of the core Design Builder."""
+
 from functools import reduce
 import operator
 from typing import Any, Dict, Iterator, Tuple
@@ -12,8 +13,7 @@ from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
 import netaddr
-from nautobot_design_builder.design import Builder
-from nautobot_design_builder.design import ModelInstance
+from nautobot_design_builder.design import Environment, ModelInstance, ModelMetadata
 
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
 from nautobot_design_builder.ext import AttributeExtension
@@ -23,7 +23,7 @@ from nautobot_design_builder.jinja2 import network_offset
 class LookupMixin:
     """A helper mixin that provides a way to lookup objects."""
 
-    builder: Builder
+    environment: Environment
 
     def lookup_by_content_type(self, app_label, model_name, query):
         """Perform a query on a model.
@@ -65,7 +65,10 @@ class LookupMixin:
             if isinstance(value, dict):
                 yield from LookupMixin._flatten(value, f"{prefix}{key}__")
             else:
-                yield (f"{prefix}{key}", value)
+                if isinstance(value, ModelInstance):
+                    yield (f"!get:{prefix}{key}", value.instance)
+                else:
+                    yield (f"!get:{prefix}{key}", value)
 
     @staticmethod
     def flatten_query(query: dict) -> Dict[str, Any]:
@@ -96,7 +99,7 @@ class LookupMixin:
         """
         return dict(LookupMixin._flatten(query))
 
-    def lookup(self, queryset, query, parent=None):
+    def lookup(self, queryset, query, parent: ModelInstance = None):
         """Perform a single object lookup from a queryset.
 
         Args:
@@ -113,10 +116,13 @@ class LookupMixin:
         Returns:
             Any: The object matching the query.
         """
-        query = self.builder.resolve_values(query, unwrap_model_instances=True)
+        query = self.environment.resolve_values(query)
         query = self.flatten_query(query)
         try:
-            return queryset.get(**query)
+            model_class = self.environment.model_class_index[queryset.model]
+            if parent:
+                return parent.create_child(model_class, query, queryset)
+            return model_class(self.environment, query, queryset)
         except ObjectDoesNotExist:
             # pylint: disable=raise-missing-from
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
@@ -241,8 +247,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             termination was found.
 
         Returns:
-            None: This tag does not return a value, as it adds a deferred object
-            representing the cable connection.
+            dict: All of the information needed to lookup or create a cable instance.
 
         Example:
             ```yaml
@@ -283,19 +288,14 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         cable_attributes.update(
             {
                 "termination_a": model_instance,
-                "!create_or_update:termination_b_type": ContentType.objects.get_for_model(remote_instance),
-                "!create_or_update:termination_b_id": remote_instance.id,
+                "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
+                    remote_instance.instance
+                ).id,
+                "!create_or_update:termination_b_id": remote_instance.instance.id,
+                "deferred": True,
             }
         )
-
-        model_instance.deferred.append("cable")
-        model_instance.deferred_attributes["cable"] = [
-            model_instance.__class__(
-                self.builder,
-                model_class=dcim.Cable,
-                attributes=cable_attributes,
-            )
-        ]
+        return ("cable", cable_attributes)
 
 
 class NextPrefixExtension(AttributeExtension):
@@ -455,7 +455,7 @@ class BGPPeeringExtension(AttributeExtension):
 
     tag = "bgp_peering"
 
-    def __init__(self, builder: Builder):
+    def __init__(self, environment: Environment):
         """Initialize the BGPPeeringExtension.
 
         This initializer will import the necessary BGP models. If the
@@ -464,26 +464,17 @@ class BGPPeeringExtension(AttributeExtension):
         Raises:
             DesignImplementationError: Raised when the BGP Models App is not installed.
         """
-        super().__init__(builder)
+        super().__init__(environment)
         try:
             from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
 
-            self.PeerEndpoint = PeerEndpoint  # pylint:disable=invalid-name
-            self.Peering = Peering  # pylint:disable=invalid-name
+            self.PeerEndpoint = ModelInstance.factory(PeerEndpoint)  # pylint:disable=invalid-name
+            self.Peering = ModelInstance.factory(Peering)  # pylint:disable=invalid-name
         except ModuleNotFoundError:
             # pylint:disable=raise-missing-from
             raise DesignImplementationError(
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
-
-    @staticmethod
-    def _post_save(sender, instance, **kwargs) -> None:  # pylint:disable=unused-argument
-        peering_instance: ModelInstance = instance
-        endpoint_a = peering_instance.instance.endpoint_a
-        endpoint_z = peering_instance.instance.endpoint_z
-        endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
-        endpoint_a.save()
-        endpoint_z.save()
 
     def attribute(self, value, model_instance) -> None:
         """This attribute tag creates or updates a BGP peering for two endpoints.
@@ -493,7 +484,7 @@ class BGPPeeringExtension(AttributeExtension):
         Design Builder syntax.
 
         Args:
-            value (dict): dictionary containing the keys `entpoint_a`
+            value (dict): dictionary containing the keys `endpoint_a`
             and `endpoint_z`. Both of these keys must be dictionaries
             specifying a way to either lookup or create the appropriate
             peer endpoints.
@@ -532,14 +523,14 @@ class BGPPeeringExtension(AttributeExtension):
         # copy the value so it won't be modified in later
         # use
         retval = {**value}
-        endpoint_a = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_a"))
-        endpoint_z = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_z"))
+        endpoint_a = self.PeerEndpoint(self.environment, retval.pop("endpoint_a"))
+        endpoint_z = self.PeerEndpoint(self.environment, retval.pop("endpoint_z"))
         peering_a = None
         peering_z = None
         try:
             peering_a = endpoint_a.instance.peering
             peering_z = endpoint_z.instance.peering
-        except self.Peering.DoesNotExist:
+        except self.Peering.model_class.DoesNotExist:
             pass
 
         # try to prevent empty peerings
@@ -553,8 +544,16 @@ class BGPPeeringExtension(AttributeExtension):
                 peering_z.delete()
 
         retval["endpoints"] = [endpoint_a, endpoint_z]
-        endpoint_a.attributes["peering"] = model_instance
-        endpoint_z.attributes["peering"] = model_instance
+        endpoint_a.metadata.attributes["peering"] = model_instance
+        endpoint_z.metadata.attributes["peering"] = model_instance
 
-        model_instance.connect(ModelInstance.POST_SAVE, BGPPeeringExtension._post_save)
+        def post_save():
+            peering_instance: ModelInstance = model_instance
+            endpoint_a = peering_instance.instance.endpoint_a
+            endpoint_z = peering_instance.instance.endpoint_z
+            endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
+            endpoint_a.save()
+            endpoint_z.save()
+
+        model_instance.connect(ModelMetadata.POST_SAVE, post_save)
         return retval
