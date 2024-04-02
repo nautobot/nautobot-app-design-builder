@@ -476,6 +476,7 @@ class JournalEntry(BaseModel):
                 active_journal_ids = ",".join([str(j.id) for j in related_entries])
                 raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
 
+            self.design_object._current_design = self.journal.design_instance  # pylint: disable=protected-access
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:

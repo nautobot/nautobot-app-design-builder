@@ -25,6 +25,8 @@ if DEBUG and not _TESTING:
     if "debug_toolbar.middleware.DebugToolbarMiddleware" not in MIDDLEWARE:  # noqa: F405
         MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")  # noqa: F405
 
+MIDDLEWARE.insert(0, "nautobot_design_builder.middleware.GlobalRequestMiddleware")  # noqa: F405
+
 #
 # Misc. settings
 #
@@ -173,6 +175,8 @@ PLUGINS_CONFIG = {
     "nautobot_design_builder": {
         "context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None),
         "pre_decommission_hook": pre_decommission_hook_example,
+        "protected_models": [("dcim", "region"), ("dcim", "device")],
+        "protected_superuser_bypass": False,
     }
 }
 

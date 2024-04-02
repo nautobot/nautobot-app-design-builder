@@ -1,6 +1,8 @@
 """UI Views for design builder."""
 
 from django_tables2 import RequestConfig
+from django.apps import apps as global_apps
+
 from nautobot.core.views.mixins import (
     ObjectDetailViewMixin,
     ObjectListViewMixin,
@@ -10,6 +12,8 @@ from nautobot.core.views.mixins import (
 )
 from nautobot.utilities.paginator import EnhancedPaginator, get_paginate_count
 from nautobot.utilities.utils import count_related
+from nautobot.core.views.generic import ObjectView
+
 
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
@@ -150,3 +154,41 @@ class JournalEntryUIViewSet(  # pylint:disable=abstract-method
     table_class = JournalEntryTable
     action_buttons = ()
     lookup_field = "pk"
+
+
+class DesignProtectionObjectView(ObjectView):
+    """View for the Audit Results tab dynamically generated on specific object detail views."""
+
+    template_name = "nautobot_design_builder/designprotection_tab.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        """Set the queryset for the given object and call the inherited dispatch method."""
+        model = kwargs.pop("model")
+        if not self.queryset:
+            self.queryset = global_apps.get_model(model).objects.all()
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_extra_context(self, request, instance):
+        """Generate extra context for rendering the DesignProtection template."""
+        content = {}
+
+        journalentry_references = JournalEntry.objects.filter(
+            _design_object_id=instance.id, active=True
+        ).exclude_decommissioned()
+
+        if journalentry_references:
+            design_owner = journalentry_references.filter(full_control=True)
+            if design_owner:
+                content["object"] = design_owner.first().journal.design_instance
+            for journalentry in journalentry_references:
+                for attribute in instance._meta.fields:
+                    attribute_name = attribute.name
+                    if attribute_name.startswith("_"):
+                        continue
+                    if (
+                        attribute_name in journalentry.changes["differences"].get("added", {})
+                        and journalentry.changes["differences"].get("added", {})[attribute_name]
+                    ):
+                        content[attribute_name] = journalentry.journal.design_instance
+
+        return {"active_tab": request.GET["tab"], "design_protection": content}
