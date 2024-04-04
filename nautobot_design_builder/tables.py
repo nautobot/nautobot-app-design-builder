@@ -46,7 +46,9 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
 
     name = Column(linkify=True)
     design = Column(linkify=True)
-    live_state = ColoredLabelColumn()
+    first_implemented = Column(verbose_name="Deployment Time")
+    last_implemented = Column(verbose_name="Last Update Time")
+    live_state = ColoredLabelColumn(verbose_name="Operational State")
     actions = ButtonsColumn(
         DesignInstance,
         buttons=(
