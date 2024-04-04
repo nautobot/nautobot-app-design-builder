@@ -9,11 +9,11 @@ from nautobot.apps.ui import (
 
 menu_items = (
     NavMenuTab(
-        name="Jobs",
-        weight=150,
+        name="Designs",
+        weight=1000,
         groups=(
             NavMenuGroup(
-                name="Designs",
+                name="Design Builder",
                 weight=100,
                 items=(
                     NavMenuItem(
