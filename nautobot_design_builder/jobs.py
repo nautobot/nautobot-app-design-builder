@@ -6,6 +6,9 @@ from .logging import get_logger
 from .models import DesignInstance
 
 
+name = "Design Builder"
+
+
 class DesignInstanceDecommissioning(Job):
     """Job to decommission Design Instances."""
 
@@ -18,7 +21,7 @@ class DesignInstanceDecommissioning(Job):
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta class."""
 
-        name = "Decommission Design Instances."
+        name = "Decommission Design Instances"
         description = """Job to decommission one or many Design Instances from Nautobot."""
 
     def run(self, data, commit):
