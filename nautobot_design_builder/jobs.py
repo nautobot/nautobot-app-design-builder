@@ -6,7 +6,7 @@ from .logging import get_logger
 from .models import DesignInstance
 
 
-name = "Design Builder"
+name = "Design Builder"  # pylint: disable=invalid-name
 
 
 class DesignInstanceDecommissioning(Job):
