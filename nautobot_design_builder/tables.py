@@ -10,7 +10,7 @@ from nautobot_design_builder.models import Design, DesignInstance, Journal, Jour
 
 DESIGNTABLE = """
 <a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
-    <i class="mdi mdi-arrow-right-drop-circle-outline"></i>
+    <i class="mdi mdi-play"></i>
 </a>
 """
 
