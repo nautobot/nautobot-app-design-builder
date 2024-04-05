@@ -64,7 +64,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         self.job1.validated_save()
 
-        self.design1, _ = models.Design.objects.get_or_create(job=self.job1)
+        self.design1, _ = models.Design.objects.get_or_create(job=self.job1, defaults={"version": "0.0.1"})
         self.content_type = ContentType.objects.get_for_model(models.DesignInstance)
         self.design_instance = models.DesignInstance(
             design=self.design1,
@@ -73,6 +73,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             live_state=Status.objects.get(
                 content_types=self.content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
             ),
+            version=self.design1.version,
         )
         self.design_instance.validated_save()
 
@@ -83,6 +84,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             live_state=Status.objects.get(
                 content_types=self.content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
             ),
+            version=self.design1.version,
         )
         self.design_instance_2.validated_save()
 
