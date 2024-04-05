@@ -38,6 +38,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     """
 
     instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
+    # TODO: In Nautobot 2.1, replace by the Contacts model
     owner = StringVar(label="Implementation Owner", required=False, max_length=models.DESIGN_OWNER_MAX_LENGTH)
 
     if nautobot_version >= "2.0.0":

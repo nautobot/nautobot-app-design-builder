@@ -169,6 +169,7 @@ class DesignInstance(PrimaryModel, StatusModel):
 
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
+    # TODO: In Nautobot 2.1, replace by the Contacts model
     owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, default="")
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
