@@ -103,10 +103,10 @@ class Design(PrimaryModel):
     to a saved graphql query at some point in the future.
     """
 
-    # TODO: Add version field (future feature)
     # TODO: Add saved graphql query (future feature)
     # TODO: Add a template mapping to get custom payload (future feature)
     job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
+    version = models.CharField(max_length=20)
 
     objects = DesignQuerySet.as_manager()
 
@@ -167,14 +167,13 @@ class DesignInstance(PrimaryModel, StatusModel):
 
     post_decommission = Signal()
 
-    # TODO: add version field to indicate which version of a design
-    #       this instance is on. (future feature)
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, default="")
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
     live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
+    version = models.CharField(max_length=20)
 
     objects = DesignInstanceQuerySet.as_manager()
 

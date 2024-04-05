@@ -1,6 +1,6 @@
 """Forms for the design builder app."""
 
-from django.forms import NullBooleanField
+from django.forms import NullBooleanField, CharField
 from nautobot.extras.forms import NautobotFilterForm
 from nautobot.extras.models import Job, JobResult
 from nautobot.utilities.forms import TagFilterField, DynamicModelChoiceField, StaticSelect2, BOOLEAN_WITH_BLANK_CHOICES
@@ -13,8 +13,9 @@ class DesignFilterForm(NautobotFilterForm):
 
     model = Design
 
-    job = DynamicModelChoiceField(queryset=Job.objects.all())
+    job = DynamicModelChoiceField(queryset=Job.objects.all(), required=False)
     tag = TagFilterField(model)
+    version = CharField(max_length=20, required=False)
 
 
 class DesignInstanceFilterForm(NautobotFilterForm):
@@ -24,6 +25,7 @@ class DesignInstanceFilterForm(NautobotFilterForm):
 
     design = DynamicModelChoiceField(queryset=Design.objects.all())
     tag = TagFilterField(model)
+    version = CharField(max_length=20, required=False)
 
 
 class JournalFilterForm(NautobotFilterForm):

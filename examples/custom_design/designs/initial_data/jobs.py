@@ -19,3 +19,4 @@ class InitialDesign(DesignJob):
         commit_default = False
         design_file = "designs/0001_design.yaml.j2"
         context_class = InitialDesignContext
+        version = "1.0.0"

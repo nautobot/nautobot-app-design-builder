@@ -22,7 +22,7 @@ class DesignFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = Design
-        fields = ["id", "job"]
+        fields = ["id", "job", "version"]
 
 
 class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
@@ -40,7 +40,17 @@ class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
         """Meta attributes for filter."""
 
         model = DesignInstance
-        fields = ["id", "design", "name", "owner", "first_implemented", "last_implemented", "status", "live_state"]
+        fields = [
+            "id",
+            "design",
+            "name",
+            "owner",
+            "first_implemented",
+            "last_implemented",
+            "status",
+            "live_state",
+            "version",
+        ]
 
 
 class JournalFilterSet(NautobotFilterSet):

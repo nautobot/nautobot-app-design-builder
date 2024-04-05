@@ -27,7 +27,7 @@ class DesignTable(BaseTable):
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "job", "instance_count")
+        fields = ("name", "version", "job", "instance_count")
 
 
 DESIGNINSTANCETABLE = """
@@ -62,7 +62,7 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
         """Meta attributes."""
 
         model = DesignInstance
-        fields = ("name", "design", "owner", "first_implemented", "last_implemented", "status", "live_state")
+        fields = ("name", "design", "version", "owner", "first_implemented", "last_implemented", "status", "live_state")
 
 
 class JournalTable(BaseTable):
