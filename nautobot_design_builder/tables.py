@@ -48,8 +48,8 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
     design = Column(linkify=True)
     first_implemented = Column(verbose_name="Deployment Time")
     last_implemented = Column(verbose_name="Last Update Time")
-    created_by = Column(accessor="get_created_by", verbose_name="Deployed by")
-    updated_by = Column(accessor="get_last_updated_by", verbose_name="Last Updated by")
+    created_by = Column(accessor=Accessor("get_created_by"), verbose_name="Deployed by")
+    updated_by = Column(accessor=Accessor("get_last_updated_by"), verbose_name="Last Updated by")
     live_state = ColoredLabelColumn(verbose_name="Operational State")
     actions = ButtonsColumn(
         DesignInstance,
@@ -82,7 +82,7 @@ class JournalTable(BaseTable):
 
     pk = Column(linkify=True, verbose_name="ID")
     design_instance = Column(linkify=True)
-    job_result = Column(linkify=True)
+    job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
     journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
     active = BooleanColumn(verbose_name="Active Journal")
 

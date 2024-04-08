@@ -92,7 +92,11 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            journals = Journal.objects.restrict(request.user, "view").filter(design_instance=instance)
+            journals = (
+                Journal.objects.restrict(request.user, "view")
+                .filter(design_instance=instance)
+                .annotate(journal_entry_count=count_related(JournalEntry, "journal"))
+            )
 
             journals_table = JournalTable(journals)
             journals_table.columns.hide("design_instance")

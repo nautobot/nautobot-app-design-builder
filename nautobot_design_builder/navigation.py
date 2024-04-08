@@ -28,12 +28,6 @@ menu_items = (
                         permissions=["nautobot_design_builder.view_designinstance"],
                         buttons=(),
                     ),
-                    NavMenuItem(
-                        link="plugins:nautobot_design_builder:journal_list",
-                        name="Journals",
-                        permissions=["nautobot_design_builder.view_journal"],
-                        buttons=(),
-                    ),
                 ),
             ),
         ),
