@@ -15,17 +15,12 @@ def populate_sample_data():
     )
 
     design, _ = Design.objects.get_or_create(job=job)
-    design_instance, _ = DesignInstance.objects.get_or_create(design=design, name="Initial Data", owner="Test User")
+    design_instance, _ = DesignInstance.objects.get_or_create(design=design, name="Initial Data")
     Journal.objects.get_or_create(design_instance=design_instance, job_result=job_result)
 
 
 def create_test_view_data():
     """Creates test data for view and API view test cases."""
-    owners = [
-        "Peter Müller",
-        "Maria Meyer",
-        "Otto Fischer",
-    ]
     for i in range(1, 4):
         # Core models
         job = Job.objects.create(name=f"Fake Design Job {i}")
@@ -36,7 +31,7 @@ def create_test_view_data():
 
         # Design Builder models
         design = Design.objects.create(job=job)
-        instance = DesignInstance.objects.create(design=design, name=f"Test Instance {i}", owner=owners[i - 1])
+        instance = DesignInstance.objects.create(design=design, name=f"Test Instance {i}")
         journal = Journal.objects.create(design_instance=instance, job_result=job_result)
         full_control = i == 1  # Have one record where full control is given, more than one where its not.
         JournalEntry.objects.create(journal=journal, design_object=object_created_by_job, full_control=full_control)

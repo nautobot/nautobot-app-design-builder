@@ -38,8 +38,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     """
 
     instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
-    # TODO: In Nautobot 2.1, replace by the Contacts model
-    owner = StringVar(label="Implementation Owner", required=False, max_length=models.DESIGN_OWNER_MAX_LENGTH)
 
     if nautobot_version >= "2.0.0":
         from nautobot.extras.jobs import DryRunVar  # pylint: disable=no-name-in-module,import-outside-toplevel
@@ -191,7 +189,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.builder.implement_design_changes(design, deprecated_design, design_file, commit)
 
-    def _setup_journal(self, instance_name: str, design_owner: str):
+    def _setup_journal(self, instance_name: str):
         try:
             instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
@@ -201,7 +199,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             content_type = ContentType.objects.get_for_model(models.DesignInstance)
             instance = models.DesignInstance(
                 name=instance_name,
-                owner=design_owner,
                 design=self.design_model(),
                 last_implemented=datetime.now(),
                 status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
@@ -240,7 +237,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         else:
             self.job_result.job_kwargs = self.serialize_data(data)
 
-        journal = self._setup_journal(data.pop("instance_name"), data.pop("owner"))
+        journal = self._setup_journal(data.pop("instance_name"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.builder = Builder(

@@ -7,7 +7,6 @@ from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, Buttons
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
-
 DESIGNTABLE = """
 <a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
     <i class="mdi mdi-play"></i>
@@ -48,6 +47,8 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
     design = Column(linkify=True)
     first_implemented = Column(verbose_name="Deployment Time")
     last_implemented = Column(verbose_name="Last Update Time")
+    created_by = Column(accessor="get_created_by", verbose_name="Deployed by")
+    updated_by = Column(accessor="get_last_updated_by", verbose_name="Last Updated by")
     live_state = ColoredLabelColumn(verbose_name="Operational State")
     actions = ButtonsColumn(
         DesignInstance,
@@ -62,7 +63,17 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
         """Meta attributes."""
 
         model = DesignInstance
-        fields = ("name", "design", "version", "owner", "first_implemented", "last_implemented", "status", "live_state")
+        fields = (
+            "name",
+            "design",
+            "version",
+            "created_by",
+            "first_implemented",
+            "updated_by",
+            "last_implemented",
+            "status",
+            "live_state",
+        )
 
 
 class JournalTable(BaseTable):

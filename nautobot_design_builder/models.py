@@ -16,7 +16,7 @@ from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
 
-from .util import nautobot_version
+from .util import nautobot_version, get_created_and_last_updated_usernames_for_model
 from . import choices
 from .errors import DesignValidationError
 
@@ -150,8 +150,6 @@ class DesignInstanceQuerySet(RestrictedQuerySet):
 
 DESIGN_NAME_MAX_LENGTH = 100
 
-DESIGN_OWNER_MAX_LENGTH = 100
-
 
 @extras_features("statuses")
 class DesignInstance(PrimaryModel, StatusModel):
@@ -169,8 +167,6 @@ class DesignInstance(PrimaryModel, StatusModel):
 
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
-    # TODO: In Nautobot 2.1, replace by the Contacts model
-    owner = models.CharField(max_length=DESIGN_OWNER_MAX_LENGTH, blank=True, default="")
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
     live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
@@ -235,6 +231,16 @@ class DesignInstance(PrimaryModel, StatusModel):
         ):
             raise ValidationError("A Design Instance can only be delete if it's Decommissioned and not Deployed.")
         return super().delete(*args, **kwargs)
+
+    def get_created_by(self):
+        """Get the username of the user who created the object."""
+        created_by, _ = get_created_and_last_updated_usernames_for_model(self)
+        return created_by
+
+    def get_last_updated_by(self):
+        """Get the username of the user who update the object last time."""
+        _, last_updated_by = get_created_and_last_updated_usernames_for_model(self)
+        return last_updated_by
 
 
 class Journal(PrimaryModel):

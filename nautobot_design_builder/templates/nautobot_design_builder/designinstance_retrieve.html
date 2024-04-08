@@ -16,12 +16,16 @@
                     <td>{{ object.version }}</td>
                 </tr>
                 <tr>
-                    <td>Owner</td>
-                    <td>{{ object.owner|placeholder }}</td>
+                    <td>Deployed by</td>
+                    <td>{{ object.get_created_by|placeholder }}</td>
                 </tr>
                 <tr>
                     <td>Deployment Time</td>
                     <td>{{ object.first_implemented|placeholder }}</td>
+                </tr>
+                <tr>
+                    <td>Last Updated by</td>
+                    <td>{{ object.get_last_updated_by|placeholder }}</td>
                 </tr>
                 <tr>
                     <td>Last Update Time</td>

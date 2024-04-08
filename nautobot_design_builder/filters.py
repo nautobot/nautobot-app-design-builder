@@ -44,7 +44,6 @@ class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
             "id",
             "design",
             "name",
-            "owner",
             "first_implemented",
             "last_implemented",
             "status",
