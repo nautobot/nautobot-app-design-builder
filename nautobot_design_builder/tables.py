@@ -21,12 +21,13 @@ class DesignTable(BaseTable):
     name = Column(linkify=True)
     instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Instances")
     actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
+    job_last_synced = Column(accessor="job.last_updated", verbose_name="Job Last Synced Time")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "version", "job", "instance_count")
+        fields = ("name", "version", "job", "job_last_synced", "instance_count")
 
 
 DESIGNINSTANCETABLE = """
