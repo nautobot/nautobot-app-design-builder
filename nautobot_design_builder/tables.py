@@ -19,7 +19,7 @@ class DesignTable(BaseTable):
 
     job = Column(linkify=True)
     name = Column(linkify=True)
-    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Instances")
+    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
     actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Job Last Synced Time")
 
@@ -81,7 +81,7 @@ class JournalTable(BaseTable):
     """Table for list view."""
 
     pk = Column(linkify=True, verbose_name="ID")
-    design_instance = Column(linkify=True)
+    design_instance = Column(linkify=True, verbose_name="Deployment")
     job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
     journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
     active = BooleanColumn(verbose_name="Active Journal")

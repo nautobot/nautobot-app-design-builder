@@ -187,6 +187,8 @@ class DesignInstance(PrimaryModel, StatusModel):
         unique_together = [
             ("design", "name"),
         ]
+        verbose_name = "Design Deployment"
+        verbose_name_plural = "Design Deployments"
 
     def clean(self):
         """Guarantee that the design field cannot be changed."""

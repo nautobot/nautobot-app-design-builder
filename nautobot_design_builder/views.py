@@ -87,6 +87,8 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
     table_class = DesignInstanceTable
     action_buttons = ()
     lookup_field = "pk"
+    verbose_name = "Design Deployment"
+    verbose_name_plural = "Design Deployments"
 
     def get_extra_context(self, request, instance=None):
         """Extend UI."""

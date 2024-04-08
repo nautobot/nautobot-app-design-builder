@@ -24,7 +24,7 @@ menu_items = (
                     ),
                     NavMenuItem(
                         link="plugins:nautobot_design_builder:designinstance_list",
-                        name="Design Instances",
+                        name="Design Deployments",
                         permissions=["nautobot_design_builder.view_designinstance"],
                         buttons=(),
                     ),

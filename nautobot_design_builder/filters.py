@@ -59,7 +59,7 @@ class JournalFilterSet(NautobotFilterSet):
 
     design_instance = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=DesignInstance.objects.all(),
-        label="Design Instance (ID)",
+        label="Design Deployment (ID)",
     )
 
     job_result = NaturalKeyOrPKMultipleChoiceFilter(
