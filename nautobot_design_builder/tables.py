@@ -27,7 +27,7 @@ class DesignTable(BaseTable):
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "version", "job", "job_last_synced", "instance_count")
+        fields = ("name", "version", "job", "job_last_synced", "description", "instance_count")
 
 
 DESIGNINSTANCETABLE = """

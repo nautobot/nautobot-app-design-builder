@@ -20,3 +20,4 @@ class InitialDesign(DesignJob):
         design_file = "designs/0001_design.yaml.j2"
         context_class = InitialDesignContext
         version = "1.0.0"
+        description = "It establishes the devices and site information for four sites: IAD5, LGA1, LAX11, SEA11."

@@ -107,6 +107,7 @@ class Design(PrimaryModel):
     # TODO: Add a template mapping to get custom payload (future feature)
     job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
     version = models.CharField(max_length=20)
+    description = models.CharField(max_length=255)
 
     objects = DesignQuerySet.as_manager()
 
