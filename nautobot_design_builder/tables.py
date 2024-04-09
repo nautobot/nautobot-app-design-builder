@@ -8,8 +8,12 @@ from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, Buttons
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
 DESIGNTABLE = """
+
+<a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
+    <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
+</a>
 <a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
-    <i class="mdi mdi-play"></i>
+    <i class="mdi mdi-play" title="Deploy Design"></i>
 </a>
 """
 

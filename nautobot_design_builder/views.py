@@ -2,6 +2,9 @@
 
 from django_tables2 import RequestConfig
 from django.apps import apps as global_apps
+from django.shortcuts import render
+
+from rest_framework.decorators import action
 
 from nautobot.core.views.mixins import (
     ObjectDetailViewMixin,
@@ -13,7 +16,7 @@ from nautobot.core.views.mixins import (
 from nautobot.utilities.paginator import EnhancedPaginator, get_paginate_count
 from nautobot.utilities.utils import count_related
 from nautobot.core.views.generic import ObjectView
-
+from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
 
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
@@ -35,6 +38,13 @@ from nautobot_design_builder.forms import (
 )
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 from nautobot_design_builder.tables import DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
+
+
+PERMISSIONS_ACTION_MAP.update(
+    {
+        "docs": "view",
+    }
+)
 
 
 class DesignUIViewSet(  # pylint:disable=abstract-method
@@ -69,6 +79,17 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
             RequestConfig(request, paginate).configure(instances_table)
             context["instances_table"] = instances_table
         return context
+
+    @action(detail=True, methods=["get"])
+    def docs(self, request, pk, *args, **kwargs):
+        """Additional action to handle docs."""
+        design = Design.objects.get(pk=pk)
+        context = {
+            "design_name": design.name,
+            "is_modal": request.GET.get("modal"),  # TODO: not sure what modal means
+            "text_content": design.docs,
+        }
+        return render(request, "nautobot_design_builder/markdown_render.html", context)
 
 
 class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
