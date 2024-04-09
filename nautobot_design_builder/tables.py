@@ -15,6 +15,9 @@ DESIGNTABLE = """
 <a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
     <i class="mdi mdi-play" title="Deploy Design"></i>
 </a>
+<a href="{% url 'extras:job_edit' slug=record.job.slug %}" class="btn btn-xs btn-warning" title="Edit Design">
+    <i class="mdi mdi-pencil"></i>
+</a>
 """
 
 

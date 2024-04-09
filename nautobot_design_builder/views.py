@@ -86,7 +86,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
         design = Design.objects.get(pk=pk)
         context = {
             "design_name": design.name,
-            "is_modal": request.GET.get("modal"),  # TODO: not sure what modal means
+            "is_modal": request.GET.get("modal"),
             "text_content": design.docs,
         }
         return render(request, "nautobot_design_builder/markdown_render.html", context)
