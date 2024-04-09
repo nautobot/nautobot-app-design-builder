@@ -5,14 +5,14 @@ import logging
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.conf import settings
 from django.db.models.signals import pre_delete
 from django.db.models import ProtectedError
 
 from nautobot.core.signals import nautobot_database_ready
-from nautobot.extras.models import Job, Status
+from nautobot.extras.models import Job, Status, Tag
 from nautobot.utilities.choices import ColorChoices
 from nautobot.extras.registry import registry
 from nautobot_design_builder.models import JournalEntry
@@ -72,7 +72,7 @@ def create_design_model(sender, instance: Job, **kwargs):  # pylint:disable=unus
             default_data["description"] = instance.job_class.Meta.description
         if hasattr(instance.job_class.Meta, "version"):
             default_data["version"] = instance.job_class.Meta.version
-        if hasattr(instance.job_class.Meta, "version"):
+        if hasattr(instance.job_class.Meta, "docs"):
             default_data["docs"] = instance.job_class.Meta.docs
 
         _, created = Design.objects.get_or_create(job=instance, defaults=default_data)
@@ -113,3 +113,9 @@ def load_pre_delete_signals():
 
 
 load_pre_delete_signals()
+
+
+@receiver(signal=post_delete, sender=DesignInstance)
+def handle_post_delete_design_instance(sender, instance, **kwargs):  # pylint: disable: unused-argument
+    """Cleaning up the Tag created for a design instance."""
+    Tag.objects.get(name=f"Managed by {instance}").delete()
