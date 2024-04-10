@@ -15,7 +15,7 @@ DESIGNTABLE = """
 <a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
     <i class="mdi mdi-play" title="Deploy Design"></i>
 </a>
-<a href="{% url 'extras:job_edit' slug=record.job.slug %}" class="btn btn-xs btn-warning" title="Edit Design">
+<a href="{% url 'extras:job_edit' slug=record.job.slug %}" class="btn btn-xs btn-warning" title="Edit Design Job">
     <i class="mdi mdi-pencil"></i>
 </a>
 """
@@ -24,17 +24,16 @@ DESIGNTABLE = """
 class DesignTable(BaseTable):
     """Table for list view."""
 
-    job = Column(linkify=True)
     name = Column(linkify=True)
     instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
     actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGNTABLE)
-    job_last_synced = Column(accessor="job.last_updated", verbose_name="Job Last Synced Time")
+    job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "version", "job", "job_last_synced", "description", "instance_count")
+        fields = ("name", "version", "job_last_synced", "description", "instance_count")
 
 
 DESIGNINSTANCETABLE = """

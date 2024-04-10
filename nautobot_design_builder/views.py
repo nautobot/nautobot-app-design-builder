@@ -119,6 +119,7 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
             journals = (
                 Journal.objects.restrict(request.user, "view")
                 .filter(design_instance=instance)
+                .order_by("last_updated")
                 .annotate(journal_entry_count=count_related(JournalEntry, "journal"))
             )
 

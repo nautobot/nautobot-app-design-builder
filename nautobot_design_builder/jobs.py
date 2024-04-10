@@ -22,7 +22,7 @@ class DesignInstanceDecommissioning(Job):
         """Meta class."""
 
         name = "Decommission Design Deployments"
-        description = """Job to decommission one or many Design Instances from Nautobot."""
+        description = """Job to decommission one or many Design Deployments from Nautobot."""
 
     def run(self, data, commit):
         """Execute Decommissioning job."""
