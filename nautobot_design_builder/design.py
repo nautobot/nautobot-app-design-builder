@@ -617,7 +617,6 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    # TODO: this is a breaking change that needs to be revisited because it's used by Django commands directly
     @transaction.atomic
     def implement_design_changes(self, design: Dict, deprecated_design: Dict, design_file: str, commit: bool = False):
         """Iterates through items in the design and creates them.
