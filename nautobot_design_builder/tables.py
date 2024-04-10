@@ -27,7 +27,7 @@ class DesignTable(BaseTable):
     job = Column(linkify=True)
     name = Column(linkify=True)
     instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
-    actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
+    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGNTABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Job Last Synced Time")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods

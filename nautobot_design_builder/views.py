@@ -52,6 +52,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
+    ObjectDestroyViewMixin,
 ):
     """UI views for the design model."""
 
