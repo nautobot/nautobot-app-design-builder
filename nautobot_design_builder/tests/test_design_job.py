@@ -20,18 +20,31 @@ class TestDesignJob(DesignTestCase):
 
     @patch("nautobot_design_builder.models.Journal")
     @patch("nautobot_design_builder.models.DesignInstance.objects.get")
-    @patch("nautobot_design_builder.design_job.DesignJob.design_model")
-    @patch("nautobot_design_builder.design_job.Builder")
-    def test_simple_design_commit(self, object_creator: Mock, design_model_mock, design_instance_mock, journal_mock):
+    @patch("nautobot_design_builder.design_job.Environment.design_model")
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_simple_design_commit(self, environment: Mock, design_model_mock, design_instance_mock, journal_mock):
         job = self.get_mocked_job(test_designs.SimpleDesign)
         job.run(data=self.data, commit=True)
         self.assertIsNotNone(job.job_result)
-        object_creator.assert_called()
+        environment.assert_called()
         self.assertDictEqual(
             {"manufacturers": {"name": "Test Manufacturer"}},
             job.designs[test_designs.SimpleDesign.Meta.design_file],
         )
-        object_creator.return_value.roll_back.assert_not_called()
+        environment.return_value.roll_back.assert_not_called()
+
+    def test_simple_design_rollback(self):
+        job1 = self.get_mocked_job(test_designs.SimpleDesign)
+        job1.run(data={}, commit=True)
+        self.assertFalse(job1.failed)
+        self.assertEqual(1, Manufacturer.objects.all().count())
+        job2 = self.get_mocked_job(test_designs.SimpleDesign3)
+        if nautobot_version < "2":
+            job2.run(data={}, commit=True)
+        else:
+            self.assertRaises(DesignValidationError, job2.run, data={}, commit=True)
+        self.assertTrue(job2.failed)
+        self.assertEqual(1, Manufacturer.objects.all().count())
 
     @patch("nautobot_design_builder.models.Journal")
     @patch("nautobot_design_builder.models.DesignInstance.objects.get")
@@ -40,7 +53,7 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.SimpleDesignReport)
         job.run(data=self.data, commit=True)
         self.assertJobSuccess(job)
-        self.assertEqual("Report output", job.job_result.data["report"])  # pylint: disable=unsubscriptable-object
+        self.assertEqual("Report output", job.report)
 
     @patch("nautobot_design_builder.models.Journal")
     @patch("nautobot_design_builder.models.DesignInstance.objects.get")
@@ -73,11 +86,11 @@ class TestDesignJob(DesignTestCase):
     @patch("nautobot_design_builder.models.Journal")
     @patch("nautobot_design_builder.models.DesignInstance.objects.get")
     @patch("nautobot_design_builder.design_job.DesignJob.design_model")
-    @patch("nautobot_design_builder.design_job.Builder")
-    def test_custom_extensions(self, builder_patch: Mock, design_model_mock, design_instance_mock, journal_mock):
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_custom_extensions(self, environment: Mock, design_model_mock, design_instance_mock, journal_mock):
         job = self.get_mocked_job(test_designs.DesignJobWithExtensions)
         job.run(data=self.data, commit=True)
-        builder_patch.assert_called_once_with(
+        environment.assert_called_once_with(
             job_result=job.job_result,
             extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
             journal=journal_mock(),
@@ -90,11 +103,11 @@ class TestDesignJobLogging(DesignTestCase):
     @patch("nautobot_design_builder.models.Journal")
     @patch("nautobot_design_builder.models.DesignInstance.objects.get")
     @patch("nautobot_design_builder.design_job.DesignJob.design_model")
-    @patch("nautobot_design_builder.design_job.Builder")
+    @patch("nautobot_design_builder.design_job.Environment")
     def test_simple_design_implementation_error(
-        self, object_creator: Mock, design_model_mock, design_instance_mock, journal_mock
+        self, environment: Mock, design_model_mock, design_instance_mock, journal_mock
     ):
-        object_creator.return_value.implement_design_changes.side_effect = DesignImplementationError("Broken")
+        environment.return_value.implement_design_changes.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(test_designs.SimpleDesign)
         if nautobot_version < "2":
             job.run(data=self.data, commit=True)

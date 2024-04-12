@@ -15,7 +15,7 @@ from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.git import GitRepo
 
 if TYPE_CHECKING:
-    from design import ModelInstance, Builder
+    from design import ModelInstance, Environment
 
 
 def is_extension(cls):
@@ -65,27 +65,29 @@ class Extension(ABC):
     tag matching `tag_name` or `value_name` is encountered.
 
     Args:
-        builder (Builder): The object creator that is implementing the
+        environment (Environment): The object creator that is implementing the
             current design.
     """
+
+    environment: "Environment"
 
     @property
     @abstractmethod
     def tag(self):
         """All Extensions must specify their tag name.
 
-        The `tag` method indicates to the Builder what the
+        The `tag` method indicates to the Environment what the
         tag name is for this extensions. For instance, a `tag`
         of `ref` will match `!ref` in the design.
         """
 
-    def __init__(self, builder: "Builder"):  # noqa: D107
-        self.builder = builder
+    def __init__(self, environment: "Environment"):  # noqa: D107
+        self.environment = environment
 
     def commit(self) -> None:
         """Optional method that is called once a design has been implemented and committed to the database.
 
-        Note: Commit is called once for each time Builder.implement_design is called. For a design job with
+        Note: Commit is called once for each time Environment.implement_design is called. For a design job with
         multiple design files, commit will be called once for each design file. It is up to the extension
         to track internal state so that multiple calls to `commit` don't introduce an inconsistency.
         """
@@ -139,14 +141,14 @@ class ReferenceExtension(AttributeExtension, ValueExtension):
     stored creator object.
 
     Args:
-        builder (Builder): The object creator that is implementing the
+        environment (Environment): The object creator that is implementing the
             current design.
     """
 
     tag = "ref"
 
-    def __init__(self, builder: "Builder"):  # noqa: D107
-        super().__init__(builder)
+    def __init__(self, environment: "Environment"):  # noqa: D107
+        super().__init__(environment)
         self._env = {}
 
     def attribute(self, value, model_instance):
@@ -196,6 +198,8 @@ class ReferenceExtension(AttributeExtension, ValueExtension):
         if model_instance.instance and not model_instance.instance._state.adding:  # pylint: disable=protected-access
             model_instance.instance.refresh_from_db()
         if attribute:
+            # TODO: I think the result of the reduce operation needs to (potentially)
+            # be wrapped up in a ModelInstance object
             return reduce(getattr, [model_instance.instance, *attribute.split(".")])
         return model_instance
 
@@ -204,7 +208,7 @@ class GitContextExtension(AttributeExtension):
     """Provides the "!git_context" attribute extension that will save content to a git repo.
 
     Args:
-        builder (Builder): The object creator that is implementing the
+        environment (Environment): The object creator that is implementing the
             current design.
 
     Example:
@@ -225,10 +229,10 @@ class GitContextExtension(AttributeExtension):
 
     tag = "git_context"
 
-    def __init__(self, builder: "Builder"):  # noqa: D107
-        super().__init__(builder)
+    def __init__(self, environment: "Environment"):  # noqa: D107
+        super().__init__(environment)
         slug = NautobotDesignBuilderConfig.context_repository
-        self.context_repo = GitRepo(slug, builder.job_result)
+        self.context_repo = GitRepo(slug, environment.job_result)
         self._env = {}
         self._reset()
 

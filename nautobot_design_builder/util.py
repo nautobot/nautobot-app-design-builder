@@ -1,6 +1,5 @@
 """Main design builder app module, contains DesignJob and base methods and functions."""
 
-# pylint: disable=import-outside-toplevel
 import functools
 import importlib
 import inspect

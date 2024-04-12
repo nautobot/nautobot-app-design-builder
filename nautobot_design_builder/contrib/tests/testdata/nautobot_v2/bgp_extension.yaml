@@ -17,8 +17,8 @@ designs:
           - "!get:app_label": "dcim"
             "!get:model": "device"
         locations:
-          name: "Site"
-          status__name: "Active"
+          - name: "Site"
+            status__name: "Active"
 
     manufacturers:
       - "!create_or_update:name": "test-manufacturer"

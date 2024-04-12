@@ -5,11 +5,9 @@ from collections import defaultdict, OrderedDict
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
-from django.db.models import Model, Manager
+from django.db.models import Model, Manager, QuerySet
 from django.db.models.fields import Field as DjangoField
-from django.dispatch.dispatcher import Signal
 from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
-from django.db import transaction
 
 
 from nautobot.core.graphql.utils import str_to_var_name
@@ -23,7 +21,7 @@ from nautobot.extras.models import Status
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin, get_logger
-from nautobot_design_builder.fields import field_factory, OneToOneField, ManyToOneField
+from nautobot_design_builder.fields import CustomRelationshipField, field_factory
 from nautobot_design_builder import models
 from nautobot_design_builder.constants import NAUTOBOT_ID
 from nautobot_design_builder.util import nautobot_version, custom_delete_order
@@ -121,7 +119,8 @@ class Journal:
 
         if instance.pk not in self.index:
             self.index.add(instance.pk)
-            if model.created:
+
+            if model.metadata.created:
                 index = self.created
             else:
                 index = self.updated
@@ -209,10 +208,72 @@ def calculate_changes(current_state, initial_state=None, created=False, pre_chan
     }
 
 
-class ModelInstance:  # pylint: disable=too-many-instance-attributes
-    """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file."""
+def calculate_changes(current_state, initial_state=None, created=False, pre_change=False) -> Dict:
+    """Determine the differences between the original instance and the current.
 
-    # Action Definitions
+    This will calculate the changes between the instance's initial state
+    and its current state. If pre_change is supplied it will use this
+    dictionary as the initial state rather than the current ModelInstance
+    initial state.
+
+    Args:
+        pre_change (dict, optional): Initial state for comparison. If not supplied then the initial state from this instance is used.
+
+    Returns:
+        Return a dictionary with the changed object's serialized data compared
+        with either the model instance initial state, or the supplied pre_change
+        state. The dictionary has the following values:
+
+        dict: {
+            "pre_change": dict(),
+            "post_change": dict(),
+            "differences": {
+                "added": dict(),
+                "removed": dict(),
+            }
+        }
+    """
+    post_change = serialize_object_v2(current_state)
+
+    if not created and not pre_change:
+        pre_change = initial_state
+
+    if pre_change and post_change:
+        diff_added = shallow_compare_dict(pre_change, post_change, exclude=["last_updated"])
+        diff_removed = {x: pre_change.get(x) for x in diff_added}
+    elif pre_change and not post_change:
+        diff_added, diff_removed = None, pre_change
+    else:
+        diff_added, diff_removed = post_change, None
+
+    return {
+        "pre_change": pre_change,
+        "post_change": post_change,
+        "differences": {
+            "added": diff_added,
+            "removed": diff_removed,
+        },
+    }
+
+
+class ModelMetadata:  # pylint: disable=too-many-instance-attributes
+    """`ModelMetadata` contains all the information design builder needs to track a `ModelInstance`.
+
+    The model metadata includes the query necessary to find a `ModelInstance` in the database, any
+    attributes to be updated in the instance, the action to take (get, create, update, etc) and
+    additional metadata about the operation (e.g. whether or not the assignment must be deferred).
+
+    In addition to tracking the metadata of an object being manipulated, `ModelMetadata` also
+    encapsulates the signal mechanism used by fields and extensions to perform actions based on
+    when an object gets saved.
+    """
+
+    # Signal Event types
+    PRE_SAVE = "PRE_SAVE"
+    POST_INSTANCE_SAVE = "POST_INSTANCE_SAVE"
+    POST_SAVE = "POST_SAVE"
+
+    # Object Actions
     GET = "get"
     CREATE = "create"
     UPDATE = "update"
@@ -220,56 +281,320 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
 
-    # Callback Event types
-    PRE_SAVE = "PRE_SAVE"
-    POST_SAVE = "POST_SAVE"
+    def __init__(self, model_instance: "ModelInstance", **kwargs):
+        """Initialize the metadata object for a given model instance.
+
+        By default, the metadata object doesn't really have anything in it. In order
+        to set the internal values for things like `action` and `kwargs` then the
+        attributes setter must be used.
+
+        Args:
+            model_instance (ModelInstance): The model instance to which this metadata refers.
+        """
+        self.model_instance = model_instance
+        self.environment = model_instance.environment
+
+        self.created = False
+
+        self._signals = {
+            self.PRE_SAVE: [],
+            self.POST_INSTANCE_SAVE: [],
+            self.POST_SAVE: [],
+        }
+
+        self.save_args = kwargs.get("save_args", {})
+
+        # The following attributes are dunder attributes
+        # because they should only be set in the @attributes.setter
+        # method
+        self._action = None
+        self._attributes: Dict[str, Any] = {}
+        self._custom_fields = {}
+        self._deferred = False
+        self._filter = {}
+        self._kwargs = {}
+
+    @property
+    def action(self) -> str:
+        """Determine the action.
+
+        This property will always return a value. If no action has been explicitly
+        set in a design object, then the default action is `CREATE`. If an action
+        has been determined (based on action tags) then that action is returned.
+
+        Returns:
+            str: One of the valid values for action: `GET`, `CREATE`, `UPDATE`, `CREATE_OR_UPDATE`
+        """
+        if self._action is None:
+            return self.CREATE
+        return self._action
+
+    @action.setter
+    def action(self, action: str):
+        """Set the action for a given model instance.
+
+        Args:
+            action (str): The indicated action (`GET`, `CREATE`, `UPDATE`, `CREATE_OR_UPDATE`)
+
+        This setter confirms that exactly one action type is specified for a model instance.
+        The setter may be called multiple times with the same action type. However, if the
+        setter is called more than once with different action types then a `DesignImplementationError`
+        is raised.
+
+        Raises:
+            errors.DesignImplementationError: If an unknown action has been specified or if the
+              specified action is different than what was previously set.
+        """
+        if action not in self.ACTION_CHOICES:
+            raise errors.DesignImplementationError(f"Unknown action {action}", self.model_instance.model_class)
+
+        if self._action is None or self._action == action:
+            self._action = action
+            return
+
+        raise errors.DesignImplementationError(
+            f"Can perform only one action for a model, got both {self._action} and {action}",
+            self.model_instance.model_class,
+        )
+
+    @property
+    def attributes(self):
+        """Get any attributes that have been processed."""
+        return self._attributes
+
+    @attributes.setter
+    def attributes(self, attributes: Dict[str, Any]):
+        """Process and assign attributes for this metadata.
+
+        Args:
+            attributes (Dict[str, Any]): The input attributes to be processed.
+              This should be a dictionary of key/value pairs where the keys
+              match the field names and properties of a given model type. The
+              attributes are processed sequentially. Any action tags are looked up
+              and executed in this step.
+
+        Raises:
+            errors.DesignImplementationError: A `DesignImplementationError` can be raised
+              for a number of different error conditions if an extension cannot be found
+              or returns an unknown type. The error can also be raised if a dictionary
+              key cannot be mapped to a model field or property.
+        """
+        self._attributes = {**attributes}
+        self._kwargs = {}
+        self._filter = {}
+        self._custom_fields = self._attributes.pop("custom_fields", {})
+
+        attribute_names = list(self._attributes.keys())
+        while attribute_names:
+            key = attribute_names.pop(0)
+            self._attributes[key] = self.environment.resolve_values(self._attributes[key])
+            if key == "deferred":
+                self._deferred = self._attributes.pop(key)
+            elif key.startswith("!"):
+                value = self._attributes.pop(key)
+                args = key.lstrip("!").split(":")
+
+                extn: ext.AttributeExtension = self.environment.get_extension("attribute", args[0])
+                if extn:
+                    result = extn.attribute(*args[1:], value=value, model_instance=self.model_instance)
+                    if isinstance(result, tuple):
+                        self._attributes[result[0]] = result[1]
+                    elif isinstance(result, dict):
+                        self._attributes.update(result)
+                        attribute_names.extend(result.keys())
+                    elif result is not None:
+                        raise errors.DesignImplementationError(f"Cannot handle extension return type {type(result)}")
+                else:
+                    self.action = args[0]
+                    self._filter[args[1]] = value
+            elif "__" in key:
+                fieldname, search = key.split("__", 1)
+                if not hasattr(self.model_instance.model_class, fieldname):
+                    raise errors.DesignImplementationError(
+                        f"{fieldname} is not a property", self.model_instance.model_class
+                    )
+                self._attributes[fieldname] = {f"!get:{search}": self._attributes.pop(key)}
+            elif not hasattr(self.model_instance, key):
+                value = self._attributes.pop(key)
+                if isinstance(value, ModelInstance):
+                    value = value.instance
+                self._kwargs[key] = value
+
+    def connect(self, signal: str, handler: FunctionType):
+        """Connect a handler between this model instance (as sender) and signal.
+
+        Args:
+            signal (str): Signal to listen for.
+            handler (FunctionType): Callback function
+        """
+        self._signals[signal].append(handler)
+
+    def send(self, signal: str):
+        """Send a signal to all associated listeners.
+
+        Args:
+            signal (str): The signal to send
+        """
+        for handler in self._signals[signal]:
+            handler()
+            self.model_instance.instance.refresh_from_db()
+
+    @property
+    def custom_fields(self) -> Dict[str, Any]:
+        """`custom_fields` property.
+
+        When attributes are processed, the `custom_fields` key is removed and assigned
+        to the `custom_fields` property.
+
+        Returns:
+            Dict[str, Any]: A dictionary of custom fields/values.
+        """
+        return self._custom_fields
+
+    @property
+    def deferred(self) -> bool:
+        """Whether or not this model object's save should be deferred.
+
+        Sometimes a model, specified as a child within a design, must be
+        saved after the parent. One good example of this is (in Nautobot 1.x)
+        a `Device.primary_ip4`. If the IP address itself is created within
+        the device's interface block, and that interface block is defined in the
+        same block as the `primary_ip4`, then the `primary_ip4` field cannot be
+        set until after the interface's IP has been created. Since the interface
+        cannot be created until after the device has been saved (since the interface
+        has a required foreign-key field to device) then the sequence must go like this:
+
+        1) Save the new device.
+        2) Save the IP address that will be assigned to the interface
+        3) Save the interface with foreign keys for device and IP address
+        4) Set device's `primary_ip4` and re-save the device.
+
+        The only way to tell design builder to do step 4 last is to set the value on
+        the field to `deferred`. This deferral can be specified as in the following example:
+
+        ```yaml
+        # Note: the following example is for Nautobot 1.x
+        devices:
+        - name: "device_1"
+            site__name: "site_1"
+            status__name: "Active"
+            device_type__model: "model name"
+            device_role__name: "device role"
+            interfaces:
+            - name: "Ethernet1/1"
+                type: "virtual"
+                status__name: "Active"
+                description: "description for Ethernet1/1"
+                ip_addresses:
+                - address: "192.168.56.1/24"
+                    status__name: "Active"
+            primary_ip4: {"!get:address": "192.168.56.1/24", "deferred": true}
+        ```
+
+        Returns:
+            bool: Whether or not the object's assignment should be deferred.
+        """
+        return self._deferred
+
+    @property
+    def filter(self):
+        """The processed query filter to find the object."""
+        return self._filter
+
+    @property
+    def kwargs(self):
+        """Any keyword arguments needed for the creation of the model object."""
+        return self._kwargs
+
+    @property
+    def query_filter_values(self):
+        """Returns a copy of the query-filter field/values."""
+        return {**self._filter}
+
+    @property
+    def query_filter(self) -> Dict[str, Any]:
+        """Calculate the query filter for the object.
+
+        The `query_filter` property collects all of the lookups for an object
+        (set by `!create_or_update` and `!get` tags) and computes a dictionary
+        that can be used as keyword arguments to a model manager `.get` method.
+
+        Returns:
+            Dict[str, Any]: The computed query filter.
+        """
+        return _map_query_values(self._filter)
+
+
+class ModelInstance:
+    """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file.
+
+    `ModelInstance` objects are essentially proxy objects between the design builder implementation process
+    and normal Django models. The `ModelInstance` intercepts value assignments to fields and properly
+    defers database saves so that `ForeignKey` and `ManyToMany` fields are set and saved in the correct order.
+
+    This field proxying also provides a system to model relationships that are more complex than simple
+    database fields and relationships (such as Nautobot custom relationships).
+    """
+
+    name: str
+    model_class: Type[Model]
+
+    @classmethod
+    def factory(cls, django_class: Type[Model]) -> "ModelInstance":
+        """`factory` takes a normal Django model class and creates a dynamic ModelInstance proxy class.
+
+        Args:
+            django_class (Type[Model]): The Django model class to wrap in a proxy class.
+
+        Returns:
+            type[ModelInstance]: The newly created proxy class.
+        """
+        cls_attributes = {
+            "model_class": django_class,
+            "name": django_class.__name__,
+        }
+
+        field: DjangoField
+        for field in django_class._meta.get_fields():
+            cls_attributes[field.name] = field_factory(None, field)
+        model_class = type(django_class.__name__, (ModelInstance,), cls_attributes)
+        return model_class
 
     def __init__(
         self,
-        creator: "Builder",
-        model_class: Type[Model],
+        environment: "Environment",
         attributes: dict,
         relationship_manager=None,
         parent=None,
-        ext_tag=None,
-        ext_value=None,
-    ):  # pylint:disable=too-many-arguments
-        """Constructor for a ModelInstance."""
-        self.ext_tag = ext_tag
-        self.ext_value = ext_value
-        self.creator = creator
-        self.model_class = model_class
-        self.name = model_class.__name__
+    ):
+        """Create a proxy instance for the model.
+
+        This constructor will create a new `ModelInstance` object that wraps a Django
+        model instance. All assignments to this instance will be proxied to the underlying
+        object using the descriptors in the `fields` module.
+
+        Args:
+            environment (Environment): The build environment for the current design.
+            attributes (dict): The attributes dictionary for the current object.
+            relationship_manager (_type_, optional): The relationship manager to use for lookups. Defaults to None.
+            parent (_type_, optional): The parent this object belongs to in the design tree. Defaults to None.
+
+        Raises:
+            errors.DoesNotExistError: If the object is being retrieved or updated (not created) and can't be found.
+            errors.MultipleObjectsReturnedError: If the object is being retrieved or updated (not created)
+                and more than one object matches the lookup criteria.
+        """
+        self.environment = environment
         self.instance: Model = None
-        # Make a copy of the attributes so the original
-        # design attributes are not overwritten
-        self.attributes = {**attributes}
-        self.parent = parent
-        self.deferred = []
-        self.deferred_attributes = {}
-        self.signals = {
-            self.PRE_SAVE: Signal(),
-            self.POST_SAVE: Signal(),
-        }
+        self.metadata = ModelMetadata(self, **attributes.pop("model_metadata", {}))
 
-        self.filter = {}
-        self.action = None
-        self.instance_fields = {}
-        self._kwargs = {}
-        for direction in Relationship.objects.get_for_model(model_class):
-            for relationship in direction:
-                self.instance_fields[relationship.slug] = field_factory(self, relationship)
-
-        field: DjangoField
-        for field in self.model_class._meta.get_fields():
-            self.instance_fields[field.name] = field_factory(self, field)
-
-        self.created = False
-        self.nautobot_id = None
-        self._parse_attributes()
+        self._parent = parent
+        self.refresh_custom_relationships()
         self.relationship_manager = relationship_manager
         if self.relationship_manager is None:
             self.relationship_manager = self.model_class.objects
+
+        self.metadata.attributes = attributes
 
         try:
             self._load_instance()
@@ -277,6 +602,42 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
             raise errors.MultipleObjectsReturnedError(self) from ex
+        self._update_fields()
+
+    def refresh_custom_relationships(self):
+        """Look for any custom relationships for this model class and add any new fields."""
+        for direction in Relationship.objects.get_for_model(self.model_class):
+            for relationship in direction:
+                field = field_factory(self, relationship)
+
+                # make sure not to mask non-custom relationship fields that
+                # may have the same key name or field name
+                for attr_name in [field.key_name, field.field_name]:
+                    if hasattr(self.__class__, attr_name):
+                        # if there is already an attribute with the same name,
+                        # delete it if it is a custom relationship, that way
+                        # we reload the config from the database.
+                        if isinstance(getattr(self.__class__, attr_name), CustomRelationshipField):
+                            delattr(self.__class__, attr_name)
+                    if not hasattr(self.__class__, attr_name):
+                        setattr(self.__class__, attr_name, field)
+
+    def __str__(self):
+        """Get the model class name."""
+        return str(self.model_class)
+
+    def get_changes(self, pre_change=None):
+        """Determine the differences between the original instance and the current.
+
+        This uses `calculate_changes` to determine the change dictionary. See that
+        method for details.
+        """
+        return calculate_changes(
+            self.instance,
+            initial_state=self._initial_state,
+            created=self.created,
+            pre_change=pre_change,
+        )
 
     def get_changes(self, pre_change=None):
         """Determine the differences between the original instance and the current.
@@ -293,7 +654,7 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
     def create_child(
         self,
-        model_class: Type[Model],
+        model_class: "ModelInstance",
         attributes: Dict,
         relationship_manager: Manager = None,
     ) -> "ModelInstance":
@@ -307,77 +668,36 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
         Returns:
             ModelInstance: Model instance that has its parent correctly set.
         """
-        return ModelInstance(
-            self.creator,
-            model_class,
-            attributes,
-            relationship_manager,
-            parent=self,
-        )
+        if not issubclass(model_class, ModelInstance):
+            model_class = self.environment.model_class_index[model_class]
+        try:
+            return model_class(
+                self.environment,
+                attributes,
+                relationship_manager,
+                parent=self,
+            )
+        except MultipleObjectsReturned:
+            # pylint: disable=raise-missing-from
+            raise errors.DesignImplementationError(
+                f"Expected exactly 1 object for {model_class.__name__}({attributes}) but got more than one"
+            )
+        except ObjectDoesNotExist:
+            query = ",".join([f'{k}="{v}"' for k, v in attributes.items()])
+            # pylint: disable=raise-missing-from
+            raise errors.DesignImplementationError(f"Could not find {model_class.__name__}: {query}")
 
-    def _parse_attributes(self):  # pylint: disable=too-many-branches
-        self.custom_fields = self.attributes.pop("custom_fields", {})
-        self.custom_relationships = self.attributes.pop("custom_relationships", {})
-        attribute_names = list(self.attributes.keys())
-        while attribute_names:
-            key = attribute_names.pop(0)
-            if key == NAUTOBOT_ID:
-                self.nautobot_id = self.attributes[key]
-                continue
-
-            self.attributes[key] = self.creator.resolve_values(self.attributes[key])
-            if key.startswith("!"):
-                value = self.attributes.pop(key)
-                args = key.lstrip("!").split(":")
-
-                extn = self.creator.get_extension("attribute", args[0])
-                if extn:
-                    result = extn.attribute(*args[1:], value=self.creator.resolve_values(value), model_instance=self)
-                    if isinstance(result, tuple):
-                        self.attributes[result[0]] = result[1]
-                    elif isinstance(result, dict):
-                        self.attributes.update(result)
-                        attribute_names.extend(result.keys())
-                    elif result is not None:
-                        raise errors.DesignImplementationError(f"Cannot handle extension return type {type(result)}")
-                elif args[0] in [self.GET, self.UPDATE, self.CREATE_OR_UPDATE]:
-                    self.action = args[0]
-                    self.filter[args[1]] = value
-
-                    if self.action is None:
-                        self.action = args[0]
-                    elif self.action != args[0]:
-                        raise errors.DesignImplementationError(
-                            f"Can perform only one action for a model, got both {self.action} and {args[0]}",
-                            self.model_class,
-                        )
-                else:
-                    raise errors.DesignImplementationError(f"Unknown action {args[0]}", self.model_class)
-            elif "__" in key:
-                fieldname, search = key.split("__", 1)
-                if not hasattr(self.model_class, fieldname):
-                    raise errors.DesignImplementationError(f"{fieldname} is not a property", self.model_class)
-                self.attributes[fieldname] = {search: self.attributes.pop(key)}
-            elif not hasattr(self.model_class, key) and key not in self.instance_fields:
-                value = self.creator.resolve_values(self.attributes.pop(key))
-                if isinstance(value, ModelInstance):
-                    value = value.instance
-                self._kwargs[key] = value
-                # raise errors.DesignImplementationError(f"{key} is not a property", self.model_class)
-
-        if self.action is None:
-            self.action = self.CREATE
-        if self.action not in self.ACTION_CHOICES:
-            raise errors.DesignImplementationError(f"Unknown action {self.action}", self.model_class)
-
-    def connect(self, signal: Signal, handler: FunctionType):
+    def connect(self, signal: str, handler: FunctionType):
         """Connect a handler between this model instance (as sender) and signal.
 
         Args:
             signal (Signal): Signal to listen for.
             handler (FunctionType): Callback function
         """
-        self.signals[signal].connect(handler, self)
+        self.metadata.connect(signal, handler)
+
+    def _send(self, signal: str):
+        self.metadata.send(signal)
 
     def _load_instance(self):  # pylint: disable=too-many-branches
         # If the objects is already an existing Nautobot object, just get it.
@@ -387,13 +707,14 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
             self._initial_state = serialize_object_v2(self.instance)
             return
 
-        query_filter = _map_query_values(self.filter)
-        if self.action == self.GET:
+        query_filter = self.metadata.query_filter
+        field_values = self.metadata.query_filter_values
+        if self.metadata.action == ModelMetadata.GET:
             self.instance = self.model_class.objects.get(**query_filter)
             self._initial_state = serialize_object_v2(self.instance)
             return
 
-        if self.action in [self.UPDATE, self.CREATE_OR_UPDATE]:
+        if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
             # perform nested lookups. First collect all the
             # query params for top-level relationships, then
             # perform the actual lookup
@@ -406,117 +727,92 @@ class ModelInstance:  # pylint: disable=too-many-instance-attributes
 
             for query_param, value in query_filter.items():
                 if isinstance(value, Mapping):
-                    rel = getattr(self.model_class, query_param)
-                    queryset = rel.get_queryset()
-                    model = self.create_child(queryset.model, value, relationship_manager=queryset)
-                    if model.action != self.GET:
-                        model.save(value)
-                    query_filter[query_param] = model.instance
+                    rel: Manager = getattr(self.model_class, query_param)
+                    queryset: QuerySet = rel.get_queryset()
 
+                    model = self.create_child(
+                        self.environment.model_class_index[queryset.model],
+                        value,
+                        relationship_manager=queryset,
+                    )
+                    if model.metadata.action != ModelMetadata.GET:
+                        model.save()
+                    query_filter[query_param] = model.instance
+                    field_values[query_param] = model
             try:
                 self.instance = self.relationship_manager.get(**query_filter)
                 self._initial_state = serialize_object_v2(self.instance)
                 return
             except ObjectDoesNotExist:
-                if self.action == "update":
+                if self.metadata.action == ModelMetadata.UPDATE:
                     # pylint: disable=raise-missing-from
                     raise errors.DesignImplementationError(f"No match with {query_filter}", self.model_class)
-                self.created = True
+                self.metadata.created = True
                 # since the object was not found, we need to
                 # put the search criteria back into the attributes
                 # so that they will be set when the object is created
-                self.attributes.update(query_filter)
-        elif self.action != "create":
-            raise errors.DesignImplementationError(f"Unknown database action {self.action}", self.model_class)
+                self.metadata.attributes.update(field_values)
+        elif self.metadata.action != ModelMetadata.CREATE:
+            raise errors.DesignImplementationError(f"Unknown database action {self.metadata.action}", self.model_class)
         try:
             self._initial_state = {}
-            if not self.instance:
-                self.created = True
-            self.instance = self.model_class(**self._kwargs)
+            self.instance = self.model_class(**self.metadata.kwargs)
+            self.metadata.created = True
         except TypeError as ex:
             raise errors.DesignImplementationError(str(ex), self.model_class)
 
-    def _update_fields(self):  # pylint: disable=too-many-branches
-        if self.action == self.GET and self.attributes:
-            raise ValueError("Cannot update fields when using the GET action")
+    def _update_fields(self):
+        if self.metadata.action == ModelMetadata.GET:
+            if self.metadata.attributes:
+                # TODO: Raise a DesignModelError from here. Currently the DesignModelError doesn't
+                # include a message.
+                raise errors.DesignImplementationError(
+                    "Cannot update fields when using the GET action", self.model_class
+                )
 
-        for field_name, field in self.instance_fields.items():
-            if field_name in self.attributes:
-                value = self.attributes.pop(field_name)
-                if field.deferrable:
-                    self.deferred.append(field_name)
-                    self.deferred_attributes[field_name] = self.creator.resolve_values(value)
-                else:
-                    field.set_value(value)
-            elif (
-                hasattr(self.relationship_manager, "field")
-                and (isinstance(field, (OneToOneField, ManyToOneField)))
-                and self.instance_fields[field_name].field == self.relationship_manager.field
-            ):
-                field.set_value(self.relationship_manager.instance)
+        for field_name, value in self.metadata.attributes.items():
+            if hasattr(self.__class__, field_name):
+                setattr(self, field_name, value)
+            elif hasattr(self.instance, field_name):
+                setattr(self.instance, field_name, value)
 
-        for key, value in self.attributes.items():
-            if hasattr(self.instance, key):
-                setattr(self.instance, key, value)
+            for key, value in self.metadata.custom_fields.items():
+                self.set_custom_field(key, value)
 
-        for key, value in self.custom_fields.items():
-            self.set_custom_field(key, value)
+    def save(self):
+        """Save the model instance to the database.
 
-    def save(self, output_dict):
-        """Save the model instance to the database."""
-        # The reason we call _update_fields at this point is
-        # that some attributes passed into the constructor
-        # may not have been saved yet (thus have no ID). By
-        # deferring the update until just before save, we can
-        # ensure that parent instances have been saved and
-        # assigned a primary key
-        self._update_fields()
-        self.signals[ModelInstance.PRE_SAVE].send(sender=self, instance=self)
+        This method will save the underlying model object to the database and
+        will send signals (`PRE_SAVE`, `POST_INSTANCE_SAVE` and `POST_SAVE`). The
+        design journal is updated in this step.
+        """
+        if self.metadata.action == ModelMetadata.GET:
+            return
 
-        msg = "Created" if self.instance._state.adding else "Updated"  # pylint: disable=protected-access
+        self._send(ModelMetadata.PRE_SAVE)
+
+        msg = "Created" if self.metadata.created else "Updated"
         try:
             if self.creator.journal.design_journal:
                 self.instance._current_design = (  # pylint: disable=protected-access
                     self.creator.journal.design_journal.design_instance
                 )
             self.instance.full_clean()
-            self.instance.save()
-            if self.parent is None:
-                self.creator.log_success(message=f"{msg} {self.name} {self.instance}", obj=self.instance)
-            self.creator.journal.log(self)
+            self.instance.save(**self.metadata.save_args)
+            self.environment.journal.log(self)
+            self.metadata.created = False
+            if self._parent is None:
+                self.environment.log_success(
+                    message=f"{msg} {self.model_class.__name__} {self.instance}", obj=self.instance
+                )
+            # Refresh from DB so that we update based on any
+            # post save signals that may have fired.
             self.instance.refresh_from_db()
         except ValidationError as validation_error:
             raise errors.DesignValidationError(self) from validation_error
 
-        for field_name in self.deferred:
-            items = self.deferred_attributes[field_name]
-            if isinstance(items, dict):
-                items = [items]
-
-            for item in items:
-                field = self.instance_fields[field_name]
-                if isinstance(item, ModelInstance):
-                    item_dict = output_dict
-                    related_object = item
-                    if item.ext_tag:
-                        # If the item is a Design Builder extension, we get the ID
-                        item_dict[item.ext_tag][NAUTOBOT_ID] = str(item.instance.id)
-                else:
-                    item_dict = item
-                    relationship_manager = None
-                    if hasattr(self.instance, field_name):
-                        relationship_manager = getattr(self.instance, field_name)
-                    related_object = self.create_child(field.model, item, relationship_manager)
-                # The item_dict is recursively updated
-                related_object.save(item_dict)
-                # BEWARE
-                # DO NOT REMOVE THE FOLLOWING LINE, IT WILL BREAK THINGS
-                # THAT ARE UPDATED VIA SIGNALS, ESPECIALLY CABLES!
-                self.instance.refresh_from_db()
-
-                field.set_value(related_object.instance)
-        self.signals[ModelInstance.POST_SAVE].send(sender=self, instance=self)
-        output_dict[NAUTOBOT_ID] = str(self.instance.id)
+        self._send(ModelMetadata.POST_INSTANCE_SAVE)
+        self._send(ModelMetadata.POST_SAVE)
 
     def set_custom_field(self, field, value):
         """Sets a value for a custom field."""
@@ -534,36 +830,52 @@ _OBJECT_TYPES_APP_FILTER = set(
         "auth",
         "taggit",
         "database",
-        "contenttypes",
         "sessions",
         "social_django",
     ]
 )
 
 
-class Builder(LoggingMixin):
-    """Iterates through a design and creates and updates the objects defined within."""
+class Environment(LoggingMixin):
+    """The design builder build environment.
+
+    The build `Environment` contains all of the components needed to implement a design.
+    This includes custom action tag extensions and an optional `JobResult` for logging. The
+    build environment also is used by some extensions (such as the `ref` action tag) to store
+    information about the designs being implemented.
+    """
 
     model_map: Dict[str, Type[Model]]
+    model_class_index: Dict[Type, "ModelInstance"]
 
     def __new__(cls, *args, **kwargs):
-        """Sets the model_map class attribute when the first Builder initialized."""
+        """Sets the model_map class attribute when the first Builder is initialized."""
         # only populate the model_map once
         if not hasattr(cls, "model_map"):
             cls.model_map = {}
+            cls.model_class_index = {}
             for model_class in apps.get_models():
                 if model_class._meta.app_label in _OBJECT_TYPES_APP_FILTER:
                     continue
                 plural_name = str_to_var_name(model_class._meta.verbose_name_plural)
-                cls.model_map[plural_name] = model_class
+                cls.model_map[plural_name] = ModelInstance.factory(model_class)
+                cls.model_class_index[model_class] = cls.model_map[plural_name]
         return object.__new__(cls)
 
-    def __init__(
-        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
-    ):
-        """Constructor for Builder."""
-        # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
-        self.builder_output = {}
+    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None):
+        """Create a new build environment for implementing designs.
+
+        Args:
+            job_result (JobResult, optional): If this environment is being used by
+                a `DesignJob` then it can log to the `JobResult` for the job.
+                Defaults to None.
+            extensions (List[ext.Extension], optional): Any custom extensions to use
+                when implementing designs. Defaults to None.
+
+        Raises:
+            errors.DesignImplementationError: If a provided extension is not a subclass
+                of `ext.Extension`.
+        """
         self.job_result = job_result
         self.logger = get_logger(__name__, self.job_result)
 
@@ -600,7 +912,7 @@ class Builder(LoggingMixin):
         )
 
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:
-        """Looks up an extension based on its tag name and returns an instance of that Extension type.
+        """Look up an extension based on its tag name and return an instance of that Extension type.
 
         Args:
             ext_type (str): the type of the extension, i.e. 'attribute' or 'value'
@@ -617,14 +929,13 @@ class Builder(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    @transaction.atomic
-    def implement_design_changes(self, design: Dict, deprecated_design: Dict, design_file: str, commit: bool = False):
-        """Iterates through items in the design and creates them.
+    def implement_design(self, design: Dict, commit: bool = False):
+        """Iterates through items in the design and create them.
 
-        This process is wrapped in a transaction. If either commit=False (default) or
-        an exception is raised, then the transaction is rolled back and no database
-        changes will be present. If commit=True and no exceptions are raised then the
-        database state should represent the changes provided in the design.
+        If either commit=False (default) or an exception is raised, then any extensions
+        with rollback functionality are called to revert their state. If commit=True
+        and no exceptions are raised then the extensions with commit functionality are
+        called to finalize changes.
 
         Args:
             design (Dict): An iterable mapping of design changes.
@@ -644,11 +955,12 @@ class Builder(LoggingMixin):
                     self._create_objects(self.model_map[key], value, key, design_file)
                 elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
-
-            sorted_keys = sorted(deprecated_design, key=custom_delete_order)
-            for key in sorted_keys:
-                self._deprecate_objects(deprecated_design[key])
-
+            # TODO: The way this works now the commit happens on a per-design file
+            #       basis. If a design job has multiple design files and the first
+            #       one completes, but the second one fails, the first will still
+            #       have had commit() called. I think this behavior would be considered
+            #       unexpected. We need to consider removing the commit/rollback functionality
+            #       from `implement_design` and move it to a higher layer, perhaps the `DesignJob`
             if commit:
                 self.commit()
             else:
@@ -657,8 +969,15 @@ class Builder(LoggingMixin):
             self.roll_back()
             raise ex
 
-    def resolve_value(self, value, unwrap_model_instance=False):
-        """Resolve a value using extensions, if needed."""
+    def resolve_value(self, value):
+        """Resolve a single value using extensions, if needed.
+
+        This method will examine a value to determine if it is an action
+        tag. If the value is an action tag, then the corresponding extension
+        is called and the result of the extension execution is returned.
+
+        If the value is not an action tag then the original value is returned.
+        """
         if isinstance(value, str) and value.startswith("!"):
             (action, arg) = value.lstrip("!").split(":", 1)
             extn = self.get_extension("value", action)
@@ -666,12 +985,21 @@ class Builder(LoggingMixin):
                 value = extn.value(arg)
             else:
                 raise errors.DesignImplementationError(f"Unknown attribute extension {value}")
-        if unwrap_model_instance and isinstance(value, ModelInstance):
-            value = value.instance
         return value
 
-    def resolve_values(self, value: Union[list, dict, str], unwrap_model_instances: bool = False) -> Any:
+    def resolve_values(self, value: Union[list, dict, str]) -> Any:
         """Resolve a value, or values, using extensions.
+
+        This method is used to evaluate action tags and call their associated
+        extensions for a given value tree. The method will iterate the values
+        of a list or dictionary and determine if each value represents an
+        action tag. If so, the extension for that tag is called and the original
+        value is replaced with the result of the extension's execution.
+
+        Lists and dictionaries are copied so that the original values remain un-altered.
+
+        If the value is string and the string is an action tag, that tag is evaluated
+        and the result is returned.
 
         Args:
             value (Union[list,dict,str]): The value to attempt to resolve.
@@ -680,51 +1008,37 @@ class Builder(LoggingMixin):
             Any: The resolved value.
         """
         if isinstance(value, str):
-            value = self.resolve_value(value, unwrap_model_instances)
+            value = self.resolve_value(value)
         elif isinstance(value, list):
             # copy the list so we don't change the input
             value = list(value)
             for i, item in enumerate(value):
-                value[i] = self.resolve_value(item, unwrap_model_instances)
+                value[i] = self.resolve_value(item)
         elif isinstance(value, dict):
             # copy the dict so we don't change the input
             value = dict(value)
             for k, item in value.items():
-                value[k] = self.resolve_value(item, unwrap_model_instances)
+                value[k] = self.resolve_value(item)
         return value
 
-    def _create_objects(self, model_cls, objects, key, design_file):
+    def _create_objects(self, model_class: Type[ModelInstance], objects: Union[List[Any], Dict[str, Any]]):
         if isinstance(objects, dict):
-            model = ModelInstance(self, model_cls, objects)
-            model.save(self.builder_output[design_file][key])
-            # TODO: I feel this is not used at all
-            if model.deferred_attributes:
-                self.builder_output[design_file][key].update(model.deferred_attributes)
+            model = model_class(self, objects)
+            model.save()
         elif isinstance(objects, list):
-            for model_instance in objects:
-                model_identifier = get_object_identifier(model_instance)
-                future_object = None
-                for obj in self.builder_output[design_file][key]:
-                    obj_identifier = get_object_identifier(obj)
-                    if obj_identifier == model_identifier:
-                        future_object = obj
-                        break
-
-                if future_object:
-                    # Recursive function to update the created Nautobot UUIDs into the final design for future reference
-                    model = ModelInstance(self, model_cls, model_instance)
-                    model.save(future_object)
-
-                    if model.deferred_attributes:
-                        inject_nautobot_uuids(model.deferred_attributes, future_object)
-
-    def _deprecate_objects(self, objects):
-        if isinstance(objects, list):
-            for obj in objects:
-                self.decommission_object(obj[0], obj[1])
+            for model_attributes in objects:
+                model = model_class(self, model_attributes)
+                model.save()
 
     def commit(self):
-        """Method to commit all changes to the database."""
+        """The `commit` method iterates all extensions and calls their `commit` methods.
+
+        Some extensions need to perform an action after a design has been successfully
+        implemented. For instance, the config context extension waits until after the
+        design has been implemented before committing changes to a config context
+        repository. The `commit` method will find all extensions that include a `commit`
+        method and will call each of them in order.
+        """
         for extn in self.extensions["extensions"]:
             if hasattr(extn["object"], "commit"):
                 extn["object"].commit()
@@ -738,3 +1052,15 @@ class Builder(LoggingMixin):
         for extn in self.extensions["extensions"]:
             if hasattr(extn["object"], "roll_back"):
                 extn["object"].roll_back()
+
+
+def Builder(*args, **kwargs):  # pylint:disable=invalid-name
+    """`Builder` is an alias to the `Environment` class.
+
+    This function is used to provide backwards compatible access to the `Builder` class,
+    which was renamed to `Environment`. This function will be removed in the future.
+    """
+    from warnings import warn  # pylint:disable=import-outside-toplevel
+
+    warn("Builder is now named Environment. Please update your code.")
+    return Environment(*args, **kwargs)
