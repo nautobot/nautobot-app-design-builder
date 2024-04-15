@@ -120,11 +120,11 @@ It's an optional string attribute that is used to define the versioning referenc
 
 ### `description`
 
-It's an optional string attribute that will be used in the `Job` / `Design` to provide a high-level overview of the intend of the design job.
+This optional attribute that is a string that provides a high-level overview of the intend of the design job. This description is displayed int the design detail view.
 
 ### `docs`
 
-It's an optional string, in markdown format, that will be added to the `Design` to provide more detailed information than the one from the description. This should help the users of the `Design` to understand the goal of the design and the impact of the input data.
+This attribute is also displayed on the design detail view. The `docs` attribute can utilize markdown format and should provide more detailed information than the description. This should help the users of the `Design` to understand the goal of the design and the impact of the input data.
 
 ## Design Context
 

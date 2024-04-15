@@ -55,8 +55,8 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
     design = Column(linkify=True)
     first_implemented = Column(verbose_name="Deployment Time")
     last_implemented = Column(verbose_name="Last Update Time")
-    created_by = Column(accessor=Accessor("get_created_by"), verbose_name="Deployed by")
-    updated_by = Column(accessor=Accessor("get_last_updated_by"), verbose_name="Last Updated by")
+    created_by = Column(verbose_name="Deployed by")
+    updated_by = Column(verbose_name="Last Updated by")
     live_state = ColoredLabelColumn(verbose_name="Operational State")
     actions = ButtonsColumn(
         DesignInstance,

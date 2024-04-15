@@ -60,14 +60,6 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
             "live_state",
         ]
 
-    def get_created_by(self, instance):
-        """Get the username of the user who created the object."""
-        return instance.get_created_by()
-
-    def get_last_updated_by(self, instance):
-        """Get the username of the user who update the object last time."""
-        return instance.get_last_updated_by()
-
 
 class JournalSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the journal model."""

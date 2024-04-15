@@ -235,12 +235,14 @@ class DesignInstance(PrimaryModel, StatusModel):
             raise ValidationError("A Design Instance can only be delete if it's Decommissioned and not Deployed.")
         return super().delete(*args, **kwargs)
 
-    def get_created_by(self):
+    @property
+    def created_by(self):
         """Get the username of the user who created the object."""
         created_by, _ = get_created_and_last_updated_usernames_for_model(self)
         return created_by
 
-    def get_last_updated_by(self):
+    @property
+    def last_updated_by(self):
         """Get the username of the user who update the object last time."""
         _, last_updated_by = get_created_and_last_updated_usernames_for_model(self)
         return last_updated_by
