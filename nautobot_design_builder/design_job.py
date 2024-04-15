@@ -24,7 +24,7 @@ from nautobot_design_builder.design import Builder
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
 from nautobot_design_builder import choices
-from nautobot_design_builder.recursive import reduce_design
+from nautobot_design_builder.recursive import combine_designs
 
 from .util import nautobot_version
 
@@ -182,7 +182,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             for key, new_value in design.items():
                 old_value = previous_design[key]
                 future_value = self.builder.builder_output[design_file][key]
-                reduce_design(new_value, old_value, future_value, deprecated_design, key)
+                combine_designs(new_value, old_value, future_value, deprecated_design, key)
 
             self.log_debug(f"Design to implement after reduction: {design}")
             self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")

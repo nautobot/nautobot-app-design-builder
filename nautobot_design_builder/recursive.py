@@ -58,7 +58,7 @@ def inject_nautobot_uuids(initial_data, final_data, only_ext=False):  # pylint: 
 
 
 # TODO: could we make it simpler?
-def reduce_design(
+def combine_designs(
     new_value, old_value, future_value, decommissioned_objects, type_key
 ):  # pylint: disable=too-many-locals,too-many-return-statements,too-many-branches,too-many-statements
     """Recursive function to simplify the new design by comparing with a previous design.
@@ -104,11 +104,11 @@ def reduce_design(
                     # be taken into account to be decommissioned before.
                     inject_nautobot_uuids(old_element, new_element, only_ext=True)
 
-                    reduce_design({}, old_element, {}, decommissioned_objects, type_key)
+                    combine_designs({}, old_element, {}, decommissioned_objects, type_key)
 
                 # When the elements have the same identifier, we progress on the recursive reduction analysis
-                elif reduce_design(new_element, old_element, future_element, decommissioned_objects, type_key):
-                    # As we are iterating over the new_value list, we keep the elements that the `reduce_design`
+                elif combine_designs(new_element, old_element, future_element, decommissioned_objects, type_key):
+                    # As we are iterating over the new_value list, we keep the elements that the `combine_designs`
                     # concludes that must be deleted as not longer relevant for the new design.
                     new_value.remove(new_element)
 
@@ -188,11 +188,11 @@ def reduce_design(
                         decommissioned_objects[inner_key] = []
 
                     decommissioned_objects[inner_key].append((obj[NAUTOBOT_ID], get_object_identifier(obj)))
-                    reduce_design({}, obj, {}, decommissioned_objects, inner_key)
+                    combine_designs({}, obj, {}, decommissioned_objects, inner_key)
 
             elif isinstance(inner_value, (dict, list)) and inner_key in old_value:
                 # If an attribute is a dict or list, explore it recursively to reduce it
-                if reduce_design(
+                if combine_designs(
                     inner_value,
                     old_value[inner_key],
                     future_value[inner_key],

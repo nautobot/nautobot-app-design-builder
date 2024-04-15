@@ -6,6 +6,7 @@ from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixi
 from nautobot.core.api import ContentTypeField
 from nautobot.extras.api.nested_serializers import NestedJobResultSerializer, NestedStatusSerializer
 from nautobot.utilities.api import get_serializer_for_model
+from rest_framework.serializers import Field
 from rest_framework.fields import SerializerMethodField, DictField
 from rest_framework.relations import HyperlinkedIdentityField
 
@@ -40,8 +41,8 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     design = NestedDesignSerializer()
     live_state = NestedStatusSerializer()
-    created_by = SerializerMethodField(read_only=True)
-    last_updated_by = SerializerMethodField(read_only=True)
+    created_by = Field()
+    last_updated_by = Field()
 
     class Meta:
         """Serializer options for the design model."""

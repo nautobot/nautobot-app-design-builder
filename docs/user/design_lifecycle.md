@@ -42,7 +42,7 @@ The `DesignInstance` stores:
 
 This feature provides a means to re-run a design instance with different input data. Re-running the job will update the implemented design with the new changes: additions and removals.
 
-It leverages a complete tracking of previous design implementations and a reduce function for the new design to understand the changes to be implemented and the objects to be decommissioned (leveraging the previous decommissioning feature for only a specific object).
+It leverages a complete tracking of previous design implementations and a function to combine the new design and previous design, to understand the changes to be implemented and the objects to be decommissioned (leveraging the previous decommissioning feature for only a specific object).
 
 The update feature comes with a few assumptions:
 
