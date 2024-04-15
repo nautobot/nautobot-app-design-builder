@@ -2,7 +2,7 @@
 
 <!-- TODO: Add the screenshoots -->
 
-According to a design-oriented approach, the Design Builder App provides not only with the capacity to create and update data in Nautobot but also with a complete lifecycle management of each deployment: update, versioning (in the future), and decommissioning.
+According to a design-oriented approach, the Design Builder App provides not only the capacity to create and update data in Nautobot but also a complete lifecycle management of each deployment: update, versioning (in the future), and decommissioning.
 
 <!-- TODO: without an identifier: IDENTIFIER_KEYS = ["!create_or_update", "!create", "!update", "!get"],
 the update features are not working as expected.
@@ -22,11 +22,11 @@ A `Design` is a one to one mapping with a Nautobot `Job`, enriched with some dat
 
 <!-- TODO: Add the screenshoot of the table of Design -->
 
-From the `Design`, the user can manage the associated `Job`, and trigger its execution to deploy it creating a `DesignInstance` or Design Deployment
+From the `Design`, the user can manage the associated `Job`, and trigger its execution, which creates a `DesignInstance` or Design Deployment
 
 ## Design Deployment or `DesignInstance`
 
-Once a design is "deployed" in Nautobot, a Design Deployment (or `DesignInstance`) is created with the report of the changes implemented (i.e. `Journals`), and with actions to update or decommissioning it (see next subsections).
+Once a design is "deployed" in Nautobot, a Design Deployment (or `DesignInstance`) is created with the report of the changes implemented (i.e. `Journals`), and with actions to update or decommission it (see next subsections).
 
 The `DesignInstance` stores:
 
@@ -40,9 +40,9 @@ The `DesignInstance` stores:
 
 ### Design Deployment Update
 
-This feature allows to re run a design instance with different input data to update the implemented design with the new changes: additions and removals.
+This feature provides a means to re-run a design instance with different input data. Re-running the job will update the implemented design with the new changes: additions and removals.
 
-It leverages a complete tracking of previous design implementation and a reduce function for the new design to understand the changes to be implemented and the objects to be decommissioned (leveraging the previous decommissioning feature for only a specific object).
+It leverages a complete tracking of previous design implementations and a function to combine the new design and previous design, to understand the changes to be implemented and the objects to be decommissioned (leveraging the previous decommissioning feature for only a specific object).
 
 The update feature comes with a few assumptions:
 

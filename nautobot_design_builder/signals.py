@@ -67,15 +67,8 @@ def create_design_model(sender, instance: Job, **kwargs):  # pylint:disable=unus
         instance (Job): Job instance that has been created or updated.
     """
     if instance.job_class and issubclass(instance.job_class, DesignJob):
-        default_data = {}
-        if hasattr(instance.job_class.Meta, "description"):
-            default_data["description"] = instance.job_class.Meta.description
-        if hasattr(instance.job_class.Meta, "version"):
-            default_data["version"] = instance.job_class.Meta.version
-        if hasattr(instance.job_class.Meta, "docs"):
-            default_data["docs"] = instance.job_class.Meta.docs
 
-        _, created = Design.objects.get_or_create(job=instance, defaults=default_data)
+        _, created = Design.objects.get_or_create(job=instance)
         if created:
             _LOGGER.debug("Created design from %s", instance)
 

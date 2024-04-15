@@ -3,17 +3,42 @@
 {% load static %}
 {% load helpers %}
 
-
+{% block extra_styles %}
+{{ block.super }}
+<style>
+  #actions {
+    position: relative;
+    display: inline-block;
+    text-align: center;
+    vertical-align: left;
+  }
+  #actions #actiontext {
+    visibility: hidden;
+    background-color: LightSlateGray;
+    color: #ffffff;
+    text-align: center;
+    border-radius: 6px;
+    width:175px;
+    position:absolute;
+    z-index: 1;
+    top: -5px;
+    right: 110%;
+  }
+  #actions:hover #actiontext {
+    visibility: visible;
+  }
+  </style>
+{% endblock %}
 {% block content %}
   {{ block.super }}
 
-<div class="modal fade" id="gcModal" role="dialog">
+<div class="modal fade" id="db-docs-modal" role="dialog">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h1 class="modal-title">Design Documentation</h4>
             </div>
-            <div id="gc-modal-body" class="modal-body">
+            <div id="db-docs-modal-body" class="modal-body">
             </div>
             <div class="modal-footer">
                 <button id="close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -21,29 +46,6 @@
         </div>
     </div>
 </div>
-<style>
-    #actions {
-      position: relative;
-      display: inline-block;
-      text-align: center;
-      vertical-align: left;
-    }
-    #actions #actiontext {
-      visibility: hidden;
-      background-color: LightSlateGray;
-      color: #ffffff;
-      text-align: center;
-      border-radius: 6px;
-      width:175px;
-      position:absolute;
-      z-index: 1;
-      top: -5px;
-      right: 110%;
-    }
-    #actions:hover #actiontext {
-      visibility: visible;
-    }
-    </style>
 {% endblock %}
 
 {% block javascript %}
@@ -55,8 +57,8 @@
             $('#detail_view').attr("href", ref);
             $('#detail_view').attr("target", "_blank");
             var dataURL = $(this).attr('data-href');
-            $('#gc-modal-body').load(dataURL,function(){
-                $('#gcModal').modal({show:true});
+            $('#db-docs-modal-body').load(dataURL,function(){
+                $('#db-docs-modal').modal({show:true});
             });
         });
     });

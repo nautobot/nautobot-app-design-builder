@@ -20,7 +20,7 @@ class InitialDesign(DesignJob):
         design_file = "designs/0001_design.yaml.j2"
         context_class = InitialDesignContext
         version = "1.0.0"
-        description = "It establishes the devices and site information for four sites: IAD5, LGA1, LAX11, SEA11."
+        description = "Establish the devices and site information for four sites: IAD5, LGA1, LAX11, SEA11."
         docs = """This design creates the following objects in the source of truth to establish the initia network environment in  four sites: IAD5, LGA1, LAX11, SEA11.
 
 These sites belong to the America region (and different subregions), and use Juniper PTX10016 devices.

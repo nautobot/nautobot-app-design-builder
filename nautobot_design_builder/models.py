@@ -106,9 +106,6 @@ class Design(PrimaryModel):
     # TODO: Add saved graphql query (future feature)
     # TODO: Add a template mapping to get custom payload (future feature)
     job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
-    version = models.CharField(max_length=20, default="0.0.0")
-    description = models.CharField(max_length=255, blank=True, default="")
-    docs = models.CharField(max_length=4096, blank=True, default="", editable=False)
     objects = DesignQuerySet.as_manager()
 
     class Meta:
@@ -140,6 +137,27 @@ class Design(PrimaryModel):
         """Stringify instance."""
         return self.name
 
+    @property
+    def description(self):
+        """Get the description from the Job."""
+        if self.job.job_class and hasattr(self.job.job_class.Meta, "description"):
+            return self.job.job_class.Meta.description
+        return ""
+
+    @property
+    def version(self):
+        """Get the version from the Job."""
+        if self.job.job_class and hasattr(self.job.job_class.Meta, "version"):
+            return self.job.job_class.Meta.version
+        return ""
+
+    @property
+    def docs(self):
+        """Get the docs from the Job."""
+        if self.job.job_class and hasattr(self.job.job_class.Meta, "docs"):
+            return self.job.job_class.Meta.docs
+        return ""
+
 
 class DesignInstanceQuerySet(RestrictedQuerySet):
     """Queryset for `DesignInstance` objects."""
@@ -149,7 +167,7 @@ class DesignInstanceQuerySet(RestrictedQuerySet):
         return self.get(design__job__name=design_name, name=instance_name)
 
 
-DESIGN_NAME_MAX_LENGTH = 100
+DESIGN_NAME_MAX_LENGTH = 255
 
 
 @extras_features("statuses")
@@ -171,7 +189,7 @@ class DesignInstance(PrimaryModel, StatusModel):
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
     live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
-    version = models.CharField(max_length=20)
+    version = models.CharField(max_length=20, blank=True, default="")
 
     objects = DesignInstanceQuerySet.as_manager()
 
@@ -235,12 +253,14 @@ class DesignInstance(PrimaryModel, StatusModel):
             raise ValidationError("A Design Instance can only be delete if it's Decommissioned and not Deployed.")
         return super().delete(*args, **kwargs)
 
-    def get_created_by(self):
+    @property
+    def created_by(self):
         """Get the username of the user who created the object."""
         created_by, _ = get_created_and_last_updated_usernames_for_model(self)
         return created_by
 
-    def get_last_updated_by(self):
+    @property
+    def last_updated_by(self):
         """Get the username of the user who update the object last time."""
         _, last_updated_by = get_created_and_last_updated_usernames_for_model(self)
         return last_updated_by

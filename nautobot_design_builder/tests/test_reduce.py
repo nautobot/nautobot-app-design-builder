@@ -5,7 +5,7 @@ import unittest
 import os
 import json
 
-from nautobot_design_builder.recursive import reduce_design
+from nautobot_design_builder.recursive import combine_designs
 
 
 class TestReduce(unittest.TestCase):  # pylint: disable=missing-class-docstring
@@ -40,7 +40,7 @@ class TestReduce(unittest.TestCase):  # pylint: disable=missing-class-docstring
             for key, new_value in design.items():
                 old_value = previous_design[key]
                 future_value = future_design[key]
-                to_delete = reduce_design(new_value, old_value, future_value, elements_to_be_decommissioned, key)
+                to_delete = combine_designs(new_value, old_value, future_value, elements_to_be_decommissioned, key)
                 if to_delete:
                     ext_keys_to_be_simplified.append(key)
 
