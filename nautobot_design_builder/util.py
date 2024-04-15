@@ -394,7 +394,7 @@ def get_created_and_last_updated_usernames_for_model(instance):
     except ObjectChange.DoesNotExist:
         pass
 
-    last_updated_by_record = object_change_records.first()
+    last_updated_by_record = object_change_records.order_by("time").last()
     if last_updated_by_record:
         last_updated_by = last_updated_by_record.user_name
 

@@ -41,8 +41,8 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     design = NestedDesignSerializer()
     live_state = NestedStatusSerializer()
-    created_by = Field()
-    last_updated_by = Field()
+    created_by = SerializerMethodField()
+    last_updated_by = SerializerMethodField()
 
     class Meta:
         """Serializer options for the design model."""
@@ -60,6 +60,14 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
             "status",
             "live_state",
         ]
+
+    def get_created_by(self, instance):
+        """Get the username of the user who created the object."""
+        return instance.created_by
+
+    def get_last_updated_by(self, instance):
+        """Get the username of the user who update the object last time."""
+        return instance.last_updated_by
 
 
 class JournalSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):

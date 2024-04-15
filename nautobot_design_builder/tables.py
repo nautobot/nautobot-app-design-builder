@@ -56,7 +56,7 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
     first_implemented = Column(verbose_name="Deployment Time")
     last_implemented = Column(verbose_name="Last Update Time")
     created_by = Column(verbose_name="Deployed by")
-    updated_by = Column(verbose_name="Last Updated by")
+    last_updated_by = Column(verbose_name="Last Updated by")
     live_state = ColoredLabelColumn(verbose_name="Operational State")
     actions = ButtonsColumn(
         DesignInstance,
@@ -77,7 +77,7 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
             "version",
             "created_by",
             "first_implemented",
-            "updated_by",
+            "last_updated_by",
             "last_implemented",
             "status",
             "live_state",
