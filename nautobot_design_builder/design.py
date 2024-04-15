@@ -390,6 +390,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
             self._attributes[key] = self.environment.resolve_values(self._attributes[key])
             if key == "deferred":
                 self._deferred = self._attributes.pop(key)
+            elif key == "nautobot_id":
+                self._nautobot_id = self.attributes.pop(key)
             elif key.startswith("!"):
                 value = self._attributes.pop(key)
                 args = key.lstrip("!").split(":")
@@ -495,6 +497,12 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
             bool: Whether or not the object's assignment should be deferred.
         """
         return self._deferred
+
+    @property
+    def nautobot_id(self):
+        if hasattr(self, "_nautobot_id"):
+            return self._nautobot_id
+        return None
 
     @property
     def filter(self):
@@ -701,9 +709,9 @@ class ModelInstance:
 
     def _load_instance(self):  # pylint: disable=too-many-branches
         # If the objects is already an existing Nautobot object, just get it.
-        if self.nautobot_id:
+        if self.metadata.nautobot_id:
             self.created = False
-            self.instance = self.model_class.objects.get(id=self.nautobot_id)
+            self.instance = self.model_class.objects.get(id=self.metadata.nautobot_id)
             self._initial_state = serialize_object_v2(self.instance)
             return
 
@@ -793,9 +801,9 @@ class ModelInstance:
 
         msg = "Created" if self.metadata.created else "Updated"
         try:
-            if self.creator.journal.design_journal:
+            if self.environment.journal.design_journal:
                 self.instance._current_design = (  # pylint: disable=protected-access
-                    self.creator.journal.design_journal.design_instance
+                    self.environment.journal.design_journal.design_instance
                 )
             self.instance.full_clean()
             self.instance.save(**self.metadata.save_args)
@@ -862,7 +870,9 @@ class Environment(LoggingMixin):
                 cls.model_class_index[model_class] = cls.model_map[plural_name]
         return object.__new__(cls)
 
-    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None):
+    def __init__(
+        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
+    ):
         """Create a new build environment for implementing designs.
 
         Args:
@@ -876,6 +886,8 @@ class Environment(LoggingMixin):
             errors.DesignImplementationError: If a provided extension is not a subclass
                 of `ext.Extension`.
         """
+        # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
+        self.builder_output = {}
         self.job_result = job_result
         self.logger = get_logger(__name__, self.job_result)
 
@@ -929,13 +941,15 @@ class Environment(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    def implement_design(self, design: Dict, commit: bool = False):
-        """Iterates through items in the design and create them.
+    def implement_design(
+        self, design: Dict, deprecated_design: Dict = None, design_file: str = None, commit: bool = False
+    ):
+        """Iterates through items in the design and creates them.
 
-        If either commit=False (default) or an exception is raised, then any extensions
-        with rollback functionality are called to revert their state. If commit=True
-        and no exceptions are raised then the extensions with commit functionality are
-        called to finalize changes.
+        This process is wrapped in a transaction. If either commit=False (default) or
+        an exception is raised, then the transaction is rolled back and no database
+        changes will be present. If commit=True and no exceptions are raised then the
+        database state should represent the changes provided in the design.
 
         Args:
             design (Dict): An iterable mapping of design changes.
@@ -952,9 +966,15 @@ class Environment(LoggingMixin):
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
-                    self._create_objects(self.model_map[key], value, key, design_file)
+                    self._create_objects(self.model_map[key], value)
                 elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
+
+            if deprecated_design:
+                sorted_keys = sorted(deprecated_design, key=custom_delete_order)
+                for key in sorted_keys:
+                    self._deprecate_objects(deprecated_design[key])
+
             # TODO: The way this works now the commit happens on a per-design file
             #       basis. If a design job has multiple design files and the first
             #       one completes, but the second one fails, the first will still
@@ -1026,9 +1046,14 @@ class Environment(LoggingMixin):
             model = model_class(self, objects)
             model.save()
         elif isinstance(objects, list):
-            for model_attributes in objects:
-                model = model_class(self, model_attributes)
+            for model_instance in objects:
+                model = model_class(self, model_instance)
                 model.save()
+
+    def _deprecate_objects(self, objects):
+        if isinstance(objects, list):
+            for obj in objects:
+                self.decommission_object(obj[0], obj[1])
 
     def commit(self):
         """The `commit` method iterates all extensions and calls their `commit` methods.

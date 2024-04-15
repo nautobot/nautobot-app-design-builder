@@ -196,7 +196,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.log_debug(f"Design to implement after reduction: {design}")
             self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")
 
-        self.environment.implement_design_changes(design, deprecated_design, design_file, commit)
+        self.environment.implement_design(design, deprecated_design, design_file, commit)
 
     def _setup_journal(self, instance_name: str):
         try:
@@ -229,6 +229,25 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def validate_data_logic(data):
         """Method to validate the input data logic that is already valid as a form by the `validate_data` method."""
 
+    def run(self, **kwargs):  # pylint: disable=arguments-differ
+        """Render the design and implement it within a build Environment object."""
+        try:
+            return self._run_in_transaction(**kwargs)
+        finally:
+            if self.rendered:
+                rendered_design = path.basename(self.rendered_design)
+                rendered_design, _ = path.splitext(rendered_design)
+                if not rendered_design.endswith(".yaml") and not rendered_design.endswith(".yml"):
+                    rendered_design = f"{rendered_design}.yaml"
+                self.save_design_file(rendered_design, self.rendered)
+            for design_file, design in self.designs.items():
+                output_file = path.basename(design_file)
+                # this should remove the .j2
+                output_file, _ = path.splitext(output_file)
+                if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
+                    output_file = f"{output_file}.yaml"
+                self.save_design_file(output_file, yaml.safe_dump(design))
+
     @transaction.atomic
     def _run_in_transaction(self, **kwargs):  # pylint: disable=too-many-branches
         """Render the design and implement it within a build Environment object.
@@ -238,7 +257,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
-        self.environment = Environment(job_result=self.job_result, extensions=extensions)
 
         design_files = None
 

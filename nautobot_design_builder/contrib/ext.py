@@ -270,7 +270,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             ```
         """
         cable_id = value.pop(NAUTOBOT_ID, None)
-        connected_object_uuid = model_instance.attributes.get(NAUTOBOT_ID, None)
+        connected_object_uuid = model_instance.metadata.nautobot_id
 
         if "to" not in value:
             raise DesignImplementationError(

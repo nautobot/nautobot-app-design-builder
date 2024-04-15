@@ -135,13 +135,13 @@ def builder_test_case(data_dir):
                         for design in testcase["designs"]:
                             environment = Environment(extensions=extensions)
                             commit = design.pop("commit", True)
-                        fake_file_name = "whatever"
-                        environment.builder_output[fake_file_name] = design.copy()
-                        environment.implement_design_changes(
-                            design=design, deprecated_design={}, design_file=fake_file_name, commit=commit
-                        )
-                        if not commit:
-                            roll_back.assert_called()
+                            fake_file_name = "whatever"
+                            environment.builder_output[fake_file_name] = design.copy()
+                            environment.implement_design(
+                                design=design, deprecated_design={}, design_file=fake_file_name, commit=commit
+                            )
+                            if not commit:
+                                roll_back.assert_called()
 
                     for index, check in enumerate(testcase.get("checks", [])):
                         for check_name, args in check.items():

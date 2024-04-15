@@ -4,45 +4,25 @@ import copy
 import unittest
 import os
 import json
-from parameterized import parameterized
 
 from nautobot_design_builder.recursive import reduce_design
 
 
-# pylint: disable=missing-class-docstring
-
-
-class TestReduce(unittest.TestCase):
+class TestReduce(unittest.TestCase):  # pylint: disable=missing-class-docstring
     def setUp(self):
         self.maxDiff = None  # pylint: disable=invalid-name
 
-    @parameterized.expand(
-        [
-            [
-                "test1",
-            ],
-            [
-                "test2",
-            ],
-            [
-                "test3",
-            ],
-            [
-                "test4",
-            ],
-            [
-                "test5",
-            ],
-        ]
-    )
-    def test_reduce_design(self, folder_name):  # pylint: disable=too-many-locals
-        folder_path = os.path.join(os.path.dirname(__file__), "testdata_reduce")
-        design_filename = os.path.join(folder_path, folder_name, "design.json")
-        previous_design_filename = os.path.join(folder_path, folder_name, "previous_design.json")
-        goal_design_filename = os.path.join(folder_path, folder_name, "goal_design.json")
-        goal_elements_to_be_decommissioned_filename = os.path.join(
-            folder_path, folder_name, "goal_elements_to_be_decommissioned.json"
-        )
+    def test_reduce_design(self):  # pylint: disable=too-many-locals
+        test_folders = ["test1", "test2", "test3", "test4", "test5"]
+        for folder_name in test_folders:
+            with self.subTest(folder_name):
+                folder_path = os.path.join(os.path.dirname(__file__), "testdata_reduce")
+                design_filename = os.path.join(folder_path, folder_name, "design.json")
+                previous_design_filename = os.path.join(folder_path, folder_name, "previous_design.json")
+                goal_design_filename = os.path.join(folder_path, folder_name, "goal_design.json")
+                goal_elements_to_be_decommissioned_filename = os.path.join(
+                    folder_path, folder_name, "goal_elements_to_be_decommissioned.json"
+                )
 
         with open(design_filename, encoding="utf-8") as design_file, open(
             previous_design_filename, encoding="utf-8"

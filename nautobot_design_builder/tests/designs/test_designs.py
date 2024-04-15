@@ -1,11 +1,12 @@
 """Design jobs used for unit testing."""
 
-from nautobot.apps.jobs import StringVar, ObjectVar
 from nautobot.dcim.models import Manufacturer
+from nautobot.extras.jobs import StringVar, ObjectVar
 
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.ext import Extension
 from nautobot_design_builder.util import nautobot_version
+
 
 class SimpleDesign(DesignJob):
     """Simple design job."""
