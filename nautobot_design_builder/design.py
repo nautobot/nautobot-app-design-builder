@@ -23,9 +23,7 @@ from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import CustomRelationshipField, field_factory
 from nautobot_design_builder import models
-from nautobot_design_builder.constants import NAUTOBOT_ID
 from nautobot_design_builder.util import nautobot_version, custom_delete_order
-from nautobot_design_builder.recursive import inject_nautobot_uuids, get_object_identifier
 
 
 if nautobot_version < "2.0.0":
@@ -208,54 +206,6 @@ def calculate_changes(current_state, initial_state=None, created=False, pre_chan
     }
 
 
-def calculate_changes(current_state, initial_state=None, created=False, pre_change=False) -> Dict:
-    """Determine the differences between the original instance and the current.
-
-    This will calculate the changes between the instance's initial state
-    and its current state. If pre_change is supplied it will use this
-    dictionary as the initial state rather than the current ModelInstance
-    initial state.
-
-    Args:
-        pre_change (dict, optional): Initial state for comparison. If not supplied then the initial state from this instance is used.
-
-    Returns:
-        Return a dictionary with the changed object's serialized data compared
-        with either the model instance initial state, or the supplied pre_change
-        state. The dictionary has the following values:
-
-        dict: {
-            "pre_change": dict(),
-            "post_change": dict(),
-            "differences": {
-                "added": dict(),
-                "removed": dict(),
-            }
-        }
-    """
-    post_change = serialize_object_v2(current_state)
-
-    if not created and not pre_change:
-        pre_change = initial_state
-
-    if pre_change and post_change:
-        diff_added = shallow_compare_dict(pre_change, post_change, exclude=["last_updated"])
-        diff_removed = {x: pre_change.get(x) for x in diff_added}
-    elif pre_change and not post_change:
-        diff_added, diff_removed = None, pre_change
-    else:
-        diff_added, diff_removed = post_change, None
-
-    return {
-        "pre_change": pre_change,
-        "post_change": post_change,
-        "differences": {
-            "added": diff_added,
-            "removed": diff_removed,
-        },
-    }
-
-
 class ModelMetadata:  # pylint: disable=too-many-instance-attributes
     """`ModelMetadata` contains all the information design builder needs to track a `ModelInstance`.
 
@@ -388,10 +338,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         while attribute_names:
             key = attribute_names.pop(0)
             self._attributes[key] = self.environment.resolve_values(self._attributes[key])
-            if key == "deferred":
-                self._deferred = self._attributes.pop(key)
-            elif key == "nautobot_id":
-                self._nautobot_id = self.attributes.pop(key)
+            if hasattr(self, key):
+                setattr(self, f"_{key}", self._attributes.pop(key))
             elif key.startswith("!"):
                 value = self._attributes.pop(key)
                 args = key.lstrip("!").split(":")
@@ -500,6 +448,7 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
 
     @property
     def nautobot_id(self):
+        """The UUID of an object that belongs to an existing design instance."""
         if hasattr(self, "_nautobot_id"):
             return self._nautobot_id
         return None
@@ -633,19 +582,6 @@ class ModelInstance:
     def __str__(self):
         """Get the model class name."""
         return str(self.model_class)
-
-    def get_changes(self, pre_change=None):
-        """Determine the differences between the original instance and the current.
-
-        This uses `calculate_changes` to determine the change dictionary. See that
-        method for details.
-        """
-        return calculate_changes(
-            self.instance,
-            initial_state=self._initial_state,
-            created=self.created,
-            pre_change=pre_change,
-        )
 
     def get_changes(self, pre_change=None):
         """Determine the differences between the original instance and the current.
@@ -941,9 +877,7 @@ class Environment(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    def implement_design(
-        self, design: Dict, deprecated_design: Dict = None, design_file: str = None, commit: bool = False
-    ):
+    def implement_design(self, design: Dict, deprecated_design: Dict = None, commit: bool = False):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -955,7 +889,6 @@ class Environment(LoggingMixin):
             design (Dict): An iterable mapping of design changes.
             deprecated_design (Dict): An iterable mapping of deprecated design changes.
             commit (bool): Whether or not to commit the transaction. Defaults to False.
-            design_file (str): Name of the design file.
 
         Raises:
             DesignImplementationError: if the model is not in the model map

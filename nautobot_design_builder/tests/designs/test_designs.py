@@ -90,7 +90,7 @@ class DesignWithValidationError(DesignJob):
 
 
 if nautobot_version >= "2.0":
-    from nautobot.apps.jobs import register_jobs  # pylint: disable=import-error, no-name-in-module
+    from nautobot.apps.jobs import register_jobs  # pylint: disable=import-error, no-name-in-module, ungrouped-imports
 
     register_jobs(
         SimpleDesign,

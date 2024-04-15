@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from nautobot.apps.models import PrimaryModel, BaseModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusModel, StatusField, Tag
+from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField, Tag
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 from nautobot.utilities.choices import ColorChoices
@@ -171,7 +171,7 @@ DESIGN_NAME_MAX_LENGTH = 255
 
 
 @extras_features("statuses")
-class DesignInstance(PrimaryModel, StatusModel):
+class DesignInstance(PrimaryModel):
     """Design instance represents the result of executing a design.
 
     Design instance represents the collection of Nautobot objects
@@ -184,6 +184,7 @@ class DesignInstance(PrimaryModel, StatusModel):
 
     post_decommission = Signal()
 
+    status = StatusField(blank=False, null=False, on_delete=models.PROTECT, related_name="design_instance_statuses")
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)

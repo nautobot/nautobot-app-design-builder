@@ -196,7 +196,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.log_debug(f"Design to implement after reduction: {design}")
             self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")
 
-        self.environment.implement_design(design, deprecated_design, design_file, commit)
+        self.environment.implement_design(design, deprecated_design, commit)
 
     def _setup_journal(self, instance_name: str):
         try:
@@ -249,7 +249,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 self.save_design_file(output_file, yaml.safe_dump(design))
 
     @transaction.atomic
-    def _run_in_transaction(self, **kwargs):  # pylint: disable=too-many-branches
+    def _run_in_transaction(self, **kwargs):  # pylint: disable=too-many-branches, too-many-statements
         """Render the design and implement it within a build Environment object.
 
         This version of `run` is wrapped in a transaction and will roll back database changes

@@ -1,7 +1,6 @@
 """Unit tests related to template extensions."""
 
 import sys
-import copy
 from django.test import TestCase
 
 from nautobot_design_builder import ext

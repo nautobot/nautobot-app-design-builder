@@ -33,4 +33,4 @@ class Command(BaseCommand):
         for filename in options["design_file"]:
             self.stdout.write(f"Building design from {filename}")
             design = _load_file(filename)
-            builder.implement_design(design, {}, filename, commit=options["commit"])
+            builder.implement_design(design, {}, commit=options["commit"])

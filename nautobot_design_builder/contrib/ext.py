@@ -320,7 +320,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 and existing_cable.termination_b.id == remote_instance.id
             ):
                 # If the cable is already connecting what needs to be connected, it passes
-                return
+                return None
 
             model_instance.creator.decommission_object(cable_id, cable_id)
 

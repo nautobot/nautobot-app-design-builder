@@ -101,7 +101,13 @@ no-docstring-rgx="^(_|test_|Meta$)"
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
 disable = """,
     line-too-long,
-    """
+    duplicate-code,
+    too-many-lines,
+    too-many-ancestors,
+    line-too-long,
+    nb-code-location-changed,
+    nb-code-location-changed-object,
+"""
 
 [tool.pylint.miscellaneous]
 # Don't flag TODO as a failure, let us commit with things that still need to be done in the code
@@ -112,7 +118,7 @@ notes = """,
 
 [tool.pylint-nautobot]
 supported_nautobot_versions = [
-    "1.6.0"
+    "1"
 ]
 
 [tool.pydocstyle]
