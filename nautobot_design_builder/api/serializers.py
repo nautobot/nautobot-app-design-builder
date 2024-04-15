@@ -6,7 +6,6 @@ from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixi
 from nautobot.core.api import ContentTypeField
 from nautobot.extras.api.nested_serializers import NestedJobResultSerializer, NestedStatusSerializer
 from nautobot.utilities.api import get_serializer_for_model
-from rest_framework.serializers import Field
 from rest_framework.fields import SerializerMethodField, DictField
 from rest_framework.relations import HyperlinkedIdentityField
 
