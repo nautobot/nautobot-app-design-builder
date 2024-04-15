@@ -40,7 +40,16 @@ class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
         """Meta attributes for filter."""
 
         model = DesignInstance
-        fields = ["id", "design", "name", "owner", "first_implemented", "last_implemented", "status", "live_state"]
+        fields = [
+            "id",
+            "design",
+            "name",
+            "first_implemented",
+            "last_implemented",
+            "status",
+            "live_state",
+            "version",
+        ]
 
 
 class JournalFilterSet(NautobotFilterSet):
@@ -50,7 +59,7 @@ class JournalFilterSet(NautobotFilterSet):
 
     design_instance = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=DesignInstance.objects.all(),
-        label="Design Instance (ID)",
+        label="Design Deployment (ID)",
     )
 
     job_result = NaturalKeyOrPKMultipleChoiceFilter(

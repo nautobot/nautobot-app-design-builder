@@ -9,11 +9,11 @@ from nautobot.apps.ui import (
 
 menu_items = (
     NavMenuTab(
-        name="Jobs",
-        weight=150,
+        name="Designs",
+        weight=1000,
         groups=(
             NavMenuGroup(
-                name="Designs",
+                name="Design Builder",
                 weight=100,
                 items=(
                     NavMenuItem(
@@ -24,14 +24,8 @@ menu_items = (
                     ),
                     NavMenuItem(
                         link="plugins:nautobot_design_builder:designinstance_list",
-                        name="Design Instances",
+                        name="Design Deployments",
                         permissions=["nautobot_design_builder.view_designinstance"],
-                        buttons=(),
-                    ),
-                    NavMenuItem(
-                        link="plugins:nautobot_design_builder:journal_list",
-                        name="Journals",
-                        permissions=["nautobot_design_builder.view_journal"],
                         buttons=(),
                     ),
                 ),

@@ -7,10 +7,16 @@ from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, Buttons
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
-
 DESIGNTABLE = """
+
+<a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
+    <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
+</a>
 <a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
-    <i class="mdi mdi-arrow-right-drop-circle-outline"></i>
+    <i class="mdi mdi-play" title="Deploy Design"></i>
+</a>
+<a href="{% url 'extras:job_edit' slug=record.job.slug %}" class="btn btn-xs btn-warning" title="Edit Design Job">
+    <i class="mdi mdi-pencil"></i>
 </a>
 """
 
@@ -18,23 +24,24 @@ DESIGNTABLE = """
 class DesignTable(BaseTable):
     """Table for list view."""
 
-    job = Column(linkify=True)
     name = Column(linkify=True)
-    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Instances")
-    actions = ButtonsColumn(Design, buttons=("changelog",), prepend_template=DESIGNTABLE)
+    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
+    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGNTABLE)
+    job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "job", "instance_count")
+        fields = ("name", "version", "job_last_synced", "description", "instance_count")
 
 
 DESIGNINSTANCETABLE = """
+{% load utils %}
 <a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
-<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record.journals.last as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"
+<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_journal as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"
     class="btn btn-xs btn-success" title="Re-run job with same arguments.">
     <i class="mdi mdi-repeat"></i>
 </a>
@@ -46,7 +53,11 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
 
     name = Column(linkify=True)
     design = Column(linkify=True)
-    live_state = ColoredLabelColumn()
+    first_implemented = Column(verbose_name="Deployment Time")
+    last_implemented = Column(verbose_name="Last Update Time")
+    created_by = Column(verbose_name="Deployed by")
+    last_updated_by = Column(verbose_name="Last Updated by")
+    live_state = ColoredLabelColumn(verbose_name="Operational State")
     actions = ButtonsColumn(
         DesignInstance,
         buttons=(
@@ -60,15 +71,25 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
         """Meta attributes."""
 
         model = DesignInstance
-        fields = ("name", "design", "owner", "first_implemented", "last_implemented", "status", "live_state")
+        fields = (
+            "name",
+            "design",
+            "version",
+            "created_by",
+            "first_implemented",
+            "last_updated_by",
+            "last_implemented",
+            "status",
+            "live_state",
+        )
 
 
 class JournalTable(BaseTable):
     """Table for list view."""
 
     pk = Column(linkify=True, verbose_name="ID")
-    design_instance = Column(linkify=True)
-    job_result = Column(linkify=True)
+    design_instance = Column(linkify=True, verbose_name="Deployment")
+    job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
     journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
     active = BooleanColumn(verbose_name="Active Journal")
 

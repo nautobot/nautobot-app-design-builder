@@ -10,6 +10,8 @@ To add a new design you will need (at a minimum) a class extending `nautobot_des
 
 For more information on creating designs see [Getting Started with Designs](design_development.md).
 
+Once the designs are loaded, you can start managing them from the "Design Builder" navigation tab.
+
 ## Sample Data
 
 Much of the time, designs will need some data to exist in Nautobot before they can be built. In a development and testing environment it is necessary to generate this data for testing purposes. The Design Builder application comes with a `load_design` management command that will read a design YAML file (not a template) and will build the design in Nautobot. This can be used to produce sample data for a development environment. Simply create a YAML file that includes all of the object definitions needed for testing and load the file with `invoke build-design <filename>`. This should read the file and build all of the objects within Nautobot.

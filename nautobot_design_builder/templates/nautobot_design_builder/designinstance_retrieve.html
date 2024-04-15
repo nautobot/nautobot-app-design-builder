@@ -4,7 +4,7 @@
 {% block content_left_page %}
         <div class="panel panel-default">
             <div class="panel-heading">
-                <strong>Design Instance</strong>
+                <strong>Design Deployment</strong>
             </div>
             <table class="table table-hover panel-body attr-table">
                 <tr>
@@ -12,15 +12,23 @@
                     <td>{{ object.name }}</td>
                 </tr>
                 <tr>
-                    <td>Owner</td>
-                    <td>{{ object.owner|placeholder }}</td>
+                    <td>Version</td>
+                    <td>{{ object.version }}</td>
                 </tr>
                 <tr>
-                    <td>First implemented</td>
+                    <td>Deployed by</td>
+                    <td>{{ object.created_by|placeholder }}</td>
+                </tr>
+                <tr>
+                    <td>Deployment Time</td>
                     <td>{{ object.first_implemented|placeholder }}</td>
                 </tr>
                 <tr>
-                    <td>Last implemented</td>
+                    <td>Last Updated by</td>
+                    <td>{{ object.last_updated_by|placeholder }}</td>
+                </tr>
+                <tr>
+                    <td>Last Update Time</td>
                     <td>{{ object.last_implemented|placeholder }}</td>
                 </tr>
                 <tr>
@@ -34,7 +42,7 @@
                     </td>
                 </tr>
                 <tr>
-                    <td>Live State</td>
+                    <td>Operational State</td>
                     <td>
                         <span class="label" style="color: {{ object.live_state.color|fgcolor }}; background-color: #{{ object.live_state.color }}">{{ object.live_state }}</span>
                     </td>
@@ -43,7 +51,7 @@
         </div>
 {% endblock content_left_page %}
 
-{% block content_full_width_page %}
+{% block content_right_page %}
 {% include 'utilities/obj_table.html' with table=journals_table table_template='panel_table.html' heading='Journals' %}
 <div class="row"></div>
-{% endblock content_full_width_page %}
+{% endblock content_right_page %}

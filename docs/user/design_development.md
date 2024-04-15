@@ -114,6 +114,18 @@ The value of the `context_class` metadata attribute should be any Python class t
 
 This attribute is optional. A report is a Jinja template that is rendered once the design has been implemented. Like `design_file` the design builder will look for this template relative to the filename that defines the design job. This is helpful to generate a custom view of the data that was built during the design build.
 
+### `version`
+
+It's an optional string attribute that is used to define the versioning reference of a design job. This will enable in the future the versioning lifecycle of design deployments. For example, one a design evolves from one version to another, the design deployment will be able to accommodate the new changes.
+
+### `description`
+
+This optional attribute that is a string that provides a high-level overview of the intend of the design job. This description is displayed int the design detail view.
+
+### `docs`
+
+This attribute is also displayed on the design detail view. The `docs` attribute can utilize markdown format and should provide more detailed information than the description. This should help the users of the `Design` to understand the goal of the design and the impact of the input data.
+
 ## Design Context
 
 Primary Purpose:
@@ -339,41 +351,3 @@ class DesignJobWithExtensions(DesignJob):
         extensions = [ext.BGPPeeringExtension]
 ```
 
-## Design LifeCycle
-
-Design implementations can have a full life cycle: creation, update, and decommission.
-
-<!-- TODO: without an identifier: IDENTIFIER_KEYS = ["!create_or_update", "!create", "!update", "!get"],
-the update features are not working as expected.
-I would propose to use explicit action tags even for create: "!create:name"
- -->
-
-Once a design is "deployed" in Nautobot, a Design Instance is created with the report of the changes implemented, and with actions to decommission or update it.
-
-### Design Decommission
-
-This feature allows to rollback all the changes implemented by a design instance to the previous state. This rollback depends on the scope of the change:
-
-- If the object was created by the design implementation, this object will be removed.
-- If only some attributes were changes, the affected attributes will be rolled back to the previous state.
-
-The decommissioning feature takes into account potential dependencies between design implementations. For example, if a new l3vpn design depends on devices that were created by another design, this previous design won't be decommissioned until the l3vpn dependencies are also decommissioned to warrant consistency.
-
-Once a design instance is decommissioned, it's still visible in the API/UI to check the history of changes but without any active relationship with Nautobot objects. After decommissioning, the design instance can be deleted completely from Nautobot.
-
-### Design Updates
-
-This feature allows to re run a design instance with different input data to update the implemented design with the new changes: additions and removals.
-
-It leverages a complete tracking of previous design implementation and a reduce function for the new design to understand the changes to be implemented and the objects to be decommissioned (leveraging the previous decommissioning feature for only a specific object).
-
-The update feature comes with a few assumptions:
-
-- All the design objects that have an identifier have to use identifier keys to identify the object to make them comparable across designs.
-- Object identifiers should keep consistent in multiple design runs. For example, you can't target a device with the device name and update the name on the same design.
-- When design provides a list of objects, the objects are assumed to be in the same order. For example, if the first design creates `[deviceA1, deviceB1]`, if expanded, it should be `[deviceA1, deviceB1, deviceA2, deviceB2]`, not `[deviceA1, deviceA2, deviceB1, deviceB2]`.
-
-<!--
-TODO:
-- We could check design for update capabilities? to disable when not possible
--->

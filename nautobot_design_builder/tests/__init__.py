@@ -21,7 +21,6 @@ class DesignTestCase(TestCase):
         super().setUp()
         self.data = {
             "instance_name": "Test Design",
-            "owner": "",
         }
         self.logged_messages = []
         self.git_patcher = patch("nautobot_design_builder.ext.GitRepo")

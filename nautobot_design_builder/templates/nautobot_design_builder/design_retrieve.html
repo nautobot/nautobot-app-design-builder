@@ -2,26 +2,48 @@
 {% load helpers %}
 
 {% block content_left_page %}
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <strong>Design</strong>
-            </div>
-            <table class="table table-hover panel-body attr-table">
-                <tr>
-                    <td>Status</td>
-                    <td>
-                        <span class="label" style="color: {{ object.status.color|fgcolor }}; background-color: #{{ object.status.color }}">{{ object.get_status_display }}</span>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Job</td>
-                    <td>{{ object.job|hyperlinked_object }}</td>
-                </tr>
-            </table>
-        </div>
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <strong>Design</strong>
+    </div>
+    <table class="table table-hover panel-body attr-table">
+        <tr>
+            <td>Job</td>
+            <td>{{ object.job|hyperlinked_object }}</td>
+        </tr>
+        <tr>
+            <td>Job Last Synced</td>
+            <td>{{ object.job.last_updated }}</td>
+        </tr>
+        <tr>
+            <td>Version</td>
+            <td>{{ object.version }}</td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td>{{ object.description }}</td>
+        </tr>
+    </table>
+</div>
 {% endblock content_left_page %}
 
+{% block content_right_page %}
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <strong>Documentation</strong>
+    </div>
+    <table class="table panel-body attr-table">
+        <tr>
+            <td>
+                {{ object.docs | render_markdown }}
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% endblock content_right_page %}
+
 {% block content_full_width_page %}
-{% include 'utilities/obj_table.html' with table=instances_table table_template='panel_table.html' heading='Instances' %}
+{% include 'utilities/obj_table.html' with table=instances_table table_template='panel_table.html' heading='Design Deployments' %}
 <div class="row"></div>
 {% endblock content_full_width_page %}

@@ -2,6 +2,9 @@
 
 from django_tables2 import RequestConfig
 from django.apps import apps as global_apps
+from django.shortcuts import render
+
+from rest_framework.decorators import action
 
 from nautobot.core.views.mixins import (
     ObjectDetailViewMixin,
@@ -13,7 +16,7 @@ from nautobot.core.views.mixins import (
 from nautobot.utilities.paginator import EnhancedPaginator, get_paginate_count
 from nautobot.utilities.utils import count_related
 from nautobot.core.views.generic import ObjectView
-
+from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
 
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
@@ -37,11 +40,19 @@ from nautobot_design_builder.models import Design, DesignInstance, Journal, Jour
 from nautobot_design_builder.tables import DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
 
 
+PERMISSIONS_ACTION_MAP.update(
+    {
+        "docs": "view",
+    }
+)
+
+
 class DesignUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
+    ObjectDestroyViewMixin,
 ):
     """UI views for the design model."""
 
@@ -70,6 +81,17 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
             context["instances_table"] = instances_table
         return context
 
+    @action(detail=True, methods=["get"])
+    def docs(self, request, pk, *args, **kwargs):
+        """Additional action to handle docs."""
+        design = Design.objects.get(pk=pk)
+        context = {
+            "design_name": design.name,
+            "is_modal": request.GET.get("modal"),
+            "text_content": design.docs,
+        }
+        return render(request, "nautobot_design_builder/markdown_render.html", context)
+
 
 class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
@@ -87,12 +109,19 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
     table_class = DesignInstanceTable
     action_buttons = ()
     lookup_field = "pk"
+    verbose_name = "Design Deployment"
+    verbose_name_plural = "Design Deployments"
 
     def get_extra_context(self, request, instance=None):
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            journals = Journal.objects.restrict(request.user, "view").filter(design_instance=instance)
+            journals = (
+                Journal.objects.restrict(request.user, "view")
+                .filter(design_instance=instance)
+                .order_by("last_updated")
+                .annotate(journal_entry_count=count_related(JournalEntry, "journal"))
+            )
 
             journals_table = JournalTable(journals)
             journals_table.columns.hide("design_instance")

@@ -6,7 +6,7 @@ import os
 import json
 from parameterized import parameterized
 
-from nautobot_design_builder.recursive import reduce_design
+from nautobot_design_builder.recursive import combine_designs
 
 
 # pylint: disable=missing-class-docstring
@@ -35,7 +35,7 @@ class TestReduce(unittest.TestCase):
             ],
         ]
     )
-    def test_reduce_design(self, folder_name):  # pylint: disable=too-many-locals
+    def test_combine_designs(self, folder_name):  # pylint: disable=too-many-locals
         folder_path = os.path.join(os.path.dirname(__file__), "testdata_reduce")
         design_filename = os.path.join(folder_path, folder_name, "design.json")
         previous_design_filename = os.path.join(folder_path, folder_name, "previous_design.json")
@@ -60,7 +60,7 @@ class TestReduce(unittest.TestCase):
             for key, new_value in design.items():
                 old_value = previous_design[key]
                 future_value = future_design[key]
-                to_delete = reduce_design(new_value, old_value, future_value, elements_to_be_decommissioned, key)
+                to_delete = combine_designs(new_value, old_value, future_value, elements_to_be_decommissioned, key)
                 if to_delete:
                     ext_keys_to_be_simplified.append(key)
 

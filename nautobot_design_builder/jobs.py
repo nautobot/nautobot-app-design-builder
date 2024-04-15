@@ -6,20 +6,23 @@ from .logging import get_logger
 from .models import DesignInstance
 
 
+name = "Design Builder"  # pylint: disable=invalid-name
+
+
 class DesignInstanceDecommissioning(Job):
     """Job to decommission Design Instances."""
 
     design_instances = MultiObjectVar(
         model=DesignInstance,
         query_params={"status": "active"},
-        description="Design Instances to decommission.",
+        description="Design Deployments to decommission.",
     )
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta class."""
 
-        name = "Decommission Design Instances."
-        description = """Job to decommission one or many Design Instances from Nautobot."""
+        name = "Decommission Design Deployments"
+        description = """Job to decommission one or many Design Deployments from Nautobot."""
 
     def run(self, data, commit):
         """Execute Decommissioning job."""
