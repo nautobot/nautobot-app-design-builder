@@ -5,8 +5,10 @@ from unittest.mock import patch, Mock
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 
-from nautobot.dcim.models import Manufacturer
-from nautobot.extras.models import JobResult, Job
+from nautobot.dcim.models import Manufacturer, DeviceType, Device
+from nautobot.ipam.models import VRF, Prefix
+
+from nautobot.extras.models import JobResult, Job, Status
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
@@ -139,13 +141,41 @@ class TestDesignJobLogging(DesignTestCase):
 
 
 class TestDesignJobIntegration(DesignTestCase):
+
+    def setUp(self):
+        """Per-test setup."""
+        super().setUp()
+        if nautobot_version < "2.0.0":
+            from nautobot.dcim.models import Site, DeviceRole
+        else:
+            self.skipTest("These tests are only supported in Nautobot 1.x")
+
+        site = Site.objects.create(name="test site")
+        manufacturer = Manufacturer.objects.create(name="test manufacturer")
+        device_type = DeviceType.objects.create(model="test-device-type", manufacturer=manufacturer)
+        device_role = DeviceRole.objects.create(name="test role")
+        self.device1 = Device.objects.create(
+            name="test device 1",
+            device_type=device_type,
+            site=site,
+            device_role=device_role,
+            status=Status.objects.get(name="Active"),
+        )
+        self.device2 = Device.objects.create(
+            name="test device 2",
+            device_type=device_type,
+            site=site,
+            device_role=device_role,
+            status=Status.objects.get(name="Active"),
+        )
+
     def test_create_simple_design(self):
         """Test to validate the first creation of the design."""
         # Setup the Job and Design object to run a Design Deployment
-        job_instance = self.get_mocked_job(test_designs.SimpleDesign)
-        job = Job.objects.create(name="Fake Simple Design Job")
+        job_instance = self.get_mocked_job(test_designs.IntegrationDesign)
+        job = Job.objects.create(name="Fake Integration Design Job")
         job_instance.job_result = JobResult.objects.create(
-            name="Fake Simple Design Job Result",
+            name="Fake Integration Design Job Result",
             obj_type=ContentType.objects.get_for_model(Job),
             job_id=job.id,
         )
@@ -153,6 +183,13 @@ class TestDesignJobIntegration(DesignTestCase):
         job_instance.job_result.job_model = job
         models.Design.objects.get_or_create(job=job)
 
+        self.data["ce"] = self.device1
+        self.data["pe"] = self.device2
+        self.data["customer_name"] = "customer 1"
+
         job_instance.run(data=self.data, commit=True)
 
-        self.assertEqual(len(Manufacturer.objects.all()), 1)
+        self.assertEqual(VRF.objects.first().name, "64501:1")
+        self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
+        self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/30").prefix), "192.0.2.0/30")
+        self.assertEqual(Prefix.objects.get(prefix="192.0.2.0/30").vrf, VRF.objects.first())
