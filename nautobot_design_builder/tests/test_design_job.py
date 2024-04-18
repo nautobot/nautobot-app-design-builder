@@ -3,13 +3,15 @@
 from unittest.mock import patch, Mock
 
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
 
 from nautobot.dcim.models import Manufacturer
-
+from nautobot.extras.models import JobResult, Job
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
 from nautobot_design_builder.util import nautobot_version
+from nautobot_design_builder import models
 
 
 # pylint: disable=unused-argument
@@ -134,3 +136,23 @@ class TestDesignJobLogging(DesignTestCase):
             }
         )
         self.assertEqual(str(want_error), message)
+
+
+class TestDesignJobIntegration(DesignTestCase):
+    def test_create_simple_design(self):
+        """Test to validate the first creation of the design."""
+        # Setup the Job and Design object to run a Design Deployment
+        job_instance = self.get_mocked_job(test_designs.SimpleDesign)
+        job = Job.objects.create(name="Fake Simple Design Job")
+        job_instance.job_result = JobResult.objects.create(
+            name="Fake Simple Design Job Result",
+            obj_type=ContentType.objects.get_for_model(Job),
+            job_id=job.id,
+        )
+        job_instance.job_result.log = Mock()
+        job_instance.job_result.job_model = job
+        models.Design.objects.get_or_create(job=job)
+
+        job_instance.run(data=self.data, commit=True)
+
+        self.assertEqual(len(Manufacturer.objects.all()), 1)
