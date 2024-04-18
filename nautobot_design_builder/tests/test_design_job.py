@@ -141,12 +141,13 @@ class TestDesignJobLogging(DesignTestCase):
 
 
 class TestDesignJobIntegration(DesignTestCase):
+    """Test to validate the whole end to end create and update design life cycle."""
 
     def setUp(self):
         """Per-test setup."""
         super().setUp()
         if nautobot_version < "2.0.0":
-            from nautobot.dcim.models import Site, DeviceRole
+            from nautobot.dcim.models import Site, DeviceRole  # pylint: disable=import-outside-toplevel
         else:
             self.skipTest("These tests are only supported in Nautobot 1.x")
 

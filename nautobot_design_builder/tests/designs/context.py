@@ -1,12 +1,15 @@
 """Base DesignContext for testing."""
 
-from django.core.exceptions import ObjectDoesNotExist
 import ipaddress
 from functools import lru_cache
+from django.core.exceptions import ObjectDoesNotExist
+
 
 from nautobot.dcim.models import Device, Interface
 from nautobot.ipam.models import VRF, Prefix
 from nautobot_design_builder.context import Context, context_file
+
+# pylint: disable=missing-function-docstring, inconsistent-return-statements
 
 
 @context_file("base_context_file")
