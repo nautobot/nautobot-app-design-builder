@@ -220,7 +220,7 @@ class TestDesignJobIntegration(DesignTestCase):
 
     def test_update_integration_design(self):
         """Test to validate the update of the design."""
-        data = copy.copy(self.data)
+        original_data = copy.copy(self.data)
 
         # This part reproduces the creation of the design on the first iteration
         self.data["ce"] = self.device1
@@ -230,7 +230,7 @@ class TestDesignJobIntegration(DesignTestCase):
 
         # This is a second, and third run with new input to update the deployment
         for _ in range(2):
-            data = copy.copy(data)
+            data = copy.copy(original_data)
             data["ce"] = self.device3
             data["pe"] = self.device2
             data["customer_name"] = "customer 2"
