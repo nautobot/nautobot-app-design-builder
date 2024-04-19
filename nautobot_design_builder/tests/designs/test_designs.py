@@ -5,6 +5,7 @@ from nautobot.extras.jobs import StringVar, ObjectVar
 
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.ext import Extension
+from nautobot_design_builder.contrib import ext
 from nautobot_design_builder.tests.designs.context import IntegrationTestContext
 
 
@@ -112,4 +113,8 @@ class IntegrationDesign(DesignJob):
     class Meta:  # pylint: disable=too-few-public-methods
         name = "Integration Design"
         context_class = IntegrationTestContext
-        design_files = ["templates/integration_design_ipam.yaml.j2"]
+        extensions = [ext.CableConnectionExtension]
+        design_files = [
+            "templates/integration_design_ipam.yaml.j2",
+            "templates/integration_design_devices.yaml.j2",
+        ]
