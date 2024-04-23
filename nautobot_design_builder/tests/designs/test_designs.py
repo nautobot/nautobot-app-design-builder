@@ -1,10 +1,12 @@
 """Design jobs used for unit testing."""
 
-from nautobot.dcim.models import Manufacturer
+from nautobot.dcim.models import Manufacturer, Device
 from nautobot.extras.jobs import StringVar, ObjectVar
 
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.ext import Extension
+from nautobot_design_builder.contrib import ext
+from nautobot_design_builder.tests.designs.context import IntegrationTestContext
 from nautobot_design_builder.util import nautobot_version
 
 
@@ -89,15 +91,28 @@ class DesignWithValidationError(DesignJob):
         design_file = "templates/design_with_validation_error.yaml.j2"
 
 
-if nautobot_version >= "2.0":
-    from nautobot.apps.jobs import register_jobs  # pylint: disable=import-error, no-name-in-module, ungrouped-imports
+class IntegrationDesign(DesignJob):
+    """Integration design job."""
 
-    register_jobs(
-        SimpleDesign,
-        SimpleDesignReport,
-        MultiDesignJob,
-        MultiDesignJobWithError,
-        DesignJobWithExtensions,
-        DesignWithRefError,
-        DesignWithValidationError,
+    customer_name = StringVar()
+
+    pe = ObjectVar(
+        label="PE device",
+        description="PE device for l3vpn",
+        model=Device,
     )
+
+    ce = ObjectVar(
+        label="CE device",
+        description="CE device for l3vpn",
+        model=Device,
+    )
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Integration Design"
+        context_class = IntegrationTestContext
+        extensions = [ext.CableConnectionExtension]
+        design_files = [
+            "templates/integration_design_ipam.yaml.j2",
+            "templates/integration_design_devices.yaml.j2",
+        ]
