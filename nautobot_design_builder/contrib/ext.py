@@ -18,7 +18,6 @@ from nautobot_design_builder.design import Environment, ModelInstance, ModelMeta
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
 from nautobot_design_builder.ext import AttributeExtension
 from nautobot_design_builder.jinja2 import network_offset
-from nautobot_design_builder.constants import NAUTOBOT_ID
 
 
 class LookupMixin:
@@ -269,9 +268,6 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                         name: "GigabitEthernet1"
             ```
         """
-        cable_id = value.pop(NAUTOBOT_ID, None)
-        connected_object_uuid = model_instance.metadata.nautobot_id
-
         if "to" not in value:
             raise DesignImplementationError(
                 f"`connect_cable` must have a `to` field indicating what to terminate to. {value}"
@@ -296,38 +292,20 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                     remote_instance.instance
                 ).id,
                 "!create_or_update:termination_b_id": remote_instance.instance.id,
-                "deferred": True,
             }
         )
 
-        # TODO: Some extensions may need to do some previous work to be able to be implemented
-        # For example, to set up this cable connection on an interface, we have to disconnect
-        # previously existing ones. And this is something that can be postponed for the cleanup phase
-        # We could change the paradigm of having attribute as an abstract method, and create a generic
-        # attribute method in the `AttributeExtension` that calls several hooks, one for setting
-        # (the current one), and one for pre-cleaning that would be custom for every case (and optional)
+        def connect():
+            existing_cable = dcim.Cable.objects.filter(termination_a_id=model_instance.instance.id).first()
+            if existing_cable:
+                if existing_cable.termination_b_id == remote_instance.instance.id:
+                    return
+                self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
+            Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name
+            cable = Cable(self.environment, cable_attributes)
+            cable.save()
 
-        # This is the custom implementation of the pre-clean up method for the connect_cable extension
-        if connected_object_uuid:
-            connected_object = model_instance.model_class.objects.get(id=connected_object_uuid)
-
-        if cable_id:
-            existing_cable = dcim.Cable.objects.get(id=cable_id)
-
-            if (
-                connected_object_uuid
-                and connected_object.id == existing_cable.termination_a.id
-                and existing_cable.termination_b.id == remote_instance.id
-            ):
-                # If the cable is already connecting what needs to be connected, it passes
-                return None
-
-            model_instance.creator.decommission_object(cable_id, cable_id)
-
-        elif connected_object_uuid and hasattr(connected_object, "cable") and connected_object.cable:
-            model_instance.creator.decommission_object(str(connected_object.cable.id), str(connected_object.cable))
-
-        return ("cable", cable_attributes)
+        model_instance.connect("POST_INSTANCE_SAVE", connect)
 
 
 class NextPrefixExtension(AttributeExtension):

@@ -135,9 +135,7 @@ def builder_test_case(data_dir):
                         for design in testcase["designs"]:
                             environment = Environment(extensions=extensions)
                             commit = design.pop("commit", True)
-                            fake_file_name = "whatever"
-                            environment.builder_output[fake_file_name] = design.copy()
-                            environment.implement_design(design=design, deprecated_design={}, commit=commit)
+                            environment.implement_design(design=design, commit=commit)
                             if not commit:
                                 roll_back.assert_called()
 

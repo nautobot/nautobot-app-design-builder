@@ -105,6 +105,8 @@ disable = """,
     too-many-lines,
     too-many-ancestors,
     line-too-long,
+    nb-replaced-site,
+    nb-replaced-device-role,
     nb-code-location-changed,
     nb-code-location-changed-object,
 """

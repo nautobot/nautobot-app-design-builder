@@ -1,5 +1,0 @@
-{
-    "interfaces": [["30b6689c-8ca6-47d0-8dbe-9c1d300860a6", "GigabitEthernet1/1"]],
-    "ip_addresses": [["053289c3-1469-4682-9b95-9e499b8563fb", "192.0.2.2/30"]],
-    "devices": [["a46729d6-6e71-4905-9833-24dd7841f98a", "core0.iad5"]]
-}

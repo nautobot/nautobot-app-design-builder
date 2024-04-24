@@ -7,7 +7,6 @@ from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.ext import Extension
 from nautobot_design_builder.contrib import ext
 from nautobot_design_builder.tests.designs.context import IntegrationTestContext
-from nautobot_design_builder.util import nautobot_version
 
 
 class SimpleDesign(DesignJob):

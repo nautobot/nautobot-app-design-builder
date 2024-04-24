@@ -23,7 +23,7 @@ from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import CustomRelationshipField, field_factory
 from nautobot_design_builder import models
-from nautobot_design_builder.util import nautobot_version, custom_delete_order
+from nautobot_design_builder.util import nautobot_version
 
 
 if nautobot_version < "2.0.0":
@@ -447,13 +447,6 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         return self._deferred
 
     @property
-    def nautobot_id(self):
-        """The UUID of an object that belongs to an existing design instance."""
-        if hasattr(self, "_nautobot_id"):
-            return self._nautobot_id
-        return None
-
-    @property
     def filter(self):
         """The processed query filter to find the object."""
         return self._filter
@@ -592,7 +585,7 @@ class ModelInstance:
         return calculate_changes(
             self.instance,
             initial_state=self._initial_state,
-            created=self.created,
+            created=self.metadata.created,
             pre_change=pre_change,
         )
 
@@ -644,13 +637,6 @@ class ModelInstance:
         self.metadata.send(signal)
 
     def _load_instance(self):  # pylint: disable=too-many-branches
-        # If the objects is already an existing Nautobot object, just get it.
-        if self.metadata.nautobot_id:
-            self.created = False
-            self.instance = self.model_class.objects.get(id=self.metadata.nautobot_id)
-            self._initial_state = serialize_object_v2(self.instance)
-            return
-
         query_filter = self.metadata.query_filter
         field_values = self.metadata.query_filter_values
         if self.metadata.action == ModelMetadata.GET:
@@ -822,8 +808,6 @@ class Environment(LoggingMixin):
             errors.DesignImplementationError: If a provided extension is not a subclass
                 of `ext.Extension`.
         """
-        # builder_output is an auxiliary struct to store the output design with the corresponding Nautobot IDs
-        self.builder_output = {}
         self.job_result = job_result
         self.logger = get_logger(__name__, self.job_result)
 
@@ -854,7 +838,7 @@ class Environment(LoggingMixin):
 
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""
-        self.journal.design_journal.design_instance.decommission(local_logger=self.logger, object_id=object_id)
+        self.journal.design_journal.design_instance.decommission(object_id, local_logger=self.logger)
         self.log_success(
             message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.design_instance}."
         )
@@ -877,7 +861,7 @@ class Environment(LoggingMixin):
             extn["object"] = extn["class"](self)
         return extn["object"]
 
-    def implement_design(self, design: Dict, deprecated_design: Dict = None, commit: bool = False):
+    def implement_design(self, design: Dict, commit: bool = False):
         """Iterates through items in the design and creates them.
 
         This process is wrapped in a transaction. If either commit=False (default) or
@@ -887,7 +871,6 @@ class Environment(LoggingMixin):
 
         Args:
             design (Dict): An iterable mapping of design changes.
-            deprecated_design (Dict): An iterable mapping of deprecated design changes.
             commit (bool): Whether or not to commit the transaction. Defaults to False.
 
         Raises:
@@ -902,11 +885,6 @@ class Environment(LoggingMixin):
                     self._create_objects(self.model_map[key], value)
                 elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
-
-            if deprecated_design:
-                sorted_keys = sorted(deprecated_design, key=custom_delete_order)
-                for key in sorted_keys:
-                    self._deprecate_objects(deprecated_design[key])
 
             # TODO: The way this works now the commit happens on a per-design file
             #       basis. If a design job has multiple design files and the first
@@ -982,11 +960,6 @@ class Environment(LoggingMixin):
             for model_instance in objects:
                 model = model_class(self, model_instance)
                 model.save()
-
-    def _deprecate_objects(self, objects):
-        if isinstance(objects, list):
-            for obj in objects:
-                self.decommission_object(obj[0], obj[1])
 
     def commit(self):
         """The `commit` method iterates all extensions and calls their `commit` methods.

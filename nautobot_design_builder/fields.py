@@ -182,6 +182,8 @@ class ForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
             model_instance = self._get_instance(obj, value)
             if model_instance.metadata.created:
                 model_instance.save()
+            else:
+                model_instance.environment.journal.log(model_instance)
             setattr(obj.instance, self.field_name, model_instance.instance)
             if deferred:
                 obj.instance.save(update_fields=[self.field_name])
@@ -227,6 +229,8 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
                 value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
                 if value.metadata.created:
                     value.save()
+                else:
+                    value.environment.journal.log(value)
                 items.append(value.instance)
             getattr(obj.instance, self.field_name).add(*items)
 
@@ -245,6 +249,8 @@ class GenericRelationField(BaseModelField, RelationshipFieldMixin):  # pylint:di
             value = self._get_instance(obj, value)
             if value.metadata.created:
                 value.save()
+            else:
+                value.environment.journal.log(value)
             items.append(value.instance)
         getattr(obj.instance, self.field_name).add(*items)
 
@@ -313,6 +319,8 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
                 value = self._get_instance(obj, value)
                 if value.metadata.created:
                     value.save()
+                else:
+                    value.environment.journal.log(value)
 
                 source = obj.instance
                 destination = value.instance

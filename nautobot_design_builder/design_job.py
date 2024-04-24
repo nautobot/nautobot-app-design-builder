@@ -1,16 +1,16 @@
 """Base Design Job class definition."""
 
 import sys
-import copy
 import traceback
 from abc import ABC, abstractmethod
 from os import path
-from datetime import datetime
 from typing import Dict
 import yaml
+
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
+from django.utils import timezone
 
 from jinja2 import TemplateError
 
@@ -25,7 +25,6 @@ from nautobot_design_builder.design import Environment
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
 from nautobot_design_builder import choices
-from nautobot_design_builder.recursive import combine_designs
 
 from .util import nautobot_version
 
@@ -169,47 +168,38 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """
         design = self.render_design(context, design_file)
         self.log_debug(f"New Design to be implemented: {design}")
-        deprecated_design = {}
 
         # The design to apply will take into account the previous journal that keeps track (in the builder_output)
         # of the design used (i.e., the YAML) including the Nautobot IDs that will help to reference them
-        self.environment.builder_output[design_file] = copy.deepcopy(design)
-        last_journal = (
-            self.environment.journal.design_journal.design_instance.journals.filter(active=True)
-            .exclude(id=self.environment.journal.design_journal.id)
-            .exclude(builder_output={})
-            .order_by("-last_updated")
-            .first()
-        )
-        if last_journal and last_journal.builder_output:
-            # The last design output is used as the reference to understand what needs to be changed
-            # The design output store the whole set of attributes, not only the ones taken into account
-            # in the implementation
-            previous_design = last_journal.builder_output[design_file]
-            self.log_debug(f"Design from previous Journal: {previous_design}")
+        # self.environment.builder_output[design_file] = copy.deepcopy(design)
+        # if last_journal and last_journal.builder_output:
+        #     # The last design output is used as the reference to understand what needs to be changed
+        #     # The design output store the whole set of attributes, not only the ones taken into account
+        #     # in the implementation
+        #     previous_design = last_journal.builder_output[design_file]
+        #     self.log_debug(f"Design from previous Journal: {previous_design}")
 
-            for key, new_value in design.items():
-                old_value = previous_design[key]
-                future_value = self.environment.builder_output[design_file][key]
-                combine_designs(new_value, old_value, future_value, deprecated_design, key)
+        #     for key, new_value in design.items():
+        #         old_value = previous_design[key]
+        #         future_value = self.environment.builder_output[design_file][key]
+        #         combine_designs(new_value, old_value, future_value, deprecated_design, key)
 
-            self.log_debug(f"Design to implement after reduction: {design}")
-            self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")
+        #   self.log_debug(f"Design to implement after reduction: {design}")
 
-        self.environment.implement_design(design, deprecated_design, commit)
+        self.environment.implement_design(design, commit)
 
     def _setup_journal(self, instance_name: str):
         try:
             instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
-            instance.last_implemented = datetime.now()
+            instance.last_implemented = timezone.now()
         except models.DesignInstance.DoesNotExist:
             self.log_info(message=f'Implementing new design "{instance_name}".')
             content_type = ContentType.objects.get_for_model(models.DesignInstance)
             instance = models.DesignInstance(
                 name=instance_name,
                 design=self.design_model(),
-                last_implemented=datetime.now(),
+                last_implemented=timezone.now(),
                 status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
                 live_state=Status.objects.get(
                     content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
@@ -217,13 +207,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 version=self.design_model().version,
             )
         instance.validated_save()
-
+        previous_journal = instance.journals.order_by("-last_updated").first()
         journal = models.Journal(
             design_instance=instance,
             job_result=self.job_result,
         )
         journal.validated_save()
-        return journal
+        return (journal, previous_journal)
 
     @staticmethod
     def validate_data_logic(data):
@@ -274,7 +264,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         else:
             self.job_result.job_kwargs = self.serialize_data(data)
 
-        journal = self._setup_journal(data.pop("instance_name"))
+        journal, previous_journal = self._setup_journal(data.pop("instance_name"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
@@ -305,12 +295,17 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         try:
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
-            if commit:
-                self.post_implementation(context, self.environment)
 
+            if previous_journal:
+                deleted_object_ids = previous_journal - journal
+                if deleted_object_ids:
+                    self.log_debug(f"Deleting {list(deleted_object_ids)}")
+                    journal.design_instance.decommission(*deleted_object_ids, local_logger=self.logger)
+                    self.post_implementation(context, self.environment)
+
+            if commit:
                 # The Journal stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
-                journal.builder_output = self.environment.builder_output
                 journal.design_instance.status = Status.objects.get(
                     content_types=ContentType.objects.get_for_model(models.DesignInstance),
                     name=choices.DesignInstanceStatusChoices.ACTIVE,
