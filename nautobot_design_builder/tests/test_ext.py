@@ -13,7 +13,7 @@ class Extension(ext.AttributeExtension):
 
     tag = "custom_extension"
 
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance=None) -> None:
         pass
 
 
@@ -68,7 +68,7 @@ class TestExtensionCommitRollback(TestCase):
 
             tag = "extension"
 
-            def attribute(self, value, model_instance) -> None:
+            def attribute(self, *args, value=None, model_instance=None) -> None:
                 pass
 
             def commit(self) -> None:

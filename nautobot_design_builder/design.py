@@ -637,6 +637,12 @@ class ModelInstance:
         self.metadata.send(signal)
 
     def _load_instance(self):  # pylint: disable=too-many-branches
+        # Short circuit if the instance was loaded earlier in
+        # the initialization process
+        if self.instance is not None:
+            self._initial_state = serialize_object_v2(self.instance)
+            return
+
         query_filter = self.metadata.query_filter
         field_values = self.metadata.query_filter_values
         if self.metadata.action == ModelMetadata.GET:
@@ -777,6 +783,7 @@ class Environment(LoggingMixin):
 
     model_map: Dict[str, Type[Model]]
     model_class_index: Dict[Type, "ModelInstance"]
+    design_instance: models.DesignInstance
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder is initialized."""
@@ -835,6 +842,8 @@ class Environment(LoggingMixin):
             self.extensions["extensions"].append(extn)
 
         self.journal = Journal(design_journal=journal)
+        if journal:
+            self.design_instance = journal.design_instance
 
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""

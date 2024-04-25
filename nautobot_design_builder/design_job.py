@@ -299,7 +299,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if previous_journal:
                 deleted_object_ids = previous_journal - journal
                 if deleted_object_ids:
-                    self.log_debug(f"Deleting {list(deleted_object_ids)}")
                     journal.design_instance.decommission(*deleted_object_ids, local_logger=self.logger)
                     self.post_implementation(context, self.environment)
 

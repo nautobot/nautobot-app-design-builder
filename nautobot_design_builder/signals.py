@@ -5,14 +5,14 @@ import logging
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
 from django.db.models.signals import pre_delete
 from django.db.models import ProtectedError
 
 from nautobot.core.signals import nautobot_database_ready
-from nautobot.extras.models import Job, Status, Tag
+from nautobot.extras.models import Job, Status
 from nautobot.utilities.choices import ColorChoices
 from nautobot.extras.registry import registry
 from nautobot_design_builder.models import JournalEntry
@@ -107,7 +107,7 @@ def load_pre_delete_signals():
 load_pre_delete_signals()
 
 
-@receiver(signal=post_delete, sender=DesignInstance)
-def handle_post_delete_design_instance(sender, instance, **kwargs):  # pylint: disable=unused-argument
-    """Cleaning up the Tag created for a design instance."""
-    Tag.objects.get(name=f"Managed by {instance}").delete()
+# @receiver(signal=post_delete, sender=DesignInstance)
+# def handle_post_delete_design_instance(sender, instance, **kwargs):  # pylint: disable=unused-argument
+#     """Cleaning up the Tag created for a design instance."""
+#     Tag.objects.get(name=f"Managed by {instance}").delete()

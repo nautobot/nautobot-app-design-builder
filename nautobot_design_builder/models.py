@@ -11,10 +11,9 @@ from django.urls import reverse
 
 from nautobot.apps.models import PrimaryModel, BaseModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField, Tag
+from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
-from nautobot.utilities.choices import ColorChoices
 
 from .util import nautobot_version, get_created_and_last_updated_usernames_for_model
 from . import choices
@@ -254,6 +253,21 @@ class DesignInstance(PrimaryModel):
             raise ValidationError("A Design Instance can only be delete if it's Decommissioned and not Deployed.")
         return super().delete(*args, **kwargs)
 
+    def get_design_objects(self, model):
+        """Get all of the design objects for this design instance that are of `model` type.
+
+        For instance, do get all of the `dcim.Interface` objects for this design instance call
+        `design_instance.get_design_objects(Interface)`.
+
+        Args:
+            model (type): The model type to match.
+
+        Returns:
+            Queryset of matching objects.
+        """
+        entries = JournalEntry.objects.filter_by_instance(self, model=model)
+        return model.objects.filter(pk__in=entries.values_list("pk", flat=True))
+
     @property
     def created_by(self):
         """Get the username of the user who created the object."""
@@ -327,21 +341,6 @@ class Journal(PrimaryModel):
         """
         instance = model_instance.instance
         content_type = ContentType.objects.get_for_model(instance)
-
-        if model_instance.created:
-            try:
-                tag_design_builder, _ = Tag.objects.get_or_create(
-                    name=f"Managed by {self.design_instance}",
-                    defaults={
-                        "description": f"Managed by Design Builder: {self.design_instance}",
-                        "color": ColorChoices.COLOR_LIGHT_GREEN,
-                    },
-                )
-                instance.tags.add(tag_design_builder)
-                instance.save()
-            except AttributeError:
-                # This happens when the instance doesn't support Tags, for example Region
-                pass
 
         try:
             entry = self.entries.get(
@@ -436,6 +435,21 @@ class JournalEntryQuerySet(RestrictedQuerySet):
             journal__design_instance__id=entry.journal.design_instance.id
         )
 
+    def filter_by_instance(self, design_instance: "DesignInstance", model=None):
+        """Lookup all the entries for a design instance an optional model type.
+
+        Args:
+            design_instance (DesignInstance): The design instance to retrieve all of the journal entries.
+            model (type, optional): An optional model type to filter by. Defaults to None.
+
+        Returns:
+            Query set matching the options.
+        """
+        queryset = self.filter(journal__design_instance=design_instance)
+        if model:
+            queryset.filter(_design_object_type=ContentType.objects.get_for_model(model))
+        return queryset
+
 
 class JournalEntry(BaseModel):
     """A single entry in the journal for exactly 1 object.
@@ -520,7 +534,8 @@ class JournalEntry(BaseModel):
         object_type = self.design_object._meta.verbose_name.title()
         object_str = str(self.design_object)
 
-        local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
+        local_logger.info("Reverting journal entry", extra={"obj": self.design_object})
+        # local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
         if self.full_control:
             related_entries = (
                 JournalEntry.objects.filter(active=True)
@@ -582,7 +597,7 @@ class JournalEntry(BaseModel):
                         )
 
                     setattr(self.design_object, attribute, current_value)
-                elif differences["removed"] is not None:
+                else:
                     try:
                         setattr(self.design_object, attribute, removed_value)
                     except AttributeError:
