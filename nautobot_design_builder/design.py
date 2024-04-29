@@ -14,11 +14,12 @@ from django.db import transaction
 
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import JobResult, Relationship
-from nautobot.utilities.utils import shallow_compare_dict
-from nautobot.extras.api.serializers import StatusModelSerializerMixin
-from nautobot.extras.api.fields import StatusSerializerField
-from nautobot.core.api.exceptions import SerializerNotFound
-from nautobot.extras.models import Status
+from nautobot.core.utils.data import shallow_compare_dict
+
+# from nautobot.extras.api.serializers import StatusModelSerializerMixin
+# from nautobot.extras.api.fields import StatusSerializerField
+# from nautobot.core.api.exceptions import SerializerNotFound
+# from nautobot.extras.models import Status
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
@@ -30,52 +31,52 @@ from nautobot_design_builder.util import nautobot_version, custom_delete_order
 from nautobot_design_builder.recursive import inject_nautobot_uuids, get_object_identifier
 
 
-if nautobot_version < "2.0.0":
-    # This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
-    # https://github.com/nautobot/nautobot/blob/ltm-1.6/nautobot/extras/api/fields.py#L22
-    from nautobot.utilities.api import get_serializer_for_model  # pylint: disable=ungrouped-imports
-    from nautobot.utilities.utils import serialize_object  # pylint: disable=ungrouped-imports
+# if nautobot_version < "2.0.0":
+#     # This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
+#     # https://github.com/nautobot/nautobot/blob/ltm-1.6/nautobot/extras/api/fields.py#L22
+#     from nautobot.core.api import get_serializer_for_model  # pylint: disable=ungrouped-imports
+#     from nautobot.core.utils import serialize_object  # pylint: disable=ungrouped-imports
 
-    def serialize_object_v2(obj):
-        """
-        Custom Implementation. Not needed for Nautobot 2.0.
+#     def serialize_object_v2(obj):
+#         """
+#         Custom Implementation. Not needed for Nautobot 2.0.
 
-        Return a JSON serialized representation of an object using obj's serializer.
-        """
+#         Return a JSON serialized representation of an object using obj's serializer.
+#         """
 
-        class CustomStatusSerializerField(StatusSerializerField):
-            """CustomStatusSerializerField."""
+#         class CustomStatusSerializerField(StatusSerializerField):
+#             """CustomStatusSerializerField."""
 
-            def to_representation(self, obj):
-                """Make this field compatible w/ the existing API for `ChoiceField`."""
-                if obj == "":
-                    return None
+#             def to_representation(self, obj):
+#                 """Make this field compatible w/ the existing API for `ChoiceField`."""
+#                 if obj == "":
+#                     return None
 
-                return OrderedDict([("value", obj.slug), ("label", str(obj)), ("id", str(obj.id))])
+#                 return OrderedDict([("value", obj.slug), ("label", str(obj)), ("id", str(obj.id))])
 
-        class CustomStatusModelSerializerMixin(StatusModelSerializerMixin):
-            """Mixin to add `status` choice field to model serializers."""
+#         class CustomStatusModelSerializerMixin(StatusModelSerializerMixin):
+#             """Mixin to add `status` choice field to model serializers."""
 
-            status = CustomStatusSerializerField(queryset=Status.objects.all())
+#             status = CustomStatusSerializerField(queryset=Status.objects.all())
 
-        # Try serializing obj(model instance) using its API Serializer
-        try:
-            serializer_class = get_serializer_for_model(obj.__class__)
-            if issubclass(serializer_class, StatusModelSerializerMixin):
+#         # Try serializing obj(model instance) using its API Serializer
+#         try:
+#             serializer_class = get_serializer_for_model(obj.__class__)
+#             if issubclass(serializer_class, StatusModelSerializerMixin):
 
-                class NewSerializerClass(CustomStatusModelSerializerMixin, serializer_class):
-                    """Custom SerializerClass."""
+#                 class NewSerializerClass(CustomStatusModelSerializerMixin, serializer_class):
+#                     """Custom SerializerClass."""
 
-                serializer_class = NewSerializerClass
-            data = serializer_class(obj, context={"request": None, "depth": 1}).data
-        except SerializerNotFound:
-            # Fall back to generic JSON representation of obj
-            data = serialize_object(obj)
+#                 serializer_class = NewSerializerClass
+#             data = serializer_class(obj, context={"request": None, "depth": 1}).data
+#         except SerializerNotFound:
+#             # Fall back to generic JSON representation of obj
+#             data = serialize_object(obj)
 
-        return data
+#         return data
 
-else:
-    from nautobot.core.models.utils import serialize_object_v2  # pylint: disable=import-error,no-name-in-module
+# else:
+from nautobot.core.models.utils import serialize_object_v2  # pylint: disable=import-error,no-name-in-module
 
 
 # TODO: Refactor this code into the Journal model

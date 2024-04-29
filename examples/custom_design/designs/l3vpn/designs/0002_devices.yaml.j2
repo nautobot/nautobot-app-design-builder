@@ -11,6 +11,10 @@
       - "!create_or_update:name": "{{ get_interface_name(device) }}"
         status__name: "Planned"
         type: "other"
+        ip_address_assignments:
+          - ip_address:
+              "!create_or_update:address": "{{ get_ip_address(get_l3vpn_prefix(l3vpn_prefix, l3vpn_prefix_length), offset) }}"
+              status__name: "Reserved"
         {% if offset == 2 %}
         "!connect_cable":
           status__name: "Planned"
@@ -18,9 +22,6 @@
             device__name: "{{ other_device.name }}"
             name: "{{ get_interface_name(other_device) }}"
         {% endif %}
-        ip_addresses:
-        - "!create_or_update:address": "{{ get_ip_address(get_l3vpn_prefix(l3vpn_prefix, l3vpn_prefix_length), offset) }}"
-          status__name: "Reserved"
 
 {% endmacro %}
 
