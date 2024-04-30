@@ -304,8 +304,12 @@ class Journal(PrimaryModel):
         related_name="journals",
     )
     job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
-    builder_output = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
     active = models.BooleanField(editable=False, default=True)
+
+    class Meta:
+        """Set the default query ordering."""
+
+        ordering = ["-last_updated"]
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
@@ -326,6 +330,18 @@ class Journal(PrimaryModel):
             user_input = self.job_result.task_kwargs.copy()  # pylint: disable=no-member
         job = self.design_instance.design.job
         return job.job_class.deserialize_data(user_input)
+
+    def _next_index(self):
+        # The hokey getting/setting here is to make pylint happy
+        # and not complain about `no-member`
+        index = getattr(self, "_index", None)
+        if index is None:
+            index = self.entries.aggregate(index=models.Max("index"))["index"]
+            if index is None:
+                index = -1
+        index += 1
+        setattr(self, "_index", index)
+        return index
 
     def log(self, model_instance):
         """Log changes to a model instance.
@@ -357,6 +373,7 @@ class Journal(PrimaryModel):
                 _design_object_id=instance.id,
                 changes=model_instance.get_changes(),
                 full_control=model_instance.metadata.created,
+                index=self._next_index(),
             )
         return entry
 
@@ -372,7 +389,7 @@ class Journal(PrimaryModel):
         # Without a design object we cannot have changes, right? I suppose if the
         # object has been deleted since the change was made then it wouldn't exist,
         # but I think we need to discuss the implications of this further.
-        entries = self.entries.order_by("-last_updated").exclude(_design_object_id=None).exclude(active=False)
+        entries = self.entries.order_by("-index").exclude(_design_object_id=None).exclude(active=False)
         if not object_ids:
             local_logger.info("Reverting journal", extra={"obj": self})
         else:
@@ -410,7 +427,7 @@ class Journal(PrimaryModel):
         other_ids = other.entries.values_list("_design_object_id")
 
         return (
-            self.entries.order_by("-last_updated")
+            self.entries.order_by("-index")
             .exclude(_design_object_id__in=other_ids)
             .values_list("_design_object_id", flat=True)
         )
@@ -423,16 +440,20 @@ class JournalEntryQuerySet(RestrictedQuerySet):
         """Returns JournalEntry which the related DesignInstance is not decommissioned."""
         return self.exclude(journal__design_instance__status__name=choices.DesignInstanceStatusChoices.DECOMMISSIONED)
 
-    def filter_related(self, entry: "JournalEntry"):
-        """Returns JournalEntries which have the same object ID but excluding itself."""
-        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
-            id=entry.id
-        )
+    def filter_related(self, entry):
+        """Returns other JournalEntries which have the same object ID but are in different designs.
 
-    def filter_same_parent_design_instance(self, entry: "JournalEntry"):
-        """Returns JournalEntries which have the same parent design instance."""
-        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
-            journal__design_instance__id=entry.journal.design_instance.id
+        Args:
+            entry (JournalEntry): The JournalEntry to use as reference.
+
+        Returns:
+            QuerySet: The queryset that matches other journal entries with the same design object ID. This
+            excludes matching entries in the same design.
+        """
+        return (
+            self.filter(active=True)
+            .filter(_design_object_id=entry._design_object_id)  # pylint:disable=protected-access
+            .exclude(journal__design_instance_id=entry.journal.design_instance_id)
         )
 
     def filter_by_instance(self, design_instance: "DesignInstance", model=None):
@@ -473,6 +494,8 @@ class JournalEntry(BaseModel):
         on_delete=models.CASCADE,
         related_name="entries",
     )
+
+    index = models.IntegerField(null=False, blank=False)
 
     _design_object_type = models.ForeignKey(
         to=ContentType,
@@ -537,14 +560,9 @@ class JournalEntry(BaseModel):
         local_logger.info("Reverting journal entry", extra={"obj": self.design_object})
         # local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
         if self.full_control:
-            related_entries = (
-                JournalEntry.objects.filter(active=True)
-                .filter_related(self)
-                .filter_same_parent_design_instance(self)
-                .exclude_decommissioned()
-            )
+            related_entries = list(JournalEntry.objects.filter_related(self).values_list("id", flat=True))
             if related_entries:
-                active_journal_ids = ",".join([str(j.id) for j in related_entries])
+                active_journal_ids = ",".join(map(str, related_entries))
                 raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
 
             self.design_object._current_design = self.journal.design_instance  # pylint: disable=protected-access

@@ -299,10 +299,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if previous_journal:
                 deleted_object_ids = previous_journal - journal
                 if deleted_object_ids:
-                    journal.design_instance.decommission(*deleted_object_ids, local_logger=self.logger)
-                    self.post_implementation(context, self.environment)
+                    self.log_info(f"Decommissioning {deleted_object_ids}")
+                    journal.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 
             if commit:
+                self.post_implementation(context, self.environment)
                 # The Journal stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
                 journal.design_instance.status = Status.objects.get(

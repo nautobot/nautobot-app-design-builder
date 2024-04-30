@@ -34,4 +34,6 @@ def create_test_view_data():
         instance = DesignInstance.objects.create(design=design, name=f"Test Instance {i}")
         journal = Journal.objects.create(design_instance=instance, job_result=job_result)
         full_control = i == 1  # Have one record where full control is given, more than one where its not.
-        JournalEntry.objects.create(journal=journal, design_object=object_created_by_job, full_control=full_control)
+        JournalEntry.objects.create(
+            journal=journal, design_object=object_created_by_job, full_control=full_control, index=0
+        )

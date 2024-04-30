@@ -322,7 +322,7 @@ class NextPrefixExtension(AttributeExtension):
 
     tag = "next_prefix"
 
-    def attribute(self, attr="prefix", value: dict = None, model_instance: ModelInstance = None) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
 
         Args:
@@ -393,6 +393,7 @@ class NextPrefixExtension(AttributeExtension):
             query = Q(**value) & reduce(operator.or_, prefix_q)
 
         prefixes = Prefix.objects.filter(query)
+        attr = args[0] if args else "prefix"
         return attr, self._get_next(prefixes, length)
 
     @staticmethod
@@ -419,7 +420,7 @@ class ChildPrefixExtension(AttributeExtension):
 
     tag = "child_prefix"
 
-    def attribute(self, attr: str = "prefix", value: dict = None, model_instance=None) -> None:
+    def attribute(self, *args, value: dict = None, model_instance=None) -> None:
         """Provides the `!child_prefix` attribute.
 
         !child_prefix calculates a child prefix using a parent prefix
@@ -476,7 +477,7 @@ class ChildPrefixExtension(AttributeExtension):
             raise DesignImplementationError("the child_prefix tag requires an offset")
         if not isinstance(offset, str):
             raise DesignImplementationError("offset must be string")
-
+        attr = args[0] if args else "prefix"
         return attr, network_offset(parent, offset)
 
 

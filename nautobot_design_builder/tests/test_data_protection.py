@@ -50,6 +50,7 @@ class DataProtectionBaseTest(BaseDesignInstanceTest):  # pylint: disable=too-man
             full_control=True,
             changes=calculate_changes(self.manufacturer_from_design),
             journal=self.journal,
+            index=self.journal._next_index(),  # pylint:disable=protected-access
         )
 
         self.client = Client()
