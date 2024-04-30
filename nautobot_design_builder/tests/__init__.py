@@ -36,9 +36,11 @@ class DesignTestCase(TestCase):
         job = design_class()
 
         job.job_result = mock.Mock()
+        job.save_design_file = lambda filename, content: None
         if nautobot_version < "2.0.0":
             job.request = mock.Mock()
         else:
+            # TODO: Remove this when we no longer support Nautobot 1.x
             job.job_result.data = {}
             old_run = job.run
 

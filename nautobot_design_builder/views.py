@@ -155,7 +155,7 @@ class JournalUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            entries = JournalEntry.objects.restrict(request.user, "view").filter(journal=instance)
+            entries = JournalEntry.objects.restrict(request.user, "view").filter(journal=instance).order_by("-index")
 
             entries_table = JournalEntryTable(entries)
             entries_table.columns.hide("journal")

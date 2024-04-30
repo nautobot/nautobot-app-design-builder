@@ -8,18 +8,22 @@
       "mpls_router": true,
     }
     interfaces:
-      - "!create_or_update:name": "{{ get_interface_name(device) }}"
+      - "!next_interface": {}
         status__name: "Planned"
         type: "other"
         {% if offset == 2 %}
         "!connect_cable":
           status__name: "Planned"
-          to:
-            device__name: "{{ other_device.name }}"
-            name: "{{ get_interface_name(other_device) }}"
+          to: "!ref:other_interface"
+        {% else %}
+        "!ref": "other_interface"
         {% endif %}
+        tags:
+          - {"!get:name": "VRF Interface"}
         ip_addresses:
-        - "!create_or_update:address": "{{ get_ip_address(get_l3vpn_prefix(l3vpn_prefix, l3vpn_prefix_length), offset) }}"
+        - "!child_prefix:address":
+            parent: "!ref:l3vpn_p2p_prefix"
+            offset: "0.0.0.{{ offset }}/30"
           status__name: "Reserved"
 
 {% endmacro %}

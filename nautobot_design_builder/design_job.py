@@ -1,30 +1,30 @@
 """Base Design Job class definition."""
 
 import sys
-import copy
 import traceback
 from abc import ABC, abstractmethod
 from os import path
-from datetime import datetime
 from typing import Dict
 import yaml
+
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.base import ContentFile
+from django.utils import timezone
 
 from jinja2 import TemplateError
 
 from nautobot.extras.models import Status
 from nautobot.extras.jobs import Job, StringVar
-
+from nautobot.extras.models import FileProxy
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
-from nautobot_design_builder.design import Builder
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
 from nautobot_design_builder import choices
-from nautobot_design_builder.recursive import combine_designs
 
 from .util import nautobot_version
 
@@ -52,10 +52,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def __init__(self, *args, **kwargs):
         """Initialize the design job."""
         # rendered designs
-        self.builder: Builder = None
+        self.environment: Environment = None
         self.designs = {}
+        # TODO: Remove this when we no longer support Nautobot 1.x
         self.rendered = None
+        self.rendered_design = None
         self.failed = False
+        self.report = None
 
         super().__init__(*args, **kwargs)
 
@@ -63,7 +66,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """Get the related Job."""
         return models.Design.objects.for_design_job(self.job_result.job_model)
 
-    def post_implementation(self, context: Context, builder: Builder):
+    def post_implementation(self, context: Context, environment: Environment):
         """Similar to Nautobot job's `post_run` method, but will be called after a design is implemented.
 
         Any design job that requires additional work to be completed after the design
@@ -73,15 +76,18 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         Args:
             context (Context): The render context that was used for rendering the design files.
-            builder (Builder): The builder object that consumed the rendered design files. This is useful for accessing the design journal.
+            environment (Environment): The build environment that consumed the rendered design files. This is useful for accessing the design journal.
         """
 
     def post_run(self):
         """Method that will run after the main Nautobot job has executed."""
+        # TODO: This is not supported in Nautobot 2 and the entire method
+        # should be removed once we no longer support Nautobot 1.
         if self.rendered:
             self.job_result.data["output"] = self.rendered
 
         self.job_result.data["designs"] = self.designs
+        self.job_result.data["report"] = self.report
 
     def render(self, context: Context, filename: str) -> str:
         """High level function to render the Jinja design templates into YAML.
@@ -126,12 +132,14 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             context (Context object): a tree of variables that can include templates for values
             design_file (str): Filename of the design file to render.
         """
+        self.rendered_design = design_file
         self.rendered = self.render(context, design_file)
         design = yaml.safe_load(self.rendered)
         self.designs[design_file] = design
 
         # no need to save the rendered content if yaml loaded
         # it okay
+        self.rendered_design = None
         self.rendered = None
         return design
 
@@ -160,47 +168,21 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """
         design = self.render_design(context, design_file)
         self.log_debug(f"New Design to be implemented: {design}")
-        deprecated_design = {}
 
-        # The design to apply will take into account the previous journal that keeps track (in the builder_output)
-        # of the design used (i.e., the YAML) including the Nautobot IDs that will help to reference them
-        self.builder.builder_output[design_file] = copy.deepcopy(design)
-        last_journal = (
-            self.builder.journal.design_journal.design_instance.journals.filter(active=True)
-            .exclude(id=self.builder.journal.design_journal.id)
-            .exclude(builder_output={})
-            .order_by("-last_updated")
-            .first()
-        )
-        if last_journal and last_journal.builder_output:
-            # The last design output is used as the reference to understand what needs to be changed
-            # The design output store the whole set of attributes, not only the ones taken into account
-            # in the implementation
-            previous_design = last_journal.builder_output[design_file]
-            self.log_debug(f"Design from previous Journal: {previous_design}")
-
-            for key, new_value in design.items():
-                old_value = previous_design[key]
-                future_value = self.builder.builder_output[design_file][key]
-                combine_designs(new_value, old_value, future_value, deprecated_design, key)
-
-            self.log_debug(f"Design to implement after reduction: {design}")
-            self.log_debug(f"Design to deprecate after reduction: {deprecated_design}")
-
-        self.builder.implement_design_changes(design, deprecated_design, design_file, commit)
+        self.environment.implement_design(design, commit)
 
     def _setup_journal(self, instance_name: str):
         try:
             instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
-            instance.last_implemented = datetime.now()
+            instance.last_implemented = timezone.now()
         except models.DesignInstance.DoesNotExist:
             self.log_info(message=f'Implementing new design "{instance_name}".')
             content_type = ContentType.objects.get_for_model(models.DesignInstance)
             instance = models.DesignInstance(
                 name=instance_name,
                 design=self.design_model(),
-                last_implemented=datetime.now(),
+                last_implemented=timezone.now(),
                 status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
                 live_state=Status.objects.get(
                     content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
@@ -208,21 +190,49 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 version=self.design_model().version,
             )
         instance.validated_save()
-
+        previous_journal = instance.journals.order_by("-last_updated").first()
         journal = models.Journal(
             design_instance=instance,
             job_result=self.job_result,
         )
         journal.validated_save()
-        return journal
+        return (journal, previous_journal)
 
     @staticmethod
     def validate_data_logic(data):
         """Method to validate the input data logic that is already valid as a form by the `validate_data` method."""
 
+    def run(self, **kwargs):  # pylint: disable=arguments-differ
+        """Render the design and implement it within a build Environment object."""
+        try:
+            return self._run_in_transaction(**kwargs)
+        finally:
+            if self.rendered:
+                rendered_design = path.basename(self.rendered_design)
+                rendered_design, _ = path.splitext(rendered_design)
+                if not rendered_design.endswith(".yaml") and not rendered_design.endswith(".yml"):
+                    rendered_design = f"{rendered_design}.yaml"
+                self.save_design_file(rendered_design, self.rendered)
+            for design_file, design in self.designs.items():
+                output_file = path.basename(design_file)
+                # this should remove the .j2
+                output_file, _ = path.splitext(output_file)
+                if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
+                    output_file = f"{output_file}.yaml"
+                self.save_design_file(output_file, yaml.safe_dump(design))
+
     @transaction.atomic
-    def run(self, **kwargs):  # pylint: disable=arguments-differ,too-many-branches,too-many-statements
-        """Render the design and implement it with a Builder object."""
+    def _run_in_transaction(self, **kwargs):  # pylint: disable=too-many-branches, too-many-statements
+        """Render the design and implement it within a build Environment object.
+
+        This version of `run` is wrapped in a transaction and will roll back database changes
+        on error. In general, this method should only be called by the `run` method.
+        """
+        self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
+        extensions = getattr(self.Meta, "extensions", [])
+
+        design_files = None
+
         if nautobot_version < "2.0.0":
             commit = kwargs["commit"]
             data = kwargs["data"]
@@ -237,10 +247,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         else:
             self.job_result.job_kwargs = self.serialize_data(data)
 
-        journal = self._setup_journal(data.pop("instance_name"))
+        journal, previous_journal = self._setup_journal(data.pop("instance_name"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
-        self.builder = Builder(
+        self.environment = Environment(
             job_result=self.job_result,
             extensions=extensions,
             journal=journal,
@@ -268,12 +278,17 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         try:
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
-            if commit:
-                self.post_implementation(context, self.builder)
 
+            if previous_journal:
+                deleted_object_ids = previous_journal - journal
+                if deleted_object_ids:
+                    self.log_info(f"Decommissioning {deleted_object_ids}")
+                    journal.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+
+            if commit:
+                self.post_implementation(context, self.environment)
                 # The Journal stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
-                journal.builder_output = self.builder.builder_output
                 journal.design_instance.status = Status.objects.get(
                     content_types=ContentType.objects.get_for_model(models.DesignInstance),
                     name=choices.DesignInstanceStatusChoices.ACTIVE,
@@ -285,8 +300,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     "design_instance": journal.design_instance.pk,
                 }
                 if hasattr(self.Meta, "report"):
-                    self.job_result.data["report"] = self.render_report(context, self.builder.journal)
-                    self.log_success(message=self.job_result.data["report"])
+                    self.report = self.render_report(context, self.environment.journal)
+                    self.log_success(message=self.report)
+                    if nautobot_version >= "2.0":
+                        self.save_design_file("report.md", self.report)
             else:
                 transaction.savepoint_rollback(sid)
                 self.log_info(
@@ -303,3 +320,21 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             transaction.savepoint_rollback(sid)
             self.failed = True
             raise ex
+
+    def save_design_file(self, filename, content):
+        """Save some content to a job file.
+
+        This is only supported on Nautobot 2.0 and greater.
+
+        Args:
+            filename (str): The name of the file to save.
+            content (str): The content to save to the file.
+        """
+        if nautobot_version < "2.0":
+            return
+
+        FileProxy.objects.create(
+            name=filename,
+            job_result=self.job_result,
+            file=ContentFile(content.encode("utf-8"), name=filename),
+        )

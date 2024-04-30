@@ -1,8 +1,0 @@
-{
-    "devices": [
-        ["6bb2e900-b53d-43df-9a88-048ab7c05bd0", "core1.iad5"],
-        ["d96aadd6-489c-41e6-b9eb-7f3dc7e7c197", "core1.lga1"],
-        ["7ecaca00-65e0-4214-a89d-8560002c4e87", "core1.lax11"],
-        ["dd3811ad-158e-464e-8629-0a3cd18aabf0", "core1.sea1"]
-    ]
-}

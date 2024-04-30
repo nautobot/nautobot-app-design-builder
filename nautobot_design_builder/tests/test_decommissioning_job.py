@@ -125,7 +125,10 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertEqual(1, Secret.objects.count())
 
         journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1, design_object=self.secret, full_control=True
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=True,
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry.validated_save()
 
@@ -137,13 +140,22 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertEqual(1, Secret.objects.count())
 
         journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1, design_object=self.secret, full_control=True
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=True,
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
 
         journal_entry_1.validated_save()
 
         journal_entry_2 = models.JournalEntry.objects.create(
-            journal=self.journal2, design_object=self.secret, full_control=False, changes={"differences": {}}
+            journal=self.journal2,
+            design_object=self.secret,
+            full_control=False,
+            changes={
+                "differences": {},
+            },
+            index=self.journal2._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_2.validated_save()
 
@@ -160,20 +172,24 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertEqual(1, Secret.objects.count())
 
         journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1, design_object=self.secret, full_control=True
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=True,
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
 
         journal_entry_1.validated_save()
 
         journal_entry_2 = models.JournalEntry.objects.create(
-            journal=self.journal2, design_object=self.secret, full_control=False, changes={"differences": {}}
+            journal=self.journal2,
+            design_object=self.secret,
+            full_control=False,
+            changes={"differences": {}},
+            index=self.journal2._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_2.validated_save()
 
-        self.design_instance_2.status = Status.objects.get(
-            content_types=self.content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
-        )
-        self.design_instance_2.validated_save()
+        self.design_instance_2.decommission()
 
         self.job.run(data={"design_instances": [self.design_instance]}, commit=True)
 
@@ -183,7 +199,11 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertEqual(1, Secret.objects.count())
 
         journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1, design_object=self.secret, full_control=False, changes={"differences": {}}
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=False,
+            changes={"differences": {}},
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_1.validated_save()
 
@@ -205,6 +225,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
                     "removed": {"description": "previous description"},
                 }
             },
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry.validated_save()
 
@@ -224,6 +245,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
                     "removed": {"parameters": self.initial_params},
                 }
             },
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry.validated_save()
 
@@ -245,6 +267,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
                     "removed": {"parameters": self.initial_params},
                 }
             },
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry.validated_save()
 
@@ -270,6 +293,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
                     "removed": {"parameters": self.initial_params},
                 }
             },
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry.validated_save()
 
@@ -282,7 +306,10 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertEqual(1, Secret.objects.count())
 
         journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1, design_object=self.secret, full_control=True
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=True,
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_1.validated_save()
 
@@ -295,7 +322,10 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         models.DesignInstance.pre_decommission.connect(fake_ko)
         self.assertEqual(1, Secret.objects.count())
         journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1, design_object=self.secret, full_control=True
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=True,
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_1.validated_save()
 
@@ -311,7 +341,10 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
 
     def test_decommission_run_multiple_design_instance(self):
         journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1, design_object=self.secret, full_control=True
+            journal=self.journal1,
+            design_object=self.secret,
+            full_control=True,
+            index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry.validated_save()
 
@@ -323,7 +356,10 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         secret_2.validated_save()
 
         journal_entry_2 = models.JournalEntry.objects.create(
-            journal=self.journal2, design_object=secret_2, full_control=True
+            journal=self.journal2,
+            design_object=secret_2,
+            full_control=True,
+            index=self.journal2._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_2.validated_save()
 

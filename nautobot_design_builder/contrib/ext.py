@@ -13,19 +13,17 @@ from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
 import netaddr
-from nautobot_design_builder.design import Builder
-from nautobot_design_builder.design import ModelInstance
+from nautobot_design_builder.design import Environment, ModelInstance, ModelMetadata
 
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
 from nautobot_design_builder.ext import AttributeExtension
 from nautobot_design_builder.jinja2 import network_offset
-from nautobot_design_builder.constants import NAUTOBOT_ID
 
 
 class LookupMixin:
     """A helper mixin that provides a way to lookup objects."""
 
-    builder: Builder
+    environment: Environment
 
     def lookup_by_content_type(self, app_label, model_name, query):
         """Perform a query on a model.
@@ -67,7 +65,10 @@ class LookupMixin:
             if isinstance(value, dict):
                 yield from LookupMixin._flatten(value, f"{prefix}{key}__")
             else:
-                yield (f"{prefix}{key}", value)
+                if isinstance(value, ModelInstance):
+                    yield (f"!get:{prefix}{key}", value.instance)
+                else:
+                    yield (f"!get:{prefix}{key}", value)
 
     @staticmethod
     def flatten_query(query: dict) -> Dict[str, Any]:
@@ -98,7 +99,7 @@ class LookupMixin:
         """
         return dict(LookupMixin._flatten(query))
 
-    def lookup(self, queryset, query, parent=None):
+    def lookup(self, queryset, query, parent: ModelInstance = None):
         """Perform a single object lookup from a queryset.
 
         Args:
@@ -115,10 +116,19 @@ class LookupMixin:
         Returns:
             Any: The object matching the query.
         """
-        query = self.builder.resolve_values(query, unwrap_model_instances=True)
+        query = self.environment.resolve_values(query)
+        # it's possible an extension actually returned the instance we need, in
+        # that case, no need to look it up. This is especially true for the
+        # !ref extension used as a value.
+        if isinstance(query, ModelInstance):
+            return query
+
         query = self.flatten_query(query)
         try:
-            return queryset.get(**query)
+            model_class = self.environment.model_class_index[queryset.model]
+            if parent:
+                return parent.create_child(model_class, query, queryset)
+            return model_class(self.environment, query, queryset)
         except ObjectDoesNotExist:
             # pylint: disable=raise-missing-from
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
@@ -139,6 +149,7 @@ class LookupExtension(AttributeExtension, LookupMixin):
         assign it to an attribute of another object.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
             value: A filter describing the object to get. Keys should map to lookup
             parameters equivalent to Django's `filter()` syntax for the given model.
             The special `type` parameter will override the relationship's model class
@@ -226,10 +237,12 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
 
         return query_managers
 
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """Connect a cable termination to another cable termination.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: Dictionary with details about the cable. At a minimum
             the dictionary must have a `to` key which includes a query
             dictionary that will return exactly one object to be added to the
@@ -243,8 +256,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             termination was found.
 
         Returns:
-            None: This tag does not return a value, as it adds a deferred object
-            representing the cable connection.
+            dict: All of the information needed to lookup or create a cable instance.
 
         Example:
             ```yaml
@@ -265,9 +277,6 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                         name: "GigabitEthernet1"
             ```
         """
-        cable_id = value.pop(NAUTOBOT_ID, None)
-        connected_object_uuid = model_instance.attributes.get(NAUTOBOT_ID, None)
-
         if "to" not in value:
             raise DesignImplementationError(
                 f"`connect_cable` must have a `to` field indicating what to terminate to. {value}"
@@ -288,48 +297,24 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         cable_attributes.update(
             {
                 "termination_a": model_instance,
-                "!create_or_update:termination_b_type": ContentType.objects.get_for_model(remote_instance),
-                "!create_or_update:termination_b_id": remote_instance.id,
+                "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
+                    remote_instance.instance
+                ).id,
+                "!create_or_update:termination_b_id": remote_instance.instance.id,
             }
         )
 
-        # TODO: Some extensions may need to do some previous work to be able to be implemented
-        # For example, to set up this cable connection on an interface, we have to disconnect
-        # previously existing ones. And this is something that can be postponed for the cleanup phase
-        # We could change the paradigm of having attribute as an abstract method, and create a generic
-        # attribute method in the `AttributeExtension` that calls several hooks, one for setting
-        # (the current one), and one for pre-cleaning that would be custom for every case (and optional)
+        def connect():
+            existing_cable = dcim.Cable.objects.filter(termination_a_id=model_instance.instance.id).first()
+            if existing_cable:
+                if existing_cable.termination_b_id == remote_instance.instance.id:
+                    return
+                self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
+            Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name
+            cable = Cable(self.environment, cable_attributes)
+            cable.save()
 
-        # This is the custom implementation of the pre-clean up method for the connect_cable extension
-        if connected_object_uuid:
-            connected_object = model_instance.model_class.objects.get(id=connected_object_uuid)
-
-        if cable_id:
-            existing_cable = dcim.Cable.objects.get(id=cable_id)
-
-            if (
-                connected_object_uuid
-                and connected_object.id == existing_cable.termination_a.id
-                and existing_cable.termination_b.id == remote_instance.id
-            ):
-                # If the cable is already connecting what needs to be connected, it passes
-                return
-
-            model_instance.creator.decommission_object(cable_id, cable_id)
-
-        elif connected_object_uuid and hasattr(connected_object, "cable") and connected_object.cable:
-            model_instance.creator.decommission_object(str(connected_object.cable.id), str(connected_object.cable))
-
-        model_instance.deferred.append("cable")
-        model_instance.deferred_attributes["cable"] = [
-            model_instance.__class__(
-                self.builder,
-                model_class=dcim.Cable,
-                attributes=cable_attributes,
-                ext_tag=f"!{self.tag}",
-                ext_value=value,
-            )
-        ]
+        model_instance.connect("POST_INSTANCE_SAVE", connect)
 
 
 class NextPrefixExtension(AttributeExtension):
@@ -337,10 +322,12 @@ class NextPrefixExtension(AttributeExtension):
 
     tag = "next_prefix"
 
-    def attribute(self, value: dict, model_instance) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: A filter describing the parent prefix to provision from. If `prefix`
                 is one of the query keys then the network and prefix length will be
                 split and used as query arguments for the underlying Prefix object. The
@@ -363,12 +350,20 @@ class NextPrefixExtension(AttributeExtension):
                     - "10.0.0.0/23"
                     - "10.0.2.0/23"
                     length: 24
+                    identified_by:
+                        tag__name: "some tag name"
                 status__name: "Active"
             ```
         """
         if not isinstance(value, dict):
             raise DesignImplementationError("the next_prefix tag requires a dictionary of arguments")
-
+        identified_by = value.pop("identified_by", None)
+        if identified_by:
+            try:
+                model_instance.instance = model_instance.relationship_manager.get(**identified_by)
+                return None
+            except ObjectDoesNotExist:
+                pass
         length = value.pop("length", None)
         if length is None:
             raise DesignImplementationError("the next_prefix tag requires a prefix length")
@@ -398,7 +393,8 @@ class NextPrefixExtension(AttributeExtension):
             query = Q(**value) & reduce(operator.or_, prefix_q)
 
         prefixes = Prefix.objects.filter(query)
-        return "prefix", self._get_next(prefixes, length)
+        attr = args[0] if args else "prefix"
+        return attr, self._get_next(prefixes, length)
 
     @staticmethod
     def _get_next(prefixes, length) -> str:
@@ -424,7 +420,7 @@ class ChildPrefixExtension(AttributeExtension):
 
     tag = "child_prefix"
 
-    def attribute(self, value: dict, model_instance) -> None:
+    def attribute(self, *args, value: dict = None, model_instance=None) -> None:
         """Provides the `!child_prefix` attribute.
 
         !child_prefix calculates a child prefix using a parent prefix
@@ -433,6 +429,7 @@ class ChildPrefixExtension(AttributeExtension):
         object.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
             value: a dictionary containing the `parent` prefix (string or
             `Prefix` instance) and the `offset` in the form of a CIDR
             string. The length of the child prefix will match the length
@@ -480,8 +477,8 @@ class ChildPrefixExtension(AttributeExtension):
             raise DesignImplementationError("the child_prefix tag requires an offset")
         if not isinstance(offset, str):
             raise DesignImplementationError("offset must be string")
-
-        return "prefix", network_offset(parent, offset)
+        attr = args[0] if args else "prefix"
+        return attr, network_offset(parent, offset)
 
 
 class BGPPeeringExtension(AttributeExtension):
@@ -489,7 +486,7 @@ class BGPPeeringExtension(AttributeExtension):
 
     tag = "bgp_peering"
 
-    def __init__(self, builder: Builder):
+    def __init__(self, environment: Environment):
         """Initialize the BGPPeeringExtension.
 
         This initializer will import the necessary BGP models. If the
@@ -498,28 +495,19 @@ class BGPPeeringExtension(AttributeExtension):
         Raises:
             DesignImplementationError: Raised when the BGP Models App is not installed.
         """
-        super().__init__(builder)
+        super().__init__(environment)
         try:
             from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
 
-            self.PeerEndpoint = PeerEndpoint  # pylint:disable=invalid-name
-            self.Peering = Peering  # pylint:disable=invalid-name
+            self.PeerEndpoint = ModelInstance.factory(PeerEndpoint)  # pylint:disable=invalid-name
+            self.Peering = ModelInstance.factory(Peering)  # pylint:disable=invalid-name
         except ModuleNotFoundError:
             # pylint:disable=raise-missing-from
             raise DesignImplementationError(
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
 
-    @staticmethod
-    def _post_save(sender, instance, **kwargs) -> None:  # pylint:disable=unused-argument
-        peering_instance: ModelInstance = instance
-        endpoint_a = peering_instance.instance.endpoint_a
-        endpoint_z = peering_instance.instance.endpoint_z
-        endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
-        endpoint_a.save()
-        endpoint_z.save()
-
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """This attribute tag creates or updates a BGP peering for two endpoints.
 
         !bgp_peering will take an `endpoint_a` and `endpoint_z` argument to correctly
@@ -527,7 +515,9 @@ class BGPPeeringExtension(AttributeExtension):
         Design Builder syntax.
 
         Args:
-            value (dict): dictionary containing the keys `entpoint_a`
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
+            value (dict): dictionary containing the keys `endpoint_a`
             and `endpoint_z`. Both of these keys must be dictionaries
             specifying a way to either lookup or create the appropriate
             peer endpoints.
@@ -566,14 +556,14 @@ class BGPPeeringExtension(AttributeExtension):
         # copy the value so it won't be modified in later
         # use
         retval = {**value}
-        endpoint_a = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_a"))
-        endpoint_z = ModelInstance(self.builder, self.PeerEndpoint, retval.pop("endpoint_z"))
+        endpoint_a = self.PeerEndpoint(self.environment, retval.pop("endpoint_a"))
+        endpoint_z = self.PeerEndpoint(self.environment, retval.pop("endpoint_z"))
         peering_a = None
         peering_z = None
         try:
             peering_a = endpoint_a.instance.peering
             peering_z = endpoint_z.instance.peering
-        except self.Peering.DoesNotExist:
+        except self.Peering.model_class.DoesNotExist:
             pass
 
         # try to prevent empty peerings
@@ -587,8 +577,16 @@ class BGPPeeringExtension(AttributeExtension):
                 peering_z.delete()
 
         retval["endpoints"] = [endpoint_a, endpoint_z]
-        endpoint_a.attributes["peering"] = model_instance
-        endpoint_z.attributes["peering"] = model_instance
+        endpoint_a.metadata.attributes["peering"] = model_instance
+        endpoint_z.metadata.attributes["peering"] = model_instance
 
-        model_instance.connect(ModelInstance.POST_SAVE, BGPPeeringExtension._post_save)
+        def post_save():
+            peering_instance: ModelInstance = model_instance
+            endpoint_a = peering_instance.instance.endpoint_a
+            endpoint_z = peering_instance.instance.endpoint_z
+            endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
+            endpoint_a.save()
+            endpoint_z.save()
+
+        model_instance.connect(ModelMetadata.POST_SAVE, post_save)
         return retval

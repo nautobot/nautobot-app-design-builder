@@ -1,12 +1,11 @@
 """Base DesignContext for testing."""
 
 import ipaddress
-from functools import lru_cache
 from django.core.exceptions import ObjectDoesNotExist
 
 
-from nautobot.dcim.models import Device, Interface
-from nautobot.ipam.models import VRF, Prefix
+from nautobot.dcim.models import Device
+from nautobot.ipam.models import VRF
 from nautobot_design_builder.context import Context, context_file
 
 # pylint: disable=missing-function-docstring, inconsistent-return-statements
@@ -28,20 +27,6 @@ class IntegrationTestContext(Context):
     def __hash__(self):
         return hash((self.pe.name, self.ce.name, self.customer_name))
 
-    @lru_cache
-    def get_l3vpn_prefix(self, parent_prefix, prefix_length):
-        tag = self.design_instance_tag
-        if tag:
-            existing_prefix = Prefix.objects.filter(tags__in=[tag], prefix_length=30).first()
-            if existing_prefix:
-                return str(existing_prefix)
-
-        for new_prefix in ipaddress.ip_network(parent_prefix).subnets(new_prefix=prefix_length):
-            try:
-                Prefix.objects.get(prefix=str(new_prefix))
-            except ObjectDoesNotExist:
-                return new_prefix
-
     def get_customer_id(self, customer_name, l3vpn_asn):
         try:
             vrf = VRF.objects.get(description=f"VRF for customer {customer_name}")
@@ -52,16 +37,6 @@ class IntegrationTestContext(Context):
                 return "1"
             new_id = int(last_vrf.name.split(":")[-1]) + 1
             return str(new_id)
-
-    def get_interface_name(self, device):
-        root_interface_name = "GigabitEthernet"
-        interfaces = Interface.objects.filter(name__contains=root_interface_name, device=device)
-        tag = self.design_instance_tag
-        if tag:
-            existing_interface = interfaces.filter(tags__in=[tag]).first()
-            if existing_interface:
-                return existing_interface.name
-        return f"{root_interface_name}1/{len(interfaces) + 1}"
 
     def get_ip_address(self, prefix, offset):
         net_prefix = ipaddress.ip_network(prefix)

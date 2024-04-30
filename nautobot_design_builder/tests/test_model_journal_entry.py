@@ -40,6 +40,7 @@ class TestJournalEntry(BaseDesignInstanceTest):  # pylint: disable=too-many-inst
             full_control=True,
             changes=calculate_changes(self.secret),
             journal=self.journal,
+            index=0,
         )
 
         # Used to test Property attributes and ForeignKeys
@@ -54,6 +55,7 @@ class TestJournalEntry(BaseDesignInstanceTest):  # pylint: disable=too-many-inst
             full_control=True,
             changes=calculate_changes(self.device_type),
             journal=self.journal,
+            index=1,
         )
 
     def get_entry(self, updated_object, design_object=None, initial_state=None):
@@ -72,32 +74,23 @@ class TestJournalEntry(BaseDesignInstanceTest):  # pylint: disable=too-many-inst
             ),
             full_control=False,
             journal=self.journal,
+            index=self.journal._next_index(),  # pylint:disable=protected-access
         )
 
     @patch("nautobot_design_builder.models.JournalEntry.objects")
     def test_revert_full_control(self, objects: Mock):
-        objects.filter.side_effect = lambda active: objects
-        objects.filter_related.side_effect = lambda _: objects
-        objects.filter_same_parent_design_instance.side_effect = lambda _: objects
-        objects.exclude_decommissioned.return_value = []
+        objects.filter_related.side_effect = lambda *args, **kwargs: objects
+        objects.values_list.side_effect = lambda *args, **kwargs: []
         self.assertEqual(1, Secret.objects.count())
         self.initial_entry.revert()
-        objects.filter.assert_called()
-        objects.filter_related.assert_called()
-        objects.filter_same_parent_design_instance.assert_called()
-        objects.exclude_decommissioned.assert_called()
         self.assertEqual(0, Secret.objects.count())
 
     @patch("nautobot_design_builder.models.JournalEntry.objects")
     def test_revert_with_dependencies(self, objects: Mock):
-        objects.filter.side_effect = lambda active: objects
-        objects.filter_related.side_effect = lambda _: objects
-        objects.filter_same_parent_design_instance.side_effect = lambda _: objects
+        objects.filter_related.side_effect = lambda *args, **kwargs: objects
+        objects.values_list.side_effect = lambda *args, **kwargs: [12345]
         self.assertEqual(1, Secret.objects.count())
-        entry2 = JournalEntry()
-        objects.exclude_decommissioned.return_value = [entry2]
         self.assertRaises(DesignValidationError, self.initial_entry.revert)
-        objects.exclude_decommissioned.assert_called()
 
     def test_updated_scalar(self):
         updated_secret = Secret.objects.get(id=self.secret.id)

@@ -29,7 +29,7 @@ designs:
             ip_addresses:
               - address: "192.168.56.1/24"
                 status__name: "Active"
-        primary_ip4: {"!get:address": "192.168.56.1/24"}
+        primary_ip4: {"!get:address": "192.168.56.1/24", "deferred": true}
 checks:
   - equal:
       - model: "nautobot.dcim.models.Device"

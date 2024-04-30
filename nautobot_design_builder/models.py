@@ -11,10 +11,9 @@ from django.urls import reverse
 
 from nautobot.apps.models import PrimaryModel, BaseModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusModel, StatusField, Tag
+from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
-from nautobot.utilities.choices import ColorChoices
 
 from .util import nautobot_version, get_created_and_last_updated_usernames_for_model
 from . import choices
@@ -171,7 +170,7 @@ DESIGN_NAME_MAX_LENGTH = 255
 
 
 @extras_features("statuses")
-class DesignInstance(PrimaryModel, StatusModel):
+class DesignInstance(PrimaryModel):
     """Design instance represents the result of executing a design.
 
     Design instance represents the collection of Nautobot objects
@@ -184,6 +183,7 @@ class DesignInstance(PrimaryModel, StatusModel):
 
     post_decommission = Signal()
 
+    status = StatusField(blank=False, null=False, on_delete=models.PROTECT, related_name="design_instance_statuses")
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
@@ -222,21 +222,21 @@ class DesignInstance(PrimaryModel, StatusModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
-    def decommission(self, local_logger=logger, object_id=None):
+    def decommission(self, *object_ids, local_logger=logger):
         """Decommission a design instance.
 
         This will reverse the journal entries for the design instance and
         reset associated objects to their pre-design state.
         """
-        if not object_id:
+        if not object_ids:
             local_logger.info("Decommissioning design", extra={"obj": self})
             self.__class__.pre_decommission.send(self.__class__, design_instance=self)
         # Iterate the journals in reverse order (most recent first) and
         # revert each journal.
         for journal in self.journals.filter(active=True).order_by("-last_updated"):
-            journal.revert(local_logger=local_logger, object_id=object_id)
+            journal.revert(*object_ids, local_logger=local_logger)
 
-        if not object_id:
+        if not object_ids:
             content_type = ContentType.objects.get_for_model(DesignInstance)
             self.status = Status.objects.get(
                 content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
@@ -253,9 +253,26 @@ class DesignInstance(PrimaryModel, StatusModel):
             raise ValidationError("A Design Instance can only be delete if it's Decommissioned and not Deployed.")
         return super().delete(*args, **kwargs)
 
+    def get_design_objects(self, model):
+        """Get all of the design objects for this design instance that are of `model` type.
+
+        For instance, do get all of the `dcim.Interface` objects for this design instance call
+        `design_instance.get_design_objects(Interface)`.
+
+        Args:
+            model (type): The model type to match.
+
+        Returns:
+            Queryset of matching objects.
+        """
+        entries = JournalEntry.objects.filter_by_instance(self, model=model)
+        return model.objects.filter(pk__in=entries.values_list("pk", flat=True))
+
     @property
     def created_by(self):
         """Get the username of the user who created the object."""
+        # TODO: if we just add a "created_by" and "last_updated_by" field, doesn't that
+        # reduce the complexity of code that we have in the util module?
         created_by, _ = get_created_and_last_updated_usernames_for_model(self)
         return created_by
 
@@ -287,8 +304,12 @@ class Journal(PrimaryModel):
         related_name="journals",
     )
     job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
-    builder_output = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
     active = models.BooleanField(editable=False, default=True)
+
+    class Meta:
+        """Set the default query ordering."""
+
+        ordering = ["-last_updated"]
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
@@ -310,6 +331,18 @@ class Journal(PrimaryModel):
         job = self.design_instance.design.job
         return job.job_class.deserialize_data(user_input)
 
+    def _next_index(self):
+        # The hokey getting/setting here is to make pylint happy
+        # and not complain about `no-member`
+        index = getattr(self, "_index", None)
+        if index is None:
+            index = self.entries.aggregate(index=models.Max("index"))["index"]
+            if index is None:
+                index = -1
+        index += 1
+        setattr(self, "_index", index)
+        return index
+
     def log(self, model_instance):
         """Log changes to a model instance.
 
@@ -325,21 +358,6 @@ class Journal(PrimaryModel):
         instance = model_instance.instance
         content_type = ContentType.objects.get_for_model(instance)
 
-        if model_instance.created:
-            try:
-                tag_design_builder, _ = Tag.objects.get_or_create(
-                    name=f"Managed by {self.design_instance}",
-                    defaults={
-                        "description": f"Managed by Design Builder: {self.design_instance}",
-                        "color": ColorChoices.COLOR_LIGHT_GREEN,
-                    },
-                )
-                instance.tags.add(tag_design_builder)
-                instance.save()
-            except AttributeError:
-                # This happens when the instance doesn't support Tags, for example Region
-                pass
-
         try:
             entry = self.entries.get(
                 _design_object_type=content_type,
@@ -354,11 +372,12 @@ class Journal(PrimaryModel):
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
                 changes=model_instance.get_changes(),
-                full_control=model_instance.created,
+                full_control=model_instance.metadata.created,
+                index=self._next_index(),
             )
         return entry
 
-    def revert(self, local_logger: logging.Logger = logger, object_id=None):
+    def revert(self, *object_ids, local_logger: logging.Logger = logger):
         """Revert the changes represented in this Journal.
 
         Raises:
@@ -370,21 +389,48 @@ class Journal(PrimaryModel):
         # Without a design object we cannot have changes, right? I suppose if the
         # object has been deleted since the change was made then it wouldn't exist,
         # but I think we need to discuss the implications of this further.
-        if not object_id:
+        entries = self.entries.order_by("-index").exclude(_design_object_id=None).exclude(active=False)
+        if not object_ids:
             local_logger.info("Reverting journal", extra={"obj": self})
-        for journal_entry in (
-            self.entries.exclude(_design_object_id=None).exclude(active=False).order_by("-last_updated")
-        ):
+        else:
+            entries = entries.filter(_design_object_id__in=object_ids)
+
+        for journal_entry in entries:
             try:
-                journal_entry.revert(local_logger=local_logger, object_id=object_id)
+                journal_entry.revert(local_logger=local_logger)
             except (ValidationError, DesignValidationError) as ex:
                 local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
                 raise ValueError from ex
 
-        if not object_id:
+        if not object_ids:
             # When the Journal is reverted, we mark is as not active anymore
             self.active = False
             self.save()
+
+    def __sub__(self, other: "Journal"):
+        """Calculate the difference between two journals.
+
+        This method calculates the differences between the journal entries of two
+        journals. This is similar to Python's `set.difference` method. The result
+        is a queryset of JournalEntries from this journal that represent objects
+        that are are not in the `other` journal.
+
+        Args:
+            other (Journal): The other Journal to subtract from this journal.
+
+        Returns:
+            Queryset of journal entries
+        """
+        if other is None:
+            return []
+
+        other_ids = other.entries.values_list("_design_object_id")
+
+        return (
+            self.entries.order_by("-index")
+            .exclude(_design_object_id__in=other_ids)
+            .values_list("_design_object_id", flat=True)
+        )
 
 
 class JournalEntryQuerySet(RestrictedQuerySet):
@@ -394,17 +440,36 @@ class JournalEntryQuerySet(RestrictedQuerySet):
         """Returns JournalEntry which the related DesignInstance is not decommissioned."""
         return self.exclude(journal__design_instance__status__name=choices.DesignInstanceStatusChoices.DECOMMISSIONED)
 
-    def filter_related(self, entry: "JournalEntry"):
-        """Returns JournalEntries which have the same object ID but excluding itself."""
-        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
-            id=entry.id
+    def filter_related(self, entry):
+        """Returns other JournalEntries which have the same object ID but are in different designs.
+
+        Args:
+            entry (JournalEntry): The JournalEntry to use as reference.
+
+        Returns:
+            QuerySet: The queryset that matches other journal entries with the same design object ID. This
+            excludes matching entries in the same design.
+        """
+        return (
+            self.filter(active=True)
+            .filter(_design_object_id=entry._design_object_id)  # pylint:disable=protected-access
+            .exclude(journal__design_instance_id=entry.journal.design_instance_id)
         )
 
-    def filter_same_parent_design_instance(self, entry: "JournalEntry"):
-        """Returns JournalEntries which have the same parent design instance."""
-        return self.filter(_design_object_id=entry._design_object_id).exclude(  # pylint: disable=protected-access
-            journal__design_instance__id=entry.journal.design_instance.id
-        )
+    def filter_by_instance(self, design_instance: "DesignInstance", model=None):
+        """Lookup all the entries for a design instance an optional model type.
+
+        Args:
+            design_instance (DesignInstance): The design instance to retrieve all of the journal entries.
+            model (type, optional): An optional model type to filter by. Defaults to None.
+
+        Returns:
+            Query set matching the options.
+        """
+        queryset = self.filter(journal__design_instance=design_instance)
+        if model:
+            queryset.filter(_design_object_type=ContentType.objects.get_for_model(model))
+        return queryset
 
 
 class JournalEntry(BaseModel):
@@ -429,6 +494,8 @@ class JournalEntry(BaseModel):
         on_delete=models.CASCADE,
         related_name="entries",
     )
+
+    index = models.IntegerField(null=False, blank=False)
 
     _design_object_type = models.ForeignKey(
         to=ContentType,
@@ -465,7 +532,7 @@ class JournalEntry(BaseModel):
             if key not in added_value:
                 current_value[key] = removed_value[key]
 
-    def revert(self, local_logger: logging.Logger = logger, object_id=None):  # pylint: disable=too-many-branches
+    def revert(self, local_logger: logging.Logger = logger):  # pylint: disable=too-many-branches
         """Revert the changes that are represented in this journal entry.
 
         Raises:
@@ -476,9 +543,6 @@ class JournalEntry(BaseModel):
         """
         if not self.design_object:
             # This is something that may happen when a design has been updated and object was deleted
-            return
-
-        if object_id and str(self.design_object.id) != object_id:
             return
 
         # It is possible that the journal entry contains a stale copy of the
@@ -493,16 +557,12 @@ class JournalEntry(BaseModel):
         object_type = self.design_object._meta.verbose_name.title()
         object_str = str(self.design_object)
 
-        local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
+        local_logger.info("Reverting journal entry", extra={"obj": self.design_object})
+        # local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
         if self.full_control:
-            related_entries = (
-                JournalEntry.objects.filter(active=True)
-                .filter_related(self)
-                .filter_same_parent_design_instance(self)
-                .exclude_decommissioned()
-            )
+            related_entries = list(JournalEntry.objects.filter_related(self).values_list("id", flat=True))
             if related_entries:
-                active_journal_ids = ",".join([str(j.id) for j in related_entries])
+                active_journal_ids = ",".join(map(str, related_entries))
                 raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
 
             self.design_object._current_design = self.journal.design_instance  # pylint: disable=protected-access
@@ -521,10 +581,12 @@ class JournalEntry(BaseModel):
                 return
 
             differences = self.changes["differences"]
-
             for attribute in differences.get("added", {}):
                 added_value = differences["added"][attribute]
-                removed_value = differences["removed"][attribute]
+                if differences["removed"]:
+                    removed_value = differences["removed"][attribute]
+                else:
+                    removed_value = None
                 if isinstance(added_value, dict) and isinstance(removed_value, dict):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute

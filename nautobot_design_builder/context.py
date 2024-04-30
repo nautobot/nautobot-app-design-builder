@@ -3,13 +3,12 @@
 from functools import cached_property
 from collections import UserList, UserDict, UserString
 import inspect
-from typing import Any, Union
+from typing import Any
 import yaml
 
 from jinja2.nativetypes import NativeEnvironment
 
 from nautobot.extras.models import JobResult
-from nautobot.extras.models import Tag
 
 from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -370,14 +369,6 @@ class Context(_DictNode, LoggingMixin):
 
         if len(errors) > 0:
             raise DesignValidationError("\n".join(errors))
-
-    @property
-    def design_instance_tag(self) -> Union[Tag, None]:
-        """Returns the `Tag` of the design instance if exists."""
-        try:
-            return Tag.objects.get(name__contains=self._instance_name)
-        except Tag.DoesNotExist:
-            return None
 
     @property
     def _instance_name(self):

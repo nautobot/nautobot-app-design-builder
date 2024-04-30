@@ -118,6 +118,7 @@ nav:
       - Release Notes:
           - "admin/release_notes/index.md"
           - v1.0: "admin/release_notes/version_1.0.md"
+          - v1.1: "admin/release_notes/version_1.1.md"
   - Developer Guide:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
@@ -127,6 +128,7 @@ nav:
           - Package: "dev/code_reference/package.md"
           - Context: "dev/code_reference/context.md"
           - Design Builder: "dev/code_reference/design.md"
+          - Field Descriptors: "dev/code_reference/fields.md"
           - Design Job: "dev/code_reference/design_job.md"
           - Jinja Rendering: "dev/code_reference/jinja2.md"
           - Template Extensions: "dev/code_reference/ext.md"

@@ -5,7 +5,7 @@ import yaml
 
 from django.core.management.base import BaseCommand, CommandError
 
-from ...design import Builder
+from ...design import Environment
 
 
 def _load_file(filename):
@@ -29,8 +29,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Handle the execution of the command."""
-        builder = Builder()
+        builder = Environment()
         for filename in options["design_file"]:
             self.stdout.write(f"Building design from {filename}")
             design = _load_file(filename)
-            builder.implement_design_changes(design, {}, filename, commit=options["commit"])
+            builder.implement_design(design, commit=options["commit"])
