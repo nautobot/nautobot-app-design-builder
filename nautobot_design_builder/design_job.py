@@ -12,7 +12,7 @@ from django.core.files.base import ContentFile
 
 from jinja2 import TemplateError
 
-from nautobot.extras.jobs import Job
+from nautobot.apps.jobs import Job, DryRunVar
 from nautobot.extras.models import FileProxy
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
@@ -20,7 +20,6 @@ from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.design import Environment
 from nautobot_design_builder.context import Context
-from .util import nautobot_version
 
 
 class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-attributes
@@ -31,10 +30,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     a Meta class.
     """
 
-    if nautobot_version >= "2.0.0":
-        from nautobot.extras.jobs import DryRunVar  # pylint: disable=no-name-in-module,import-outside-toplevel
-
-        dryrun = DryRunVar()
+    dryrun = DryRunVar()
 
     @classmethod
     @abstractmethod
@@ -46,11 +42,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # rendered designs
         self.environment: Environment = None
         self.designs = {}
-        # TODO: Remove this when we no longer support Nautobot 1.x
         self.rendered = None
-        self.rendered_design = None
-        self.failed = False
-        self.report = None
 
         super().__init__(*args, **kwargs)
 
@@ -66,16 +58,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             context (Context): The render context that was used for rendering the design files.
             environment (Environment): The build environment that consumed the rendered design files. This is useful for accessing the design journal.
         """
-
-    def post_run(self):
-        """Method that will run after the main Nautobot job has executed."""
-        # TODO: This is not supported in Nautobot 2 and the entire method
-        # should be removed once we no longer support Nautobot 1.
-        if self.rendered:
-            self.job_result.data["output"] = self.rendered
-
-        self.job_result.data["designs"] = self.designs
-        self.job_result.data["report"] = self.report
 
     def render(self, context: Context, filename: str) -> str:
         """High level function to render the Jinja design templates into YAML.
@@ -154,10 +136,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
 
-    def run(self, **kwargs):  # pylint: disable=arguments-differ
+    def run(self, dryrun: bool, **kwargs):  # pylint: disable=arguments-differ
         """Render the design and implement it within a build Environment object."""
         try:
-            return self._run_in_transaction(**kwargs)
+            return self._run_in_transaction(dryrun, **kwargs)
         finally:
             if self.rendered:
                 rendered_design = path.basename(self.rendered_design)
@@ -174,7 +156,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 self.save_design_file(output_file, yaml.safe_dump(design))
 
     @transaction.atomic
-    def _run_in_transaction(self, **kwargs):  # pylint: disable=too-many-branches
+    def _run_in_transaction(self, dryrun: bool, **data):  # pylint: disable=too-many-branches
         """Render the design and implement it within a build Environment object.
 
         This version of `run` is wrapped in a transaction and will roll back database changes
@@ -185,13 +167,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.environment = Environment(job_result=self.job_result, extensions=extensions)
 
         design_files = None
-
-        if nautobot_version < "2.0.0":
-            commit = kwargs["commit"]
-            data = kwargs["data"]
-        else:
-            commit = not kwargs.pop("dryrun", True)
-            data = kwargs
 
         if hasattr(self.Meta, "context_class"):
             context = self.Meta.context_class(data=data, job_result=self.job_result)
@@ -212,14 +187,16 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         try:
             for design_file in design_files:
-                self.implement_design(context, design_file, commit)
-            if commit:
+                self.implement_design(context, design_file, not dryrun)
+            if not dryrun:
                 self.post_implementation(context, self.environment)
                 if hasattr(self.Meta, "report"):
                     self.report = self.render_report(context, self.environment.journal)
+                    output_filename: str = path.basename(getattr(self.Meta, "report"))
+                    if output_filename.endswith(".j2"):
+                        output_filename = output_filename[0:-3]
                     self.log_success(message=self.report)
-                    if nautobot_version >= "2.0":
-                        self.save_design_file("report.md", self.report)
+                    self.save_design_file(output_filename, self.report)
             else:
                 transaction.savepoint_rollback(sid)
                 self.log_info(
@@ -230,8 +207,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.log_failure(message="Failed to implement design")
             self.log_failure(message=str(ex))
             self.failed = True
-            if nautobot_version >= "2":
-                raise ex
+            raise ex
         except Exception as ex:
             transaction.savepoint_rollback(sid)
             self.failed = True
@@ -246,9 +222,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             filename (str): The name of the file to save.
             content (str): The content to save to the file.
         """
-        if nautobot_version < "2.0":
-            return
-
         FileProxy.objects.create(
             name=filename,
             job_result=self.job_result,
