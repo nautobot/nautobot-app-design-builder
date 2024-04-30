@@ -169,23 +169,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.log_debug(f"New Design to be implemented: {design}")
 
-        # The design to apply will take into account the previous journal that keeps track (in the builder_output)
-        # of the design used (i.e., the YAML) including the Nautobot IDs that will help to reference them
-        # self.environment.builder_output[design_file] = copy.deepcopy(design)
-        # if last_journal and last_journal.builder_output:
-        #     # The last design output is used as the reference to understand what needs to be changed
-        #     # The design output store the whole set of attributes, not only the ones taken into account
-        #     # in the implementation
-        #     previous_design = last_journal.builder_output[design_file]
-        #     self.log_debug(f"Design from previous Journal: {previous_design}")
-
-        #     for key, new_value in design.items():
-        #         old_value = previous_design[key]
-        #         future_value = self.environment.builder_output[design_file][key]
-        #         combine_designs(new_value, old_value, future_value, deprecated_design, key)
-
-        #   self.log_debug(f"Design to implement after reduction: {design}")
-
         self.environment.implement_design(design, commit)
 
     def _setup_journal(self, instance_name: str):

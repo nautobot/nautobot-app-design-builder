@@ -105,9 +105,3 @@ def load_pre_delete_signals():
 
 
 load_pre_delete_signals()
-
-
-# @receiver(signal=post_delete, sender=DesignInstance)
-# def handle_post_delete_design_instance(sender, instance, **kwargs):  # pylint: disable=unused-argument
-#     """Cleaning up the Tag created for a design instance."""
-#     Tag.objects.get(name=f"Managed by {instance}").delete()
