@@ -37,8 +37,8 @@ class TestDesignJob(DesignTestCase):
     def test_simple_design_report(self):
         job = self.get_mocked_job(test_designs.SimpleDesignReport)
         job.run(data={}, dryrun=False)
-        self.assertIn("simple_report.md", job.saved_files)
-        self.assertEqual("Report output", job.saved_files["simple_report.md"])
+        self.assertIn("simple_report.md", job.saved_files)  # pylint:disable=no-member
+        self.assertEqual("Report output", job.saved_files["simple_report.md"])  # pylint:disable=no-member
 
     def test_multiple_design_files(self):
         job = self.get_mocked_job(test_designs.MultiDesignJob)

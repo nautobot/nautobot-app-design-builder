@@ -42,6 +42,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # rendered designs
         self.environment: Environment = None
         self.designs = {}
+        self.rendered_design = None
         self.rendered = None
 
         super().__init__(*args, **kwargs)
@@ -180,8 +181,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             design_files = self.Meta.design_files
         else:
             self.log_failure(message="No design template specified for design.")
-            self.failed = True
-            return
+            raise DesignImplementationError("No design template specified for design.")
 
         sid = transaction.savepoint()
 
@@ -191,12 +191,12 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if not dryrun:
                 self.post_implementation(context, self.environment)
                 if hasattr(self.Meta, "report"):
-                    self.report = self.render_report(context, self.environment.journal)
+                    report = self.render_report(context, self.environment.journal)
                     output_filename: str = path.basename(getattr(self.Meta, "report"))
                     if output_filename.endswith(".j2"):
                         output_filename = output_filename[0:-3]
-                    self.log_success(message=self.report)
-                    self.save_design_file(output_filename, self.report)
+                    self.log_success(message=report)
+                    self.save_design_file(output_filename, report)
             else:
                 transaction.savepoint_rollback(sid)
                 self.log_info(
@@ -206,11 +206,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             transaction.savepoint_rollback(sid)
             self.log_failure(message="Failed to implement design")
             self.log_failure(message=str(ex))
-            self.failed = True
             raise ex
         except Exception as ex:
             transaction.savepoint_rollback(sid)
-            self.failed = True
             raise ex
 
     def save_design_file(self, filename, content):
