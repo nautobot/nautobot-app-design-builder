@@ -3,8 +3,8 @@ extensions:
   - "nautobot_design_builder.contrib.ext.LookupExtension"
 designs:
   - relationships:
-      - label: "Device to VLANS"
-        key: "device_to_vlans"
+      - name: "Device to VLANS"
+        slug: "device-to-vlans"
         type: "many-to-many"
         "!lookup:source_type":
           app_label: "dcim"
@@ -12,7 +12,6 @@ designs:
         "!lookup:destination_type":
           app_label: "ipam"
           model: "vlan"
-
     manufacturers:
       - name: "manufacturer1"
 
@@ -21,20 +20,12 @@ designs:
         model: "model name"
         u_height: 1
 
-    roles:
+    device_roles:
       - name: "device role"
-        content_types:
-          - "!get:app_label": "dcim"
-            "!get:model": "device"
 
-    location_types:
-      - name: "Site"
-        content_types:
-          - "!get:app_label": "dcim"
-            "!get:model": "device"
-        locations:
-          - name: "site_1"
-            status__name: "Active"
+    sites:
+      - name: "site_1"
+        status__name: "Active"
 
     vlans:
       - "!create_or_update:vid": 42
@@ -43,11 +34,11 @@ designs:
 
     devices:
       - name: "device_1"
-        location__name: "site_1"
+        site__name: "site_1"
         status__name: "Active"
         device_type__model: "model name"
-        role__name: "device role"
-        device_to_vlans:
+        device_role__name: "device role"
+        vlans:
           - "!get:vid": 42
           - vid: "43"
             name: "Better Answer"
@@ -59,6 +50,6 @@ checks:
 
   - count_equal:
       - model: "nautobot.extras.models.RelationshipAssociation"
-        query: {relationship__label: "Device to VLANS"}
+        query: {relationship__name: "Device to VLANS"}
         attribute: "destination"
       - model: "nautobot.ipam.models.VLAN"

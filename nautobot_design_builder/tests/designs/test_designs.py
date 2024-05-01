@@ -2,7 +2,6 @@
 
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.ext import Extension
-from nautobot_design_builder.util import nautobot_version
 
 
 class SimpleDesign(DesignJob):
@@ -81,17 +80,3 @@ class DesignWithValidationError(DesignJob):
     class Meta:  # pylint: disable=too-few-public-methods
         name = "Design with validation errors"
         design_file = "templates/design_with_validation_error.yaml.j2"
-
-
-if nautobot_version >= "2.0":
-    from nautobot.apps.jobs import register_jobs  # pylint: disable=import-error, no-name-in-module
-
-    register_jobs(
-        SimpleDesign,
-        SimpleDesignReport,
-        MultiDesignJob,
-        MultiDesignJobWithError,
-        DesignJobWithExtensions,
-        DesignWithRefError,
-        DesignWithValidationError,
-    )
