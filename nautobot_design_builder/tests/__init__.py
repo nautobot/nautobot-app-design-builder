@@ -11,7 +11,6 @@ from unittest.mock import PropertyMock, patch
 from django.test import TestCase
 
 from nautobot_design_builder.design_job import DesignJob
-from nautobot_design_builder.util import nautobot_version
 
 logging.disable(logging.CRITICAL)
 
@@ -35,20 +34,12 @@ class DesignTestCase(TestCase):
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
         job.job_result = mock.Mock()
-        job.save_design_file = lambda filename, content: None
-        if nautobot_version < "2.0.0":
-            job.request = mock.Mock()
-        else:
-            # TODO: Remove this when we no longer support Nautobot 1.x
-            job.job_result.data = {}
-            old_run = job.run
+        job.saved_files = {}
 
-            def new_run(data, commit):
-                kwargs = {**data}
-                kwargs["dryrun"] = not commit
-                old_run(**kwargs)
+        def save_design_file(filename, content):
+            job.saved_files[filename] = content
 
-            job.run = new_run
+        job.save_design_file = save_design_file
         self.logged_messages = []
 
         def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument
@@ -68,11 +59,6 @@ class DesignTestCase(TestCase):
         """Confirm that the list of filenames were created as part of the design implementation."""
         for filename in filenames:
             self.assertTrue(path.exists(path.join(self.git_path, filename)), f"{filename} was not created")
-
-    def assertJobSuccess(self, job):  # pylint: disable=invalid-name
-        """Assert that a mocked job has completed successfully."""
-        if job.failed:
-            self.fail(f"Job failed with {self.logged_messages[-1]}")
 
     def tearDown(self):
         """Remove temporary files."""
