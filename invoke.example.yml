@@ -1,9 +1,9 @@
 ---
 nautobot_design_builder:
   project_name: "nautobot-design-builder"
-  nautobot_ver: "1.6.0"
-  local: false
   python_ver: "3.11"
+  nautobot_ver: "2.2"
+  local: false
   compose_dir: "development"
   compose_files:
     - "docker-compose.base.yml"
