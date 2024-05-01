@@ -52,7 +52,6 @@ from nautobot.extras.models import Relationship, RelationshipAssociation
 
 from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.debug import debug_set
-from nautobot_design_builder.util import nautobot_version
 
 if TYPE_CHECKING:
     from .design import ModelInstance
@@ -295,10 +294,7 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
             self.related_model = relationship.source_type.model_class()
             field_name = str(self.relationship.get_label("destination"))
         self.__set_name__(model_class, str_to_var_name(field_name))
-        if nautobot_version < "2.0.0":
-            self.key_name = self.relationship.slug
-        else:
-            self.key_name = self.relationship.key
+        self.key_name = self.relationship.slug
 
     @debug_set
     def __set__(self, obj: "ModelInstance", values):  # noqa:D105
