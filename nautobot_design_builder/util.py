@@ -15,9 +15,11 @@ from packaging.specifiers import Specifier
 import yaml
 
 from django.conf import settings
-import nautobot
-from nautobot.extras.models import GitRepository
 
+import nautobot
+
+from nautobot.apps.jobs import register_jobs
+from nautobot.extras.models import GitRepository
 
 from nautobot_design_builder import metadata
 
@@ -295,13 +297,7 @@ def load_jobs(module_name=None):
         frame.f_globals[class_name] = new_cls
         frame.f_globals["jobs"].append(new_cls)
 
-    if nautobot_version >= "2":
-        try:
-            from nautobot.apps.jobs import register_jobs  # pylint:disable=import-outside-toplevel
-
-            register_jobs(*frame.f_globals["jobs"])
-        except ImportError:
-            pass
+        register_jobs(*frame.f_globals["jobs"])
 
 
 def get_design_class(path: str, module_name: str, class_name: str) -> Type["DesignJob"]:
