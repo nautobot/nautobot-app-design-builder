@@ -1,7 +1,6 @@
 "API tests."
-import unittest
 
-from nautobot.utilities.testing import APIViewTestCases
+from nautobot.apps.testing import APIViewTestCases
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 from nautobot_design_builder.tests.util import create_test_view_data
@@ -60,6 +59,6 @@ class TestJournalEntry(
     def setUpTestData(cls):
         create_test_view_data()
 
-    @unittest.skip
     def test_list_objects_brief(self):
         """Brief is not supported for journal entries."""
+        pass

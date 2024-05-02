@@ -7,7 +7,7 @@
 # !!! USE CAUTION WHEN MODIFYING LINES BELOW
 
 # Accepts a desired Nautobot version as build argument, default to 1.6.0
-ARG NAUTOBOT_VER="1.6.0"
+ARG NAUTOBOT_VER="2.0.0"
 
 # Accepts a desired Python version as build argument, default to 3.11
 ARG PYTHON_VER="3.11"
@@ -70,12 +70,12 @@ RUN sort poetry_freeze_base.txt poetry_freeze_all.txt | uniq -u > poetry_freeze_
 # Install all local project as editable, constrained on Nautobot version, to get any additional
 #   direct dependencies of the app
 RUN --mount=type=cache,target="/root/.cache/pip",sharing=locked \
-  pip install -c constraints.txt -e .[all]
+    pip install -c constraints.txt -e .[all]
 
 # Install any dev dependencies frozen from Poetry
 # Can be improved in Poetry 1.2 which allows `poetry install --only dev`
 RUN --mount=type=cache,target="/root/.cache/pip",sharing=locked \
-  pip install -c constraints.txt -r poetry_freeze_dev.txt
+    pip install -c constraints.txt -r poetry_freeze_dev.txt
 
 COPY development/nautobot_config.py ${NAUTOBOT_ROOT}/nautobot_config.py
 # !!! USE CAUTION WHEN MODIFYING LINES ABOVE

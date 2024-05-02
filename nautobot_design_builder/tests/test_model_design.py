@@ -19,28 +19,11 @@ class BaseDesignTest(DesignTestCase):
     def setUp(self):
         super().setUp()
         settings.JOBS_ROOT = path.dirname(test_designs.__file__)
-        defaults = {
-            "grouping": "Designs",
-            "source": "local",
-            "installed": True,
-            "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
-        }
 
-        self.job1 = JobModel(
-            **defaults.copy(),
-            name="Simple Design",
-            job_class_name=test_designs.SimpleDesign.__name__,
-        )
-        self.job1.validated_save()
-        self.design1 = models.Design.objects.get(job=self.job1)
-
-        self.job2 = JobModel(
-            **defaults.copy(),
-            name="Simple Design Report",
-            job_class_name=test_designs.SimpleDesignReport.__name__,
-        )
-        self.job2.validated_save()
-        self.design2 = models.Design.objects.get(job=self.job2)
+        for i, cls in enumerate([test_designs.SimpleDesign, test_designs.SimpleDesignReport], 1):
+            job = JobModel.objects.get(name=cls.Meta.name)
+            setattr(self, f"job{i}", job)
+            setattr(self, f"design{i}", models.Design.objects.get(job=job))
 
 
 class TestDesign(BaseDesignTest):
@@ -48,7 +31,11 @@ class TestDesign(BaseDesignTest):
 
     def test_create_from_signal(self):
         # TODO: move back to 2 when the designs are outside of the repo
-        self.assertEqual(5, models.Design.objects.all().count())
+
+        self.assertEqual(
+            [job.name for job in JobModel.objects.filter(grouping=test_designs.name).order_by("name")],
+            [design.name for design in models.Design.objects.filter(job__grouping=test_designs.name).order_by("name")],
+        )
         self.assertEqual(self.design1.job_id, self.job1.id)
         self.assertEqual(self.design2.job_id, self.job2.id)
         self.assertEqual(str(self.design1), self.design1.name)

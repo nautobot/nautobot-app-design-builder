@@ -156,4 +156,4 @@ def builder_test_case(data_dir):
 
 @builder_test_case(os.path.join(os.path.dirname(__file__), "testdata"))
 class TestGeneralDesigns(TestCase):
-    """Designs that should work with all Nautobot Version 1."""
+    """Designs that should work with all versions of Nautobot."""

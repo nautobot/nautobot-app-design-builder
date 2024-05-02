@@ -300,7 +300,7 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
             self.related_model = relationship.source_type.model_class()
             field_name = str(self.relationship.get_label("destination"))
         self.__set_name__(model_class, str_to_var_name(field_name))
-        self.key_name = self.relationship.slug
+        self.key_name = self.relationship.key
 
     @debug_set
     def __set__(self, obj: "ModelInstance", values):  # noqa:D105

@@ -8,19 +8,27 @@ designs:
         model: "model name"
         u_height: 1
 
-    device_roles:
+    roles:
       - name: "device role"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
 
-    sites:
-      - name: "site_1"
-        status__name: "Active"
+    location_types:
+      - name: "Site"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+        locations:
+          - name: "site_1"
+            status__name: "Active"
 
     devices:
       - name: "device_1"
-        site__name: "site_1"
+        location__name: "site_1"
         status__name: "Active"
         device_type__model: "model name"
-        device_role__name: "device role"
+        role__name: "device role"
         interfaces:
           - name: "Ethernet1/1"
             type: "virtual"
@@ -36,6 +44,6 @@ checks:
   - equal:
       - model: "nautobot.dcim.models.Device"
         query: {name: "device_1"}
-        attribute: "site"
-      - model: "nautobot.dcim.models.Site"
+        attribute: "location"
+      - model: "nautobot.dcim.models.Location"
         query: {name: "site_1"}

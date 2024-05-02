@@ -9,4 +9,4 @@ from nautobot_design_builder.tests.test_builder import builder_test_case
 
 @builder_test_case(os.path.join(os.path.dirname(__file__), "testdata"))
 class TestAgnosticExtensions(TestCase):
-    """Test contrib extensions."""
+    """Test contrib extensions against any version of Nautobot."""

@@ -7,14 +7,16 @@ from os import path
 from typing import Dict
 import yaml
 
-from django.db import transaction
+from django.core.files.base import ContentFile
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django.utils import timezone
 
 from jinja2 import TemplateError
 
 from nautobot.extras.models import Status
-from nautobot.extras.jobs import Job, StringVar
+from nautobot.apps.jobs import Job, DryRunVar, StringVar
+from nautobot.extras.models import FileProxy
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -33,7 +35,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     a Meta class.
     """
 
-    instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
+    dryrun = DryRunVar()
 
     instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
 
@@ -47,10 +49,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         # rendered designs
         self.environment: Environment = None
         self.designs = {}
-        # TODO: Remove this when we no longer support Nautobot 1.x
+        self.rendered_design = None
         self.rendered = None
-        self.failed = False
-        self.report = None
 
         super().__init__(*args, **kwargs)
 
@@ -70,16 +70,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             context (Context): The render context that was used for rendering the design files.
             environment (Environment): The build environment that consumed the rendered design files. This is useful for accessing the design journal.
         """
-
-    def post_run(self):
-        """Method that will run after the main Nautobot job has executed."""
-        # TODO: This is not supported in Nautobot 2 and the entire method
-        # should be removed once we no longer support Nautobot 1.
-        if self.rendered:
-            self.job_result.data["output"] = self.rendered
-
-        self.job_result.data["designs"] = self.designs
-        self.job_result.data["report"] = self.report
 
     def render(self, context: Context, filename: str) -> str:
         """High level function to render the Jinja design templates into YAML.
@@ -152,10 +142,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         )
 
     def implement_design(self, context, design_file, commit):
-        """Render the design_file template using the provided render context.
-
-        It considers reduction if a previous design instance exists.
-        """
+        """Render the design_file template using the provided render context."""
         design = self.render_design(context, design_file)
         self.log_debug(f"New Design to be implemented: {design}")
 
@@ -188,16 +175,27 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         journal.validated_save()
         return (journal, previous_journal)
 
-    @staticmethod
-    def validate_data_logic(data):
-        """Method to validate the input data logic that is already valid as a form by the `validate_data` method."""
-
-    def run(self, **kwargs):  # pylint: disable=arguments-differ
+    def run(self, dryrun: bool, **kwargs):  # pylint: disable=arguments-differ
         """Render the design and implement it within a build Environment object."""
-        return self._run_in_transaction(**kwargs)
+        try:
+            return self._run_in_transaction(dryrun, **kwargs)
+        finally:
+            if self.rendered:
+                rendered_design = path.basename(self.rendered_design)
+                rendered_design, _ = path.splitext(rendered_design)
+                if not rendered_design.endswith(".yaml") and not rendered_design.endswith(".yml"):
+                    rendered_design = f"{rendered_design}.yaml"
+                self.save_design_file(rendered_design, self.rendered)
+            for design_file, design in self.designs.items():
+                output_file = path.basename(design_file)
+                # this should remove the .j2
+                output_file, _ = path.splitext(output_file)
+                if not output_file.endswith(".yaml") and not output_file.endswith(".yml"):
+                    output_file = f"{output_file}.yaml"
+                self.save_design_file(output_file, yaml.safe_dump(design))
 
     @transaction.atomic
-    def _run_in_transaction(self, **kwargs):  # pylint: disable=too-many-branches, too-many-statements
+    def _run_in_transaction(self, dryrun: bool, **data):  # pylint: disable=too-many-branches
         """Render the design and implement it within a build Environment object.
 
         This version of `run` is wrapped in a transaction and will roll back database changes
@@ -207,13 +205,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         extensions = getattr(self.Meta, "extensions", [])
 
         design_files = None
-
-        commit = kwargs["commit"]
-        data = kwargs["data"]
-
-        self.validate_data_logic(data)
-
-        self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
         journal, previous_journal = self._setup_journal(data.pop("instance_name"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -227,7 +218,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design_files = None
 
         if hasattr(self.Meta, "context_class"):
-            context = self.Meta.context_class(data=data, job_result=self.job_result, design_name=self.Meta.name)
+            context = self.Meta.context_class(data=data, job_result=self.job_result)
             context.validate()
         else:
             context = {}
@@ -238,14 +229,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             design_files = self.Meta.design_files
         else:
             self.log_failure(message="No design template specified for design.")
-            self.failed = True
-            return
+            raise DesignImplementationError("No design template specified for design.")
 
         sid = transaction.savepoint()
 
         try:
             for design_file in design_files:
-                self.implement_design(context, design_file, commit)
+                self.implement_design(context, design_file, not dryrun)
 
             if previous_journal:
                 deleted_object_ids = previous_journal - journal
@@ -253,7 +243,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     self.log_info(f"Decommissioning {deleted_object_ids}")
                     journal.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 
-            if commit:
+            if not dryrun:
                 self.post_implementation(context, self.environment)
                 # The Journal stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
@@ -263,13 +253,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 )
                 journal.design_instance.save()
                 journal.save()
-                self.job_result.data["related_objects"] = {
-                    "journal": journal.pk,
-                    "design_instance": journal.design_instance.pk,
-                }
                 if hasattr(self.Meta, "report"):
-                    self.report = self.render_report(context, self.environment.journal)
-                    self.log_success(message=self.report)
+                    report = self.render_report(context, self.environment.journal)
+                    output_filename: str = path.basename(getattr(self.Meta, "report"))
+                    if output_filename.endswith(".j2"):
+                        output_filename = output_filename[0:-3]
+                    self.log_success(message=report)
+                    self.save_design_file(output_filename, report)
             else:
                 transaction.savepoint_rollback(sid)
                 self.log_info(
@@ -279,8 +269,22 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             transaction.savepoint_rollback(sid)
             self.log_failure(message="Failed to implement design")
             self.log_failure(message=str(ex))
-            self.failed = True
+            raise ex
         except Exception as ex:
             transaction.savepoint_rollback(sid)
-            self.failed = True
             raise ex
+
+    def save_design_file(self, filename, content):
+        """Save some content to a job file.
+
+        This is only supported on Nautobot 2.0 and greater.
+
+        Args:
+            filename (str): The name of the file to save.
+            content (str): The content to save to the file.
+        """
+        FileProxy.objects.create(
+            name=filename,
+            job_result=self.job_result,
+            file=ContentFile(content.encode("utf-8"), name=filename),
+        )

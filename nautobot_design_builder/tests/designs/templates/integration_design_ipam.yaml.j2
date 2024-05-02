@@ -2,9 +2,13 @@
 
 tags:
     - "!create_or_update:name": "VRF Prefix"
-      "slug": "vrf_prefix"
+      "content_types":
+        - "!get:app_label": "ipam"
+          "!get"model": "prefix"
     - "!create_or_update:name": "VRF Interface"
-      "slug": "vrf_interface"
+      "content_types":
+        - "!get:app_label": "dcim"
+          "!get"model": "interface"
 
 prefixes:
     - "!create_or_update:prefix": "{{ l3vpn_prefix }}"

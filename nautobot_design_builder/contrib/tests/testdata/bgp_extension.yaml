@@ -2,12 +2,23 @@
 extensions:
   - "nautobot_design_builder.contrib.ext.BGPPeeringExtension"
 designs:
-  - sites:
-      - "!create_or_update:name": "Site"
-        status__name: "Active"
+  - roles:
+      - name: "test-role"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+    prefixes:
+      - status__name: "Active"
+        prefix: "192.168.1.0/24"
 
-    device_roles:
-      - "!create_or_update:name": "test-role"
+    location_types:
+      - name: "Site"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+        locations:
+          - name: "Site"
+            status__name: "Active"
 
     manufacturers:
       - "!create_or_update:name": "test-manufacturer"
@@ -23,16 +34,17 @@ designs:
     devices:
       - "!create_or_update:name": "device1"
         status__name: "Active"
-        site__name: "Site"
-        device_role__name: "test-role"
+        location__name: "Site"
+        role__name: "test-role"
         device_type__model: "test-type"
         interfaces:
           - "!create_or_update:name": "Ethernet1/1"
             type: "virtual"
             status__name: "Active"
-            ip_addresses:
-              - "!create_or_update:address": "192.168.1.1/24"
-                status__name: "Active"
+            ip_address_assignments:
+              - ip_address:
+                  "!create_or_update:address": "192.168.1.1/24"
+                  status__name: "Active"
         bgp_routing_instances:
           - "!create_or_update:autonomous_system__asn": 64500
             "!ref": "device1-instance"
@@ -40,16 +52,17 @@ designs:
 
       - "!create_or_update:name": "device2"
         status__name: "Active"
-        site__name: "Site"
-        device_role__name: "test-role"
+        location__name: "Site"
+        role__name: "test-role"
         device_type__model: "test-type"
         interfaces:
           - "!create_or_update:name": "Ethernet1/1"
             type: "virtual"
             status__name: "Active"
-            ip_addresses:
-              - "!create_or_update:address": "192.168.1.2/24"
-                status__name: "Active"
+            ip_address_assignments:
+              - ip_address:
+                  "!create_or_update:address": "192.168.1.2/24"
+                  status__name: "Active"
         bgp_routing_instances:
           - "!create_or_update:autonomous_system__asn": 64500
             "!ref": "device2-instance"
@@ -59,14 +72,10 @@ designs:
       - "!bgp_peering":
           endpoint_a:
             "!create_or_update:routing_instance__device__name": "device1"
-            "!create_or_update:source_ip":
-              "!get:interface__device__name": "device1"
-              "!get:interface__name": "Ethernet1/1"
+            "!create_or_update:source_ip__address": "192.168.1.1/24"
           endpoint_z:
             "!create_or_update:routing_instance__device__name": "device2"
-            "!create_or_update:source_ip":
-              "!get:interface__device__name": "device2"
-              "!get:interface__name": "Ethernet1/1"
+            "!create_or_update:source_ip__address": "192.168.1.2/24"
         status__name: "Active"
 checks:
   - equal:

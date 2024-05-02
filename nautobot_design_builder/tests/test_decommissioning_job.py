@@ -1,8 +1,6 @@
 """Decommissioning Tests."""
 
 from unittest import mock
-import uuid
-
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -13,9 +11,9 @@ from nautobot.extras.models import Secret
 from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 
-from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder.jobs import DesignInstanceDecommissioning
 from nautobot_design_builder import models, choices
+from nautobot_design_builder.tests.test_model_design import BaseDesignTest
 
 from .designs import test_designs
 
@@ -30,7 +28,7 @@ def fake_ko(sender, design_instance, **kwargs):  # pylint: disable=unused-argume
     raise DesignValidationError("reason")
 
 
-class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-instance-attributes
+class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-instance-attributes
     """Test the DecommissionJobTestCase class."""
 
     job_class = DesignInstanceDecommissioning
@@ -39,33 +37,16 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         """Per-test setup."""
         super().setUp()
 
+        self.content_type = ContentType.objects.get_for_model(models.DesignInstance)
+
         # Decommissioning Job
         self.job = self.get_mocked_job(self.job_class)
 
         self.job.job_result = JobResult.objects.create(
             name="fake job",
-            obj_type=ContentType.objects.get(app_label="extras", model="job"),
-            job_id=uuid.uuid4(),
+            job_model=self.job.job_model,
         )
         self.job.job_result.log = mock.Mock()
-
-        # Design Builder Job
-        defaults = {
-            "grouping": "Designs",
-            "source": "local",
-            "installed": True,
-            "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
-        }
-
-        self.job1 = JobModel(
-            **defaults.copy(),
-            name="Simple Design",
-            job_class_name=test_designs.SimpleDesign.__name__,
-        )
-        self.job1.validated_save()
-
-        self.design1, _ = models.Design.objects.get_or_create(job=self.job1, defaults={"version": "0.0.1"})
-        self.content_type = ContentType.objects.get_for_model(models.DesignInstance)
         self.design_instance = models.DesignInstance(
             design=self.design1,
             name="My Design 1",
@@ -103,22 +84,22 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             "instance": "my instance",
         }
 
-        self.job_result = JobResult(
+        self.job_result1 = JobResult.objects.create(
             job_model=self.job1,
             name=self.job1.class_path,
-            job_id=uuid.uuid4(),
-            obj_type=ContentType.objects.get_for_model(JobModel),
+            task_kwargs=kwargs,
         )
-        if nautobot_version < "2.0":
-            self.job_result.job_kwargs = {"data": kwargs}
-        else:
-            self.job_result.task_kwargs = kwargs
-        self.job_result.validated_save()
 
-        self.journal1 = models.Journal(design_instance=self.design_instance, job_result=self.job_result)
+        self.journal1 = models.Journal(design_instance=self.design_instance, job_result=self.job_result1)
         self.journal1.validated_save()
 
-        self.journal2 = models.Journal(design_instance=self.design_instance_2, job_result=self.job_result)
+        self.job_result2 = JobResult.objects.create(
+            job_model=self.job1,
+            name=self.job1.class_path,
+            task_kwargs=kwargs,
+        )
+
+        self.journal2 = models.Journal(design_instance=self.design_instance_2, job_result=self.job_result2)
         self.journal2.validated_save()
 
     def test_basic_decommission_run_with_full_control(self):

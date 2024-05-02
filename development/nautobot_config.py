@@ -1,11 +1,7 @@
 """Nautobot development configuration file."""
 
-from importlib import metadata
-from importlib.util import find_spec
 import os
 import sys
-
-from packaging.version import Version
 
 from nautobot.core.settings import *  # noqa: F403  # pylint: disable=wildcard-import,unused-wildcard-import
 from nautobot.core.settings_funcs import is_truthy, parse_redis_connection
@@ -143,28 +139,6 @@ PLUGINS = ["nautobot_design_builder"]
 # Each key in the dictionary is the name of an installed App and its value is a dictionary of settings.
 
 if is_truthy(os.getenv("DESIGN_BUILDER_ENABLE_BGP", "False")):
-    if find_spec("nautobot_bgp_models") is None:
-        nautobot_version = Version(Version(metadata.version("nautobot")).base_version)
-        import subprocess  # nosec
-
-        package = "nautobot-bgp-models"
-        if nautobot_version < Version("2.0"):
-            # pip doesn't have the capability to automatically pick
-            # a version compatible with the current Nautobot, so we
-            # do that manually. This is only for development environments
-            # so that we can run unit tests on Nautobot 1.6 and 2.x
-            package = "nautobot-bgp-models==0.9.1"
-        command = [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            package,
-        ]
-        # Since we aren't evaluating any input variables, *and* we
-        # are not using a shell, this command should be considered
-        # save, therefore the `nosec` annotation.
-        subprocess.check_call(command, shell=False)  # nosec
     PLUGINS.append("nautobot_bgp_models")
 
 

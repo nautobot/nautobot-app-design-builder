@@ -1,6 +1,6 @@
 """Generic Design Builder Jobs."""
 
-from nautobot.extras.jobs import Job, MultiObjectVar
+from nautobot.apps.jobs import Job, MultiObjectVar, register_jobs
 
 from .logging import get_logger
 from .models import DesignInstance
@@ -27,14 +27,14 @@ class DesignInstanceDecommissioning(Job):
     def run(self, data, commit):
         """Execute Decommissioning job."""
         design_instances = data["design_instances"]
-        self.log_info(
-            message=f"Starting decommissioning of design instances: {', '.join([instance.name for instance in design_instances])}",
+        self.logger.info(
+            "Starting decommissioning of design instances: %s", ", ".join([instance.name for instance in design_instances]),
         )
 
         for design_instance in design_instances:
-            self.log_info(obj=design_instance, message="Working on resetting objects for this Design Instance...")
+            self.logger.info("Working on resetting objects for this Design Instance...", {"extra": {"object": design_instance}})
             design_instance.decommission(local_logger=get_logger(__name__, self.job_result))
-            self.log_success(f"{design_instance} has been successfully decommissioned from Nautobot.")
+            self.logger.info("%s has been successfully decommissioned from Nautobot.", design_instance)
 
 
-jobs = (DesignInstanceDecommissioning,)
+register_jobs(DesignInstanceDecommissioning)

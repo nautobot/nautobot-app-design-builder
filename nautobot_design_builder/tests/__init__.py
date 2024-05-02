@@ -1,5 +1,6 @@
 """Unit tests for nautobot_design_builder plugin."""
 
+import logging
 import shutil
 import tempfile
 from os import path
@@ -10,6 +11,8 @@ from unittest.mock import PropertyMock, patch
 from django.test import TestCase
 
 from nautobot_design_builder.design_job import DesignJob
+
+logging.disable(logging.INFO)
 
 
 class DesignTestCase(TestCase):
@@ -33,10 +36,13 @@ class DesignTestCase(TestCase):
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
         job = design_class()
-
         job.job_result = mock.Mock()
-        job.save_design_file = lambda filename, content: None
-        job.request = mock.Mock()
+        job.saved_files = {}
+
+        def save_design_file(filename, content):
+            job.saved_files[filename] = content
+
+        job.save_design_file = save_design_file
         self.logged_messages = []
 
         def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument
@@ -56,11 +62,6 @@ class DesignTestCase(TestCase):
         """Confirm that the list of filenames were created as part of the design implementation."""
         for filename in filenames:
             self.assertTrue(path.exists(path.join(self.git_path, filename)), f"{filename} was not created")
-
-    def assertJobSuccess(self, job):  # pylint: disable=invalid-name
-        """Assert that a mocked job has completed successfully."""
-        if job.failed:
-            self.fail(f"Job failed with {self.logged_messages[-1]}")
 
     def tearDown(self):
         """Remove temporary files."""

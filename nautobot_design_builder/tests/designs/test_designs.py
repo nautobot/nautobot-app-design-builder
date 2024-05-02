@@ -3,6 +3,8 @@
 from nautobot.dcim.models import Manufacturer, Device, Interface
 from nautobot.extras.jobs import StringVar, ObjectVar
 
+from nautobot.apps.jobs import register_jobs
+
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.design import ModelInstance
 from nautobot_design_builder.ext import Extension, AttributeExtension
@@ -157,3 +159,17 @@ class IntegrationDesign(DesignJob):
             NextInterfaceExtension,
             ext.ChildPrefixExtension,
         ]
+
+name = "Test Designs"
+
+register_jobs(
+    SimpleDesign,
+    SimpleDesign3,
+    SimpleDesignReport,
+    MultiDesignJob,
+    MultiDesignJobWithError,
+    DesignJobWithExtensions,
+    DesignWithRefError,
+    DesignWithValidationError,
+    IntegrationDesign,
+)

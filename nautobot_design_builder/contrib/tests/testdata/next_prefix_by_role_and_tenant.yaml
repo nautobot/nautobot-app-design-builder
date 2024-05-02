@@ -6,8 +6,14 @@ designs:
       - name: "Nautobot Airports"
     roles:
       - name: "Video"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
       - name: "Servers"
-    prefixes:
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+  - prefixes:
       - prefix: "10.0.0.0/23"
         status__name: "Active"
         tenant__name: "Nautobot Airports"

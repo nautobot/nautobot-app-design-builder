@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from nautobot.core.views.routers import NautobotUIViewSetRouter
+from nautobot.apps.urls import NautobotUIViewSetRouter
 
 from nautobot_design_builder.views import (
     DesignUIViewSet,

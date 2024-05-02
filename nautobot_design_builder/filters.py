@@ -2,7 +2,7 @@
 
 from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, StatusModelFilterSetMixin
 from nautobot.extras.models import Job, JobResult
-from nautobot.utilities.filters import SearchFilter
+from nautobot.apps.filters import SearchFilter
 from nautobot.extras.filters.mixins import StatusFilter
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry

@@ -13,7 +13,7 @@ from django.db.models import ProtectedError
 
 from nautobot.core.signals import nautobot_database_ready
 from nautobot.extras.models import Job, Status
-from nautobot.utilities.choices import ColorChoices
+from nautobot.apps.choices import ColorChoices
 from nautobot.extras.registry import registry
 from nautobot_design_builder.models import JournalEntry
 from nautobot_design_builder.middleware import GlobalRequestMiddleware

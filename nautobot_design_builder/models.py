@@ -7,13 +7,11 @@ from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import models
 from django.dispatch import Signal
-from django.urls import reverse
 
-from nautobot.apps.models import PrimaryModel, BaseModel
+from nautobot.apps.models import PrimaryModel, BaseModel, RestrictedQuerySet
 from nautobot.core.celery import NautobotKombuJSONEncoder
 from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
-from nautobot.utilities.querysets import RestrictedQuerySet
 
 from .util import nautobot_version, get_created_and_last_updated_usernames_for_model
 from . import choices
@@ -67,6 +65,14 @@ def enforce_managed_fields(
         raise ValidationError(changed)
 
 
+class DesignManager(models.Manager):
+    def get_queryset(self) -> models.QuerySet:
+        return (
+            super()
+            .get_queryset()
+            .annotate(name=models.F("job__name"))
+        )
+
 class DesignQuerySet(RestrictedQuerySet):
     """Queryset for `Design` objects."""
 
@@ -105,7 +111,7 @@ class Design(PrimaryModel):
     # TODO: Add saved graphql query (future feature)
     # TODO: Add a template mapping to get custom payload (future feature)
     job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
-    objects = DesignQuerySet.as_manager()
+    objects = DesignManager.from_queryset(DesignQuerySet)()
 
     class Meta:
         """Meta class."""
@@ -123,18 +129,11 @@ class Design(PrimaryModel):
         if not self._state.adding:
             enforce_managed_fields(self, ["job"], message="is a field that cannot be changed")
 
-    @property
-    def name(self):
-        """Property for job name."""
-        return self.job.name
-
-    def get_absolute_url(self):
-        """Return detail view for Designs."""
-        return reverse("plugins:nautobot_design_builder:design", args=[self.pk])
-
     def __str__(self):
         """Stringify instance."""
-        return self.name
+        if hasattr(self, "name"):
+            return getattr(self, "name")
+        return self.job.name
 
     @property
     def description(self):
@@ -187,8 +186,8 @@ class DesignInstance(PrimaryModel):
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
-    last_implemented = models.DateTimeField(blank=True, null=True)
-    live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
+    last_implemented = models.DateTimeField(blank=True, null=True, auto_now=True)
+    live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT, related_name="live_state_status")
     version = models.CharField(max_length=20, blank=True, default="")
 
     objects = DesignInstanceQuerySet.as_manager()
@@ -214,13 +213,9 @@ class DesignInstance(PrimaryModel):
         if not self._state.adding:
             enforce_managed_fields(self, ["design"], message="is a field that cannot be changed")
 
-    def get_absolute_url(self):
-        """Return detail view for design instances."""
-        return reverse("plugins:nautobot_design_builder:designinstance", args=[self.pk])
-
     def __str__(self):
         """Stringify instance."""
-        return f"{self.design.name} - {self.name}"
+        return f"{self.design} - {self.name}"
 
     def decommission(self, *object_ids, local_logger=logger):
         """Decommission a design instance.
@@ -266,7 +261,7 @@ class DesignInstance(PrimaryModel):
             Queryset of matching objects.
         """
         entries = JournalEntry.objects.filter_by_instance(self, model=model)
-        return model.objects.filter(pk__in=entries.values_list("pk", flat=True))
+        return model.objects.filter(pk__in=entries.values_list("_design_object_id", flat=True))
 
     @property
     def created_by(self):
@@ -303,17 +298,13 @@ class Journal(PrimaryModel):
         editable=False,
         related_name="journals",
     )
-    job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
+    job_result = models.OneToOneField(to=JobResult, on_delete=models.PROTECT, editable=False)
     active = models.BooleanField(editable=False, default=True)
 
     class Meta:
         """Set the default query ordering."""
 
         ordering = ["-last_updated"]
-
-    def get_absolute_url(self):
-        """Return detail view for design instances."""
-        return reverse("plugins:nautobot_design_builder:journal", args=[self.pk])
 
     @property
     def user_input(self):
@@ -509,9 +500,14 @@ class JournalEntry(BaseModel):
     full_control = models.BooleanField(editable=False)
     active = models.BooleanField(editable=False, default=True)
 
-    def get_absolute_url(self):
-        """Return detail view for design instances."""
-        return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
+    class Meta:
+        unique_together = [["journal", "index"]]
+
+    # def get_absolute_url(self, api=False):
+    #     """Return detail view for design instances."""
+    #     if api:
+    #         return reverse("plugins-api:nautobot_design_builder-api:journalentry", args=[self.pk])
+    #     return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
 
     @staticmethod
     def update_current_value_from_dict(current_value, added_value, removed_value):

@@ -3,7 +3,7 @@
 from unittest.mock import patch, Mock
 from nautobot.extras.models import Secret
 from nautobot.dcim.models import Manufacturer, DeviceType
-from nautobot.utilities.utils import serialize_object_v2
+from nautobot.apps.models import serialize_object_v2
 
 from nautobot_design_builder.design import calculate_changes
 from nautobot_design_builder.errors import DesignValidationError

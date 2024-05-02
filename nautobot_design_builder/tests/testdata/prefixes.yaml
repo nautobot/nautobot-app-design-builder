@@ -1,20 +1,28 @@
 ---
 designs:
-  - sites:
-      - name: "site_1"
-        status__name: "Active"
+  - location_types:
+      - name: "Site"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+        locations:
+          - name: "site_1"
+            status__name: "Active"
+            "!ref": "site_1"
 
     prefixes:
-      - site__name: "site_1"
+      - locations:
+          - "!ref:site_1"
         status__name: "Active"
         prefix: "192.168.0.0/24"
-      - "!create_or_update:site__name": "site_1"
-        "!create_or_update:prefix": "192.168.56.0/24"
+      - "!create_or_update:prefix": "192.168.56.0/24"
+        locations:
+          - "!ref:site_1"
         status__name: "Active"
 
 checks:
   - equal:
       - model: "nautobot.ipam.models.Prefix"
-        query: {site__name: "site_1"}
+        query: {locations__name: "site_1"}
         attribute: "__str__"
       - value: ["192.168.0.0/24", "192.168.56.0/24"]
