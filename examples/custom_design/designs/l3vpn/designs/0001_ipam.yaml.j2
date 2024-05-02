@@ -2,24 +2,24 @@
 
 tags:
     - "!create_or_update:name": "VRF Prefix"
-      "slug": "vrf_prefix"
     - "!create_or_update:name": "VRF Interface"
-      "slug": "vrf_interface"
-
-prefixes:
-    - "!create_or_update:prefix": "{{ l3vpn_prefix }}"
-      status__name: "Reserved"
 
 vrfs:
   - "!create_or_update:name": "{{ l3vpn_asn }}:{{ get_customer_id(customer_name, l3vpn_asn) }}"
     description: "VRF for customer {{ customer_name }}"
-    prefixes:
-      - "!next_prefix":
-          identified_by:
-            tags__name: "VRF Prefix"
-          prefix: "{{ l3vpn_prefix }}"
-          length: 30
-        status__name: "Reserved"
-        tags:
-          - {"!get:name": "VRF Prefix"}
-        "!ref": "l3vpn_p2p_prefix"
+    "!ref": "my_vrf"
+
+prefixes:
+    - "!create_or_update:prefix": "{{ l3vpn_prefix }}"
+      status__name: "Reserved"
+    - "!next_prefix":
+        identified_by:
+          tags__name: "VRF Prefix"
+        prefix: "{{ l3vpn_prefix }}"
+        length: 30
+      status__name: "Reserved"
+      tags:
+        - {"!get:name": "VRF Prefix"}
+      "!ref": "l3vpn_p2p_prefix"
+      vrf_assignments:
+        - "!ref:my_vrf"

@@ -3,7 +3,7 @@
 from django.forms import NullBooleanField, CharField
 from nautobot.extras.forms import NautobotFilterForm
 from nautobot.extras.models import Job, JobResult
-from nautobot.utilities.forms import TagFilterField, DynamicModelChoiceField, StaticSelect2, BOOLEAN_WITH_BLANK_CHOICES
+from nautobot.core.forms import TagFilterField, DynamicModelChoiceField, StaticSelect2, BOOLEAN_WITH_BLANK_CHOICES
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 

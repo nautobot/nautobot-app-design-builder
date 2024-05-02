@@ -13,7 +13,7 @@ from nautobot.apps.models import PrimaryModel, BaseModel
 from nautobot.core.celery import NautobotKombuJSONEncoder
 from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
-from nautobot.utilities.querysets import RestrictedQuerySet
+from nautobot.core.models.querysets import RestrictedQuerySet
 
 from .util import nautobot_version, get_created_and_last_updated_usernames_for_model
 from . import choices
@@ -187,8 +187,8 @@ class DesignInstance(PrimaryModel):
     design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
-    last_implemented = models.DateTimeField(blank=True, null=True)
-    live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
+    last_implemented = models.DateTimeField(blank=True, null=True, auto_now=True)
+    live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT, related_name="live_state_status")
     version = models.CharField(max_length=20, blank=True, default="")
 
     objects = DesignInstanceQuerySet.as_manager()
@@ -303,7 +303,7 @@ class Journal(PrimaryModel):
         editable=False,
         related_name="journals",
     )
-    job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
+    job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False, unique=True)
     active = models.BooleanField(editable=False, default=True)
 
     class Meta:

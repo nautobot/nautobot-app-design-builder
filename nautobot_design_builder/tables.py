@@ -3,7 +3,7 @@
 from django_tables2 import Column
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
-from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
+from nautobot.core.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
@@ -12,11 +12,9 @@ DESIGNTABLE = """
 <a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
     <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
 </a>
-<a href="{% url 'extras:job' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
-    <i class="mdi mdi-play" title="Deploy Design"></i>
+<a href="{% url 'extras:job_run_by_class_path' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">    <i class="mdi mdi-play" title="Deploy Design"></i>
 </a>
-<a href="{% url 'extras:job_edit' slug=record.job.slug %}" class="btn btn-xs btn-warning" title="Edit Design Job">
-    <i class="mdi mdi-pencil"></i>
+<a href="{% url 'extras:job_edit' pk=record.job.pk %}" class="btn btn-xs btn-warning" title="Edit Design Job">    <i class="mdi mdi-pencil"></i>
 </a>
 """
 
@@ -38,11 +36,9 @@ class DesignTable(BaseTable):
 
 DESIGNINSTANCETABLE = """
 {% load utils %}
-<a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
-    <i class="mdi mdi-delete-sweep"></i>
+<a href="{% url "extras:job_run_by_class_path" class_path="nautobot_design_builder.jobs.DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">    <i class="mdi mdi-delete-sweep"></i>
 </a>
-<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_journal as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"
-    class="btn btn-xs btn-success" title="Re-run job with same arguments.">
+<a href="{% url 'extras:job_run' pk=record.design.job.pk %}?kwargs_from_job_result={% with record|get_last_journal as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"    class="btn btn-xs btn-success" title="Re-run job with same arguments.">
     <i class="mdi mdi-repeat"></i>
 </a>
 """

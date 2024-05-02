@@ -2,10 +2,9 @@
 
 from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.utils import extend_schema_field
-from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin
+from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
 from nautobot.core.api import ContentTypeField
-from nautobot.extras.api.nested_serializers import NestedJobResultSerializer, NestedStatusSerializer
-from nautobot.utilities.api import get_serializer_for_model
+from nautobot.core.api.utils import get_serializer_for_model
 from rest_framework.fields import SerializerMethodField, DictField
 from rest_framework.relations import HyperlinkedIdentityField
 
@@ -34,12 +33,12 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
         ]
 
 
-class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin):
+class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the design instance model."""
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     design = NestedDesignSerializer()
-    live_state = NestedStatusSerializer()
+    # live_state = NestedStatusSerializer()
     created_by = SerializerMethodField()
     last_updated_by = SerializerMethodField()
 
@@ -74,7 +73,7 @@ class JournalSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:journal-detail")
     design_instance = NestedDesignInstanceSerializer()
-    job_result = NestedJobResultSerializer()
+    # job_result = NestedJobResultSerializer()
 
     class Meta:
         """Serializer options for the journal model."""
@@ -83,7 +82,7 @@ class JournalSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
         fields = ["id", "url", "design_instance", "job_result"]
 
 
-class JournalEntrySerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
+class JournalEntrySerializer(NautobotModelSerializer):
     """Serializer for the journal entry model."""
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:journalentry-detail")

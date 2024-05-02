@@ -237,7 +237,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             commit = kwargs["commit"]
             data = kwargs["data"]
         else:
-            commit = kwargs.pop("dryrun", False)
+            commit = not kwargs.pop("dryrun", False)
             data = kwargs
 
         self.validate_data_logic(data)
@@ -245,7 +245,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         if nautobot_version < "2.0.0":
             self.job_result.job_kwargs = {"data": self.serialize_data(data)}
         else:
-            self.job_result.job_kwargs = self.serialize_data(data)
+            self.job_result.task_kwargs = self.serialize_data(data)
+            self.job_result.save()
 
         journal, previous_journal = self._setup_journal(data.pop("instance_name"))
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -295,15 +296,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 )
                 journal.design_instance.save()
                 journal.save()
-                self.job_result.data["related_objects"] = {
-                    "journal": journal.pk,
-                    "design_instance": journal.design_instance.pk,
-                }
-                if hasattr(self.Meta, "report"):
-                    self.report = self.render_report(context, self.environment.journal)
-                    self.log_success(message=self.report)
-                    if nautobot_version >= "2.0":
-                        self.save_design_file("report.md", self.report)
             else:
                 transaction.savepoint_rollback(sid)
                 self.log_info(

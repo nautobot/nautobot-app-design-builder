@@ -13,8 +13,8 @@ from nautobot.core.views.mixins import (
     ObjectNotesViewMixin,
     ObjectDestroyViewMixin,
 )
-from nautobot.utilities.paginator import EnhancedPaginator, get_paginate_count
-from nautobot.utilities.utils import count_related
+from nautobot.core.views.paginator import EnhancedPaginator, get_paginate_count
+from nautobot.core.models.querysets import count_related
 from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
 

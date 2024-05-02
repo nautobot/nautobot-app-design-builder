@@ -1,6 +1,6 @@
 """Design to create a core backbone site."""
 
-from nautobot.dcim.models import Region
+from nautobot.dcim.models import Location
 from nautobot.extras.jobs import ObjectVar, StringVar, IPNetworkVar
 
 from nautobot_design_builder.design_job import DesignJob
@@ -14,7 +14,7 @@ class CoreSiteDesign(DesignJob):
     region = ObjectVar(
         label="Region",
         description="Region for the new backbone site",
-        model=Region,
+        model=Location,
     )
 
     site_name = StringVar(regex=r"\w{3}\d+")
