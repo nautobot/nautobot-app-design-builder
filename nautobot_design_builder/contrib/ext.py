@@ -464,6 +464,8 @@ class ChildPrefixExtension(AttributeExtension):
         if not isinstance(value, dict):
             raise DesignImplementationError("the child_prefix tag requires a dictionary of arguments")
 
+        action = value.pop("action", "")
+
         parent = value.pop("parent", None)
         if parent is None:
             raise DesignImplementationError("the child_prefix tag requires a parent")
@@ -478,6 +480,9 @@ class ChildPrefixExtension(AttributeExtension):
         if not isinstance(offset, str):
             raise DesignImplementationError("offset must be string")
         attr = args[0] if args else "prefix"
+
+        if action:
+            attr = f"!{action}:{attr}"
         return attr, network_offset(parent, offset)
 
 

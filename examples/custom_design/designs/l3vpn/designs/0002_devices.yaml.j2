@@ -25,6 +25,7 @@
               "!child_prefix:address":
                 parent: "!ref:l3vpn_p2p_prefix"
                 offset: "0.0.0.{{ offset }}/30"
+                action: "create_or_update"
               status__name: "Reserved"
 
 {% endmacro %}

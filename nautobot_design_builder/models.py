@@ -266,7 +266,7 @@ class DesignInstance(PrimaryModel):
             Queryset of matching objects.
         """
         entries = JournalEntry.objects.filter_by_instance(self, model=model)
-        return model.objects.filter(pk__in=entries.values_list("pk", flat=True))
+        return model.objects.filter(pk__in=entries.values_list("_design_object_id", flat=True))
 
     @property
     def created_by(self):
