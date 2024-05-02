@@ -10,7 +10,6 @@ from unittest.mock import PropertyMock, patch
 from django.test import TestCase
 
 from nautobot_design_builder.design_job import DesignJob
-from nautobot_design_builder.util import nautobot_version
 
 
 class DesignTestCase(TestCase):
@@ -37,19 +36,7 @@ class DesignTestCase(TestCase):
 
         job.job_result = mock.Mock()
         job.save_design_file = lambda filename, content: None
-        if nautobot_version < "2.0.0":
-            job.request = mock.Mock()
-        else:
-            # TODO: Remove this when we no longer support Nautobot 1.x
-            job.job_result.data = {}
-            old_run = job.run
-
-            def new_run(data, commit):
-                kwargs = {**data}
-                kwargs["dryrun"] = not commit
-                old_run(**kwargs)
-
-            job.run = new_run
+        job.request = mock.Mock()
         self.logged_messages = []
 
         def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument

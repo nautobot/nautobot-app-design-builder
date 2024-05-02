@@ -38,7 +38,7 @@ designs:
         status__name: "Active"
         device_type__model: "model name"
         device_role__name: "device role"
-        vlans:
+        device-to-vlans:
           - "!get:vid": 42
           - vid: "43"
             name: "Better Answer"
@@ -48,7 +48,7 @@ checks:
       model: "nautobot.ipam.models.VLAN"
       query: {vid: "43"}
 
-  - equal:
+  - count_equal:
       - model: "nautobot.extras.models.RelationshipAssociation"
         query: {relationship__name: "Device to VLANS"}
         attribute: "destination"

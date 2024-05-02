@@ -12,7 +12,6 @@ from django.test import TestCase
 from nautobot.dcim.models import Cable
 
 from nautobot_design_builder.design import Environment
-from nautobot_design_builder.util import nautobot_version
 
 
 class BuilderChecks:
@@ -157,24 +156,4 @@ def builder_test_case(data_dir):
 
 @builder_test_case(os.path.join(os.path.dirname(__file__), "testdata"))
 class TestGeneralDesigns(TestCase):
-    """Designs that should work with all versions of Nautobot."""
-
-
-@builder_test_case(os.path.join(os.path.dirname(__file__), "testdata", "nautobot_v1"))
-class TestV1Designs(TestCase):
-    """Designs that only work in Nautobot 1.x"""
-
-    def setUp(self):
-        if nautobot_version >= "2.0.0":
-            self.skipTest("These tests are only supported in Nautobot 1.x")
-        super().setUp()
-
-
-@builder_test_case(os.path.join(os.path.dirname(__file__), "testdata", "nautobot_v2"))
-class TestV2Designs(TestCase):
-    """Designs that only work in Nautobot 1.x"""
-
-    def setUp(self):
-        if nautobot_version < "2.0.0":
-            self.skipTest("These tests are only supported in Nautobot 2.x")
-        super().setUp()
+    """Designs that should work with all Nautobot Version 1."""
