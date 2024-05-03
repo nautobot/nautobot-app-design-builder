@@ -8,22 +8,22 @@ from nautobot_design_builder.context import Context, context_file
 
 
 @context_file("context.yaml")
-class L3VPNContext(Context):
-    """Render context for l3vpn design"""
+class P2PContext(Context):
+    """Render context for P2P design"""
 
-    pe: Device
-    ce: Device
+    device_a: Device
+    device_b: Device
     customer_name: str
 
     def __hash__(self):
-        return hash((self.pe.name, self.ce.name, self.customer_name))
+        return hash((self.device_a.name, self.device_b.name, self.customer_name))
 
-    def get_customer_id(self, customer_name, l3vpn_asn):
+    def get_customer_id(self, customer_name, p2p_asn):
         try:
             vrf = VRF.objects.get(description=f"VRF for customer {customer_name}")
-            return vrf.name.replace(f"{l3vpn_asn}:", "")
+            return vrf.name.replace(f"{p2p_asn}:", "")
         except ObjectDoesNotExist:
-            last_vrf = VRF.objects.filter(name__contains=l3vpn_asn).last()
+            last_vrf = VRF.objects.filter(name__contains=p2p_asn).last()
             if not last_vrf:
                 return "1"
             new_id = int(last_vrf.name.split(":")[-1]) + 1

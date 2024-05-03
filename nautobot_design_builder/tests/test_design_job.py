@@ -6,7 +6,7 @@ from unittest.mock import patch, Mock
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 
-from nautobot.dcim.models import Manufacturer, DeviceType, Device
+from nautobot.dcim.models import Manufacturer, DeviceType, Device, Site, DeviceRole
 from nautobot.ipam.models import VRF, Prefix, IPAddress
 
 from nautobot.extras.models import JobResult, Job, Status
@@ -146,10 +146,6 @@ class TestDesignJobIntegration(DesignTestCase):
     def setUp(self):
         """Per-test setup."""
         super().setUp()
-        if nautobot_version < "2.0.0":
-            from nautobot.dcim.models import Site, DeviceRole  # pylint: disable=import-outside-toplevel
-        else:
-            self.skipTest("These tests are only supported in Nautobot 1.x")
 
         site = Site.objects.create(name="test site")
         manufacturer = Manufacturer.objects.create(name="test manufacturer")
@@ -194,8 +190,8 @@ class TestDesignJobIntegration(DesignTestCase):
     def test_create_integration_design(self):
         """Test to validate the first creation of the design."""
 
-        self.data["ce"] = self.device1
-        self.data["pe"] = self.device2
+        self.data["device_b"] = self.device1
+        self.data["device_a"] = self.device2
         self.data["customer_name"] = "customer 1"
 
         self.job_instance.run(data=self.data, commit=True)
@@ -222,16 +218,16 @@ class TestDesignJobIntegration(DesignTestCase):
         original_data = copy.copy(self.data)
 
         # This part reproduces the creation of the design on the first iteration
-        self.data["ce"] = self.device1
-        self.data["pe"] = self.device2
+        self.data["device_b"] = self.device1
+        self.data["device_a"] = self.device2
         self.data["customer_name"] = "customer 1"
         self.job_instance.run(data=self.data, commit=True)
 
         # This is a second, and third run with new input to update the deployment
         for _ in range(2):
             data = copy.copy(original_data)
-            data["ce"] = self.device3
-            data["pe"] = self.device2
+            data["device_b"] = self.device3
+            data["device_a"] = self.device2
             data["customer_name"] = "customer 2"
             self.job_instance.run(data=data, commit=True)
 

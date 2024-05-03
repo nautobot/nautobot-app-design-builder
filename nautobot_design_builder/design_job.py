@@ -35,8 +35,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
     instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
 
-    instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
-
     @classmethod
     @abstractmethod
     def Meta(cls) -> Job.Meta:  # pylint: disable=invalid-name
@@ -157,8 +155,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         It considers reduction if a previous design instance exists.
         """
         design = self.render_design(context, design_file)
-        self.log_debug(f"New Design to be implemented: {design}")
-
         self.environment.implement_design(design, commit)
 
     def _setup_journal(self, instance_name: str):
