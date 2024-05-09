@@ -89,6 +89,7 @@ class BuilderChecks:
             value1 = value1[0]
         test.assertNotIn(value0, value1, msg=f"Check {index}")
 
+
 def _get_value(check_info):
     if "value" in check_info:
         value = check_info["value"]
@@ -141,6 +142,7 @@ def builder_test_case(data_dir):
                         getattr(BuilderChecks, _check_name)(self, args, index)
                     else:
                         raise ValueError(f"Unknown check {check_name} {check}")
+
         setattr(test_class, "_run_checks", _run_checks)
 
         def _run_test_case(self, testcase, data_dir):
