@@ -1,10 +1,10 @@
 ---
 designs:
   - statuses:
-    - "!create_or_update:name": "Active"
-      content_types:
-        - "!get:model": "cable"
-          "!get:app_label": "dcim"
+      - "!create_or_update:name": "Active"
+        content_types:
+          - "!get:model": "cable"
+            "!get:app_label": "dcim"
 
 pre_checks:
   - not_in:
