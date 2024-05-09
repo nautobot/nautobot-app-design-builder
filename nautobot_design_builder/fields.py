@@ -311,6 +311,7 @@ class TagField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-fe
 
         obj.connect("POST_INSTANCE_SAVE", setter)
 
+
 class GenericRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
     """Field used as part of content-types generic relation."""
 
