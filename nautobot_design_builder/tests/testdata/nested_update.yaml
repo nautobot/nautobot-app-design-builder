@@ -1,6 +1,7 @@
 ---
 depends_on: "base_test.yaml"
 designs:
+  # Design 1
   - devices:
       - name: "device_1"
         location__name: "Site"
@@ -12,6 +13,12 @@ designs:
             type: "virtual"
             status__name: "Active"
             description: "description for Ethernet1/1"
+  # Design 2
+  - devices:
+      - "!update:name": "device_1"
+        interfaces:
+          - "!update:name": "Ethernet1/1"
+            description: "new description for Ethernet1/1"
 checks:
   - equal:
       - model: "nautobot.dcim.models.Interface"
@@ -20,8 +27,7 @@ checks:
       - model: "nautobot.dcim.models.Device"
         query: {name: "device_1"}
   - equal:
-      - model: "nautobot.dcim.models.Device"
-        query: {name: "device_1"}
-        attribute: "location"
-      - model: "nautobot.dcim.models.Location"
-        query: {name: "Site"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {name: "Ethernet1/1"}
+        attribute: "description"
+      - value: "new description for Ethernet1/1"

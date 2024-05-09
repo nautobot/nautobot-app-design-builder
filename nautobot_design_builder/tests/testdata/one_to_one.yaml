@@ -1,0 +1,41 @@
+---
+depends_on: "base_test.yaml"
+designs:
+  - device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "chassis"
+        u_height: 1
+        subdevice_role: "parent"
+
+      - manufacturer__name: "manufacturer1"
+        model: "card"
+        u_height: 0
+        subdevice_role: "child"
+
+    devices:
+      - name: "device_1"
+        location__name: "Site"
+        status__name: "Active"
+        device_type__model: "chassis"
+        role__name: "device role"
+        device_bays:
+          - name: "Bay 1"
+            installed_device:
+              name: "device_2"
+              location__name: "Site"
+              status__name: "Active"
+              device_type__model: "card"
+              role__name: "device role"
+checks:
+  - model_exists:
+      model: "nautobot.dcim.models.Device"
+      query: {name: "device_1"}
+  - model_exists:
+      model: "nautobot.dcim.models.Device"
+      query: {name: "device_2"}
+  - equal:
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "device_2"}
+        attribute: "parent_bay.device"
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "device_1"}

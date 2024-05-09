@@ -3,7 +3,7 @@
 import importlib
 from operator import attrgetter
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 import yaml
 
 from django.db.models import Manager, Q
@@ -116,36 +116,46 @@ def builder_test_case(data_dir):
     """Decorator to load tests into a TestCase from a data directory."""
 
     def class_wrapper(test_class):
+        def _run_test_case(self, testcase, data_dir):
+            with patch("nautobot_design_builder.design.Environment.roll_back") as roll_back:
+                depends_on = testcase.pop("depends_on", None)
+                if depends_on:
+                    depends_on_path = os.path.join(data_dir, depends_on)
+                    depends_on_dir = os.path.dirname(depends_on_path)
+                    with open(depends_on_path, encoding="utf-8") as file:
+                        self._run_test_case(yaml.safe_load(file), depends_on_dir)
+
+                extensions = []
+                for extension in testcase.get("extensions", []):
+                    extensions.append(_load_class(extension))
+
+                with self.captureOnCommitCallbacks(execute=True):
+                    for design in testcase["designs"]:
+                        environment = Environment(extensions=extensions)
+                        commit = design.pop("commit", True)
+                        environment.implement_design(design=design, commit=commit)
+                        if not commit:
+                            roll_back.assert_called()
+
+                for index, check in enumerate(testcase.get("checks", [])):
+                    for check_name, args in check.items():
+                        _check_name = f"check_{check_name}"
+                        if hasattr(BuilderChecks, _check_name):
+                            getattr(BuilderChecks, _check_name)(self, args, index)
+                        else:
+                            raise ValueError(f"Unknown check {check_name} {check}")
+        setattr(test_class, "_run_test_case", _run_test_case)
+
         for testcase, filename in _testcases(data_dir):
             # Strip the .yaml extension
             testcase_name = f"test_{filename[:-5]}"
 
             # Create a new closure for testcase
             def test_wrapper(testcase):
-                @patch("nautobot_design_builder.design.Environment.roll_back")
-                def test_runner(self, roll_back: Mock):
+                def test_runner(self):
                     if testcase.get("skip", False):
                         self.skipTest("Skipping due to testcase skip=true")
-                    extensions = []
-                    for extension in testcase.get("extensions", []):
-                        extensions.append(_load_class(extension))
-
-                    with self.captureOnCommitCallbacks(execute=True):
-                        for design in testcase["designs"]:
-                            environment = Environment(extensions=extensions)
-                            commit = design.pop("commit", True)
-                            environment.implement_design(design=design, commit=commit)
-                            if not commit:
-                                roll_back.assert_called()
-
-                    for index, check in enumerate(testcase.get("checks", [])):
-                        for check_name, args in check.items():
-                            _check_name = f"check_{check_name}"
-                            if hasattr(BuilderChecks, _check_name):
-                                getattr(BuilderChecks, _check_name)(self, args, index)
-                            else:
-                                raise ValueError(f"Unknown check {check_name} {check}")
-
+                    self._run_test_case(testcase, data_dir)
                 return test_runner
 
             setattr(test_class, testcase_name, test_wrapper(testcase))
