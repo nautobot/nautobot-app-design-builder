@@ -9,6 +9,7 @@ class Command(BaseCommand):
     """Create a git datasource pointed to the demo designs repo."""
 
     def add_arguments(self, parser):
+        """Add the branch argument to the command."""
         parser.add_argument(
             "--branch",
             action="store",
