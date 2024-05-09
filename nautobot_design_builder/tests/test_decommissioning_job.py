@@ -257,13 +257,12 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
     def test_decommission_run_without_full_control_dict_value_with_new_values_and_old_deleted(self):
-        """This test validates that an original dictionary with `initial_params`, that gets added
-        new values, and later another `new_value` out of control, and removing the `initial_params`works as expected.
-        """
-        new_params = {"key3": "value3"}
-        self.secret.parameters = {**self.changed_params, **new_params}
-        self.secret.validated_save()
+        """Test complex dictionary decommission.
 
+        This test validates that an original dictionary with `initial_params`, that gets added
+        new values, and later another `new_value` out of control, and removing the `initial_params`
+        works as expected.
+        """
         journal_entry = models.JournalEntry.objects.create(
             journal=self.journal1,
             design_object=self.secret,
@@ -277,6 +276,11 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry.validated_save()
+
+        # After the initial data, a new key value is added to the dictionary
+        new_params = {"key3": "value3"}
+        self.secret.parameters = {**self.changed_params, **new_params}
+        self.secret.validated_save()
 
         self.job.run(data={"design_instances": [self.design_instance]}, commit=True)
 

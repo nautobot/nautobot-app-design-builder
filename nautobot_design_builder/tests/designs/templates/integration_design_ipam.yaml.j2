@@ -4,11 +4,11 @@ tags:
     - "!create_or_update:name": "VRF Prefix"
       "content_types":
         - "!get:app_label": "ipam"
-          "!get"model": "prefix"
+          "!get:model": "prefix"
     - "!create_or_update:name": "VRF Interface"
       "content_types":
         - "!get:app_label": "dcim"
-          "!get"model": "interface"
+          "!get:model": "interface"
 
 prefixes:
     - "!create_or_update:prefix": "{{ l3vpn_prefix }}"
