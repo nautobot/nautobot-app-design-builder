@@ -515,19 +515,25 @@ class JournalEntry(BaseModel):
 
     @staticmethod
     def update_current_value_from_dict(current_value, added_value, removed_value):
-        """Update current value if it's a dictionary."""
+        """Update current value if it's a dictionary.
+
+        The removed_value keys (the original one) are going to be recovered, the added_value ones
+        will be reverted, and the current_value ones that were not added by the design will be kept.
+        """
         keys_to_remove = []
         for key in current_value:
             if key in added_value:
                 if key in removed_value:
+                    # Reverting the value of keys that existed before and the design deployment modified
                     current_value[key] = removed_value[key]
                 else:
                     keys_to_remove.append(key)
 
+        # Removing keys that were added by the design.
         for key in keys_to_remove:
             del current_value[key]
 
-        # Recovering old values that the JournalEntry deleted.
+        # Recovering old keys that the JournalEntry deleted.
         for key in removed_value:
             if key not in added_value:
                 current_value[key] = removed_value[key]
@@ -587,7 +593,7 @@ class JournalEntry(BaseModel):
                     removed_value = differences["removed"][attribute]
                 else:
                     removed_value = None
-                if isinstance(added_value, dict) and isinstance(removed_value, dict):
+                if isinstance(added_value, dict) and (not removed_value or isinstance(removed_value, dict)):
                     # If the value is a dictionary (e.g., config context), we only update the
                     # keys changed, honouring the current value of the attribute
                     current_value = getattr(self.design_object, attribute)
@@ -596,7 +602,7 @@ class JournalEntry(BaseModel):
                         self.update_current_value_from_dict(
                             current_value=current_value,
                             added_value=added_value,
-                            removed_value=removed_value,
+                            removed_value=removed_value if removed_value else {},
                         )
                     elif isinstance(current_value, models.Model):
                         # The attribute is a Foreign Key that is represented as a dict
