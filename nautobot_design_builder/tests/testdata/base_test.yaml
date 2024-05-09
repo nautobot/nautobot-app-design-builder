@@ -1,5 +1,5 @@
 ---
-skip: true
+abstract: true
 designs:
   - manufacturers:
       - name: "manufacturer1"
