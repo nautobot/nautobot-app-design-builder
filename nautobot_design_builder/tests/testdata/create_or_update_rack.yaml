@@ -1,0 +1,19 @@
+---
+depends_on: "base_test.yaml"
+designs:
+  - devices:
+      - "!create_or_update:name": "test device"
+        "!create_or_update:device_type__manufacturer__name": "manufacturer1"
+        role__name: "device role"
+        location__name: "Site"
+        status__name: "Active"
+        rack:
+          "!create_or_update:name": "rack-1"
+          "!create_or_update:location__name": "Site"
+          status__name: "Active"
+checks:
+  - equal:
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "test device"}
+        attribute: "rack.name"
+      - value: "rack-1"
