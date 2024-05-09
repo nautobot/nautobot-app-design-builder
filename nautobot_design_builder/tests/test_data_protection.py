@@ -54,10 +54,13 @@ class DataProtectionBaseTest(BaseDesignInstanceTest):  # pylint: disable=too-man
         )
 
         self.client = Client()
-
-        self.user = User.objects.create_user(username="test_user", email="test@example.com", password="password123")
+        self.user_password = User.objects.make_random_password()
+        self.user = User.objects.create_user(
+            username="test_user", email="test@example.com", password=self.user_password
+        )
+        self.admin_password = User.objects.make_random_password()
         self.admin = User.objects.create_user(
-            username="test_user_admin", email="admin@example.com", password="password123", is_superuser=True
+            username="test_user_admin", email="admin@example.com", password=self.admin_password, is_superuser=True
         )
 
         actions = ["view", "add", "change", "delete"]
@@ -76,7 +79,7 @@ class DataProtectionBaseTestWithDefaults(DataProtectionBaseTest):
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_defaults)
     def test_update_as_user_without_protection(self):
         register_custom_validators(custom_validators)
-        self.client.login(username="test_user", password="password123")
+        self.client.login(username="test_user", password=self.user_password)
         response = self.client.patch(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             data={"description": "new description"},
@@ -87,7 +90,7 @@ class DataProtectionBaseTestWithDefaults(DataProtectionBaseTest):
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_defaults)
     def test_delete_as_user_without_protection(self):
         load_pre_delete_signals()
-        self.client.login(username="test_user", password="password123")
+        self.client.login(username="test_user", password=self.user_password)
         response = self.client.delete(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             content_type="application/json",
@@ -101,7 +104,7 @@ class DataProtectionBaseTestWithProtection(DataProtectionBaseTest):
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
     def test_update_as_user_with_protection(self):
         register_custom_validators(custom_validators)
-        self.client.login(username="test_user", password="password123")
+        self.client.login(username="test_user", password=self.user_password)
         response = self.client.patch(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             data={"description": "new description"},
@@ -117,7 +120,7 @@ class DataProtectionBaseTestWithProtection(DataProtectionBaseTest):
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
     def test_update_as_admin_with_protection_and_with_bypass(self):
         register_custom_validators(custom_validators)
-        self.client.login(username="test_user_admin", password="password123")
+        self.client.login(username="test_user_admin", password=self.admin_password)
         response = self.client.patch(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             data={"description": "new description"},
@@ -130,7 +133,7 @@ class DataProtectionBaseTestWithProtection(DataProtectionBaseTest):
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
     def test_delete_as_user_with_protection(self):
         load_pre_delete_signals()
-        self.client.login(username="test_user", password="password123")
+        self.client.login(username="test_user", password=self.user_password)
         response = self.client.delete(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             content_type="application/json",
@@ -141,7 +144,7 @@ class DataProtectionBaseTestWithProtection(DataProtectionBaseTest):
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
     def test_delete_as_admin_with_protection_and_with_bypass(self):
         load_pre_delete_signals()
-        self.client.login(username="test_user_admin", password="password123")
+        self.client.login(username="test_user_admin", password=self.admin_password)
         response = self.client.delete(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             content_type="application/json",
@@ -156,7 +159,7 @@ class DataProtectionBaseTestWithProtectionBypassDisabled(DataProtectionBaseTest)
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection_and_superuser_bypass_disabled)
     def test_update_as_admin_with_protection_and_without_bypass(self):
         register_custom_validators(custom_validators)
-        self.client.login(username="test_user_admin", password="password123")
+        self.client.login(username="test_user_admin", password=self.admin_password)
         response = self.client.patch(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             data={"description": "new description"},
@@ -173,7 +176,7 @@ class DataProtectionBaseTestWithProtectionBypassDisabled(DataProtectionBaseTest)
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection_and_superuser_bypass_disabled)
     def test_delete_as_admin_with_protection_and_without_bypass(self):
         load_pre_delete_signals()
-        self.client.login(username="test_user_admin", password="password123")
+        self.client.login(username="test_user_admin", password=self.admin_password)
         response = self.client.delete(
             reverse("dcim-api:manufacturer-detail", kwargs={"pk": self.manufacturer_from_design.pk}),
             content_type="application/json",
