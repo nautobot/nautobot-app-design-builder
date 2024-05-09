@@ -13,7 +13,7 @@ class Command(BaseCommand):
             "--branch",
             action="store",
             help="Specify which branch to use in the demo-design repository (default: main).",
-            default="main"
+            default="main",
         )
 
     def handle(self, *args, **options):

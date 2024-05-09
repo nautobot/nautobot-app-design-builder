@@ -137,6 +137,7 @@ def builder_test_case(data_dir):
                             getattr(BuilderChecks, _check_name)(self, args, index)
                         else:
                             raise ValueError(f"Unknown check {check_name} {check}")
+
         setattr(test_class, "_run_test_case", _run_test_case)
 
         for testcase, filename in _testcases(data_dir):
@@ -149,6 +150,7 @@ def builder_test_case(data_dir):
                     if testcase.get("skip", False):
                         self.skipTest("Skipping due to testcase skip=true")
                     self._run_test_case(testcase, data_dir)
+
                 return test_runner
 
             setattr(test_class, testcase_name, test_wrapper(testcase))
