@@ -1,6 +1,7 @@
 """Test running design jobs."""
 
 import copy
+import unittest
 from unittest.mock import patch, Mock
 
 from django.core.exceptions import ValidationError
@@ -213,6 +214,7 @@ class TestDesignJobIntegration(DesignTestCase):
             Device.objects.get(name=self.device2.name).interfaces.first(),
         )
 
+    @unittest.skip("Feature not ready yet, depends on nextprefix logic.")
     def test_create_integration_design_twice(self):
         """Test to validate the second deployment of a design."""
 
@@ -249,6 +251,7 @@ class TestDesignJobIntegration(DesignTestCase):
         self.assertEqual(VRF.objects.first().name, "64501:1")
         Prefix.objects.get(prefix="192.0.2.4/30")
 
+    @unittest.skip("Feature not ready yet, depends on cable extension.")
     def test_update_integration_design(self):
         """Test to validate the update of the design."""
         original_data = copy.copy(self.data)

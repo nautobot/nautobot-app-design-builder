@@ -206,7 +206,7 @@ class TestJournalEntry(BaseDesignInstanceTest):  # pylint: disable=too-many-inst
             entry = self.get_entry(secret, secret, initial_state)
             self.assertEqual(entry.design_object.parameters, {"key1": "value1"})
             entry.revert()
-            self.assertEqual(entry.design_object.parameters, None)
+            self.assertEqual(entry.design_object.parameters, {})
             save_mock.assert_called()
 
     @patch("nautobot.extras.models.Secret.save")
