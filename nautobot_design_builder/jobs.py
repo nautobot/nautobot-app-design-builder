@@ -32,7 +32,7 @@ class DesignInstanceDecommissioning(Job):
         )
 
         for design_instance in design_instances:
-            self.log_info(obj=design_instance, message="Working on resetting objects for this Design Instance...")
+            self.log_info(obj=design_instance, message="Working on resetting objects for this Design Deployment...")
             design_instance.decommission(local_logger=get_logger(__name__, self.job_result))
             self.log_success(f"{design_instance} has been successfully decommissioned from Nautobot.")
 

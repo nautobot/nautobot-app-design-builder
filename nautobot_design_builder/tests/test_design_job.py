@@ -1,12 +1,13 @@
 """Test running design jobs."""
 
 import copy
+import unittest
 from unittest.mock import patch, Mock
 
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 
-from nautobot.dcim.models import Manufacturer, DeviceType, Device
+from nautobot.dcim.models import Manufacturer, DeviceType, Device, Site, DeviceRole
 from nautobot.ipam.models import VRF, Prefix, IPAddress
 
 from nautobot.extras.models import JobResult, Job, Status
@@ -146,10 +147,6 @@ class TestDesignJobIntegration(DesignTestCase):
     def setUp(self):
         """Per-test setup."""
         super().setUp()
-        if nautobot_version < "2.0.0":
-            from nautobot.dcim.models import Site, DeviceRole  # pylint: disable=import-outside-toplevel
-        else:
-            self.skipTest("These tests are only supported in Nautobot 1.x")
 
         site = Site.objects.create(name="test site")
         manufacturer = Manufacturer.objects.create(name="test manufacturer")
@@ -194,8 +191,8 @@ class TestDesignJobIntegration(DesignTestCase):
     def test_create_integration_design(self):
         """Test to validate the first creation of the design."""
 
-        self.data["ce"] = self.device1
-        self.data["pe"] = self.device2
+        self.data["device_b"] = self.device1
+        self.data["device_a"] = self.device2
         self.data["customer_name"] = "customer 1"
 
         self.job_instance.run(data=self.data, commit=True)
@@ -217,37 +214,96 @@ class TestDesignJobIntegration(DesignTestCase):
             Device.objects.get(name=self.device2.name).interfaces.first(),
         )
 
+    @unittest.skip("Feature not ready yet, depends on nextprefix logic.")
+    def test_create_integration_design_twice(self):
+        """Test to validate the second deployment of a design."""
+
+        self.data["device_b"] = self.device1
+        self.data["device_a"] = self.device2
+        self.data["customer_name"] = "customer 1"
+
+        self.job_instance.run(data=self.data, commit=True)
+
+        self.assertEqual(VRF.objects.first().name, "64501:1")
+        self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
+        self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/30").prefix), "192.0.2.0/30")
+        self.assertEqual(Prefix.objects.get(prefix="192.0.2.0/30").vrf, VRF.objects.first())
+        self.assertEqual(
+            Device.objects.get(name=self.device1.name).interfaces.first().cable,
+            Device.objects.get(name=self.device2.name).interfaces.first().cable,
+        )
+        self.assertEqual(
+            IPAddress.objects.get(host="192.0.2.1").assigned_object,
+            Device.objects.get(name=self.device1.name).interfaces.first(),
+        )
+        self.assertEqual(
+            IPAddress.objects.get(host="192.0.2.2").assigned_object,
+            Device.objects.get(name=self.device2.name).interfaces.first(),
+        )
+
+        self.data["instance_name"] = "another deployment"
+        self.data["device_b"] = self.device1
+        self.data["device_a"] = self.device2
+        self.data["customer_name"] = "customer 1"
+
+        self.job_instance.run(data=self.data, commit=True)
+
+        self.assertEqual(VRF.objects.first().name, "64501:1")
+        Prefix.objects.get(prefix="192.0.2.4/30")
+
+    @unittest.skip("Feature not ready yet, depends on cable extension.")
     def test_update_integration_design(self):
         """Test to validate the update of the design."""
         original_data = copy.copy(self.data)
 
         # This part reproduces the creation of the design on the first iteration
-        self.data["ce"] = self.device1
-        self.data["pe"] = self.device2
+        self.data["device_b"] = self.device1
+        self.data["device_a"] = self.device2
         self.data["customer_name"] = "customer 1"
         self.job_instance.run(data=self.data, commit=True)
 
         # This is a second, and third run with new input to update the deployment
-        for _ in range(2):
+        for i in range(2):
             data = copy.copy(original_data)
-            data["ce"] = self.device3
-            data["pe"] = self.device2
+            if i == 0:
+                data["device_b"] = self.device3
+                data["device_a"] = self.device2
+            else:
+                data["device_b"] = self.device3
+                data["device_a"] = self.device1
+
             data["customer_name"] = "customer 2"
+
             self.job_instance.run(data=data, commit=True)
 
             self.assertEqual(VRF.objects.first().name, "64501:2")
             self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
             self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/30").prefix), "192.0.2.0/30")
             self.assertEqual(Prefix.objects.get(prefix="192.0.2.0/30").vrf, VRF.objects.first())
-            self.assertEqual(
-                Device.objects.get(name=self.device3.name).interfaces.first().cable,
-                Device.objects.get(name=self.device2.name).interfaces.first().cable,
-            )
-            self.assertEqual(
-                IPAddress.objects.get(host="192.0.2.1").assigned_object,
-                Device.objects.get(name=self.device3.name).interfaces.first(),
-            )
-            self.assertEqual(
-                IPAddress.objects.get(host="192.0.2.2").assigned_object,
-                Device.objects.get(name=self.device2.name).interfaces.first(),
-            )
+
+            if i == 0:
+                self.assertEqual(
+                    Device.objects.get(name=self.device3.name).interfaces.first().cable,
+                    Device.objects.get(name=self.device2.name).interfaces.first().cable,
+                )
+                self.assertEqual(
+                    IPAddress.objects.get(host="192.0.2.1").assigned_object,
+                    Device.objects.get(name=self.device3.name).interfaces.first(),
+                )
+                self.assertEqual(
+                    IPAddress.objects.get(host="192.0.2.2").assigned_object,
+                    Device.objects.get(name=self.device2.name).interfaces.first(),
+                )
+            else:
+                self.assertEqual(
+                    Device.objects.get(name=self.device1.name).interfaces.first().cable,
+                    Device.objects.get(name=self.device3.name).interfaces.first().cable,
+                )
+                self.assertEqual(
+                    IPAddress.objects.get(host="192.0.2.1").assigned_object,
+                    Device.objects.get(name=self.device3.name).interfaces.first(),
+                )
+                self.assertEqual(
+                    IPAddress.objects.get(host="192.0.2.2").assigned_object,
+                    Device.objects.get(name=self.device1.name).interfaces.first(),
+                )

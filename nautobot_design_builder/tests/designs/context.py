@@ -27,12 +27,12 @@ class IntegrationTestContext(Context):
     def __hash__(self):
         return hash((self.pe.name, self.ce.name, self.customer_name))
 
-    def get_customer_id(self, customer_name, l3vpn_asn):
+    def get_customer_id(self, customer_name, p2p_asn):
         try:
             vrf = VRF.objects.get(description=f"VRF for customer {customer_name}")
-            return vrf.name.replace(f"{l3vpn_asn}:", "")
+            return vrf.name.replace(f"{p2p_asn}:", "")
         except ObjectDoesNotExist:
-            last_vrf = VRF.objects.filter(name__contains=l3vpn_asn).last()
+            last_vrf = VRF.objects.filter(name__contains=p2p_asn).last()
             if not last_vrf:
                 return "1"
             new_id = int(last_vrf.name.split(":")[-1]) + 1
