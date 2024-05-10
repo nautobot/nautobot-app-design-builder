@@ -116,7 +116,14 @@ def calculate_changes(current_state, initial_state=None, created=False, pre_chan
     initial state.
 
     Args:
-        pre_change (dict, optional): Initial state for comparison. If not supplied then the initial state from this instance is used.
+        current_state (dict): The current state of the object being examined.
+
+        initial_state (dict, optional): Initial state for comparison. If not supplied
+            then the initial state from this instance is used.
+
+        created (bool): Whether or not the object was created.
+
+        pre_change (bool): Whether or not this is a pre-change? TODO: What is this field?
 
     Returns:
         Return a dictionary with the changed object's serialized data compared
@@ -189,6 +196,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
 
         Args:
             model_instance (ModelInstance): The model instance to which this metadata refers.
+
+            **kwargs (Any): Additional metadata specified in the object.
         """
         self.model_instance = model_instance
         self.environment = model_instance.environment
@@ -469,7 +478,7 @@ class ModelInstance:
         """Create a proxy instance for the model.
 
         This constructor will create a new `ModelInstance` object that wraps a Django
-        model instance. All assignments to this instance will be proxied to the underlying
+        model instance. All assignments to this instance will proxy to the underlying
         object using the descriptors in the `fields` module.
 
         Args:
@@ -757,8 +766,11 @@ class Environment(LoggingMixin):
             job_result (JobResult, optional): If this environment is being used by
                 a `DesignJob` then it can log to the `JobResult` for the job.
                 Defaults to None.
+
             extensions (List[ext.Extension], optional): Any custom extensions to use
                 when implementing designs. Defaults to None.
+
+            journal: (models.Journal, optional): A journal for the design deployments current execution.
 
         Raises:
             errors.DesignImplementationError: If a provided extension is not a subclass

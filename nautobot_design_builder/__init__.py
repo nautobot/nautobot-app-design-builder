@@ -30,6 +30,7 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     caching_config = {}
 
     def ready(self):
+        """Callback after design builder is loaded."""
         super().ready()
         from . import signals  # noqa:F401 pylint:disable=import-outside-toplevel,unused-import,cyclic-import
 

@@ -105,13 +105,18 @@ class AttributeExtension(Extension, ABC):
 
         Note: The method signature must match the above for the extension to work. The
         extension name is parsed by splitting on `:` symbols and the result is passed as the
-        varargs. For instance, if the attribute tag is `mytagg` and it is called with `!mytagg:arg1`: {} then
+        varargs. For instance, if the attribute tag is `my_tag` and it is called with `!my_tag:arg1`: {} then
         `*args` will be ['arg1'] and `value` will be the empty dictionary.
 
         Args:
-            *args (List[Any]): Any additional arguments following the tag name. These are `:` delimited.
-            value (Any): The value of the data structure at this key's point in the design YAML. This could be a scalar, a dict or a list.
-            model_instance (ModelInstance): Object is the ModelInstance that would ultimately contain the values.
+            *args (List[Any]): Any additional arguments following the tag name. These are `:`
+                delimited.
+
+            value (Any): The value of the data structure at this key's point in the design YAML.
+                This could be a scalar, a dict or a list.
+
+            model_instance (ModelInstance): Object is the ModelInstance that would ultimately
+                contain the values.
         """
 
 
@@ -255,10 +260,13 @@ class GitContextExtension(AttributeExtension):
         """Provide the attribute tag functionality for git_context.
 
         Args:
+            *args (Any): Unused
+
             value (Any): Value should be a dictionary with the required fields `destination` and
                 `data`. The `destination` field of the dictionary indicates the relative path to
                 store information in the git repo. The `data` field contains the information that
                 should be written to the git repository.
+
             model_instance (CreatorObject): The object containing the data.
 
         Raises:

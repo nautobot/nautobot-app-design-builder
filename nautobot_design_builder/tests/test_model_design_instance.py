@@ -45,20 +45,20 @@ class BaseDesignInstanceTest(BaseDesignTest):
     def setUp(self):
         super().setUp()
         self.design_name = "My Design"
-        self.design_instance = self.create_design_instance(self.design_name, self.design1)
+        self.design_instance = self.create_design_instance(self.design_name, self.designs[0])
 
 
 class TestDesignInstance(BaseDesignInstanceTest):
     """Test DesignInstance."""
 
     def test_design_instance_queryset(self):
-        design = models.DesignInstance.objects.get_by_natural_key(self.job1.name, self.design_name)
+        design = models.DesignInstance.objects.get_by_natural_key(self.jobs[0].name, self.design_name)
         self.assertIsNotNone(design)
-        self.assertEqual(f"{self.job1.job_class.Meta.name} - {self.design_name}", str(design))
+        self.assertEqual(f"{self.jobs[0].job_class.Meta.name} - {self.design_name}", str(design))
 
     def test_design_cannot_be_changed(self):
         with self.assertRaises(ValidationError):
-            self.design_instance.design = self.design2
+            self.design_instance.design = self.designs[1]
             self.design_instance.validated_save()
 
         with self.assertRaises(ValidationError):
@@ -67,7 +67,7 @@ class TestDesignInstance(BaseDesignInstanceTest):
 
     def test_uniqueness(self):
         with self.assertRaises(IntegrityError):
-            models.DesignInstance.objects.create(design=self.design1, name=self.design_name)
+            models.DesignInstance.objects.create(design=self.designs[0], name=self.design_name)
 
     def test_decommission_single_journal(self):
         """TODO"""

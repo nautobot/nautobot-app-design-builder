@@ -6,12 +6,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('nautobot_design_builder', '0002_nautobot_v2'),
+        ("nautobot_design_builder", "0002_nautobot_v2"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='journalentry',
-            unique_together={('journal', 'index')},
+            name="journalentry",
+            unique_together={("journal", "index")},
         ),
     ]

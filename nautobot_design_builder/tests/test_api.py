@@ -61,4 +61,3 @@ class TestJournalEntry(
 
     def test_list_objects_brief(self):
         """Brief is not supported for journal entries."""
-        pass

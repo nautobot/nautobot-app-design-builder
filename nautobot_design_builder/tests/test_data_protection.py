@@ -44,7 +44,7 @@ class DataProtectionBaseTest(BaseDesignInstanceTest):  # pylint: disable=too-man
             "instance": "my instance",
         }
 
-        self.journal = self.create_journal(self.job1, self.design_instance, self.job_kwargs)
+        self.journal = self.create_journal(self.jobs[0], self.design_instance, self.job_kwargs)
         self.initial_entry = JournalEntry.objects.create(
             design_object=self.manufacturer_from_design,
             full_control=True,

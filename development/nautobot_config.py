@@ -143,6 +143,7 @@ if is_truthy(os.getenv("DESIGN_BUILDER_ENABLE_BGP", "False")):
 
 
 def pre_decommission_hook_example(design_instance):
+    """Example decomission hook."""
     return True, "Everything good!"
 
 

@@ -33,7 +33,7 @@ class TestJournalEntry(BaseDesignInstanceTest):  # pylint: disable=too-many-inst
             "manufacturer": f"{self.manufacturer.pk}",
             "instance": "my instance",
         }
-        self.journal = self.create_journal(self.job1, self.design_instance, self.job_kwargs)
+        self.journal = self.create_journal(self.jobs[0], self.design_instance, self.job_kwargs)
 
         self.initial_entry = JournalEntry(
             design_object=self.secret,

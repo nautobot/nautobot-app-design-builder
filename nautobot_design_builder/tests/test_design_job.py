@@ -12,7 +12,6 @@ from nautobot.extras.models import JobResult, Job, Status
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
-from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder import models
 
 
@@ -104,7 +103,7 @@ class TestDesignJobLogging(DesignTestCase):
     def test_simple_design_implementation_error(self, environment: Mock, *_):
         environment.return_value.implement_design.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(test_designs.SimpleDesign)
-        self.assertRaises(DesignImplementationError, job.run,  dryrun=False, **self.data)
+        self.assertRaises(DesignImplementationError, job.run, dryrun=False, **self.data)
         job.job_result.log.assert_called()
         self.assertEqual("Broken", self.logged_messages[-1]["message"])
 
@@ -130,7 +129,7 @@ class TestDesignJobLogging(DesignTestCase):
         )
         with self.assertRaises(DesignValidationError) as raised:
             job.run(dryrun=False, **self.data)
-        
+
         self.assertEqual(str(want_error), str(raised.exception))
 
 
@@ -140,15 +139,12 @@ class TestDesignJobIntegration(DesignTestCase):
     def setUp(self):
         """Per-test setup."""
         super().setUp()
-        if nautobot_version < "2.0.0":
-            from nautobot.dcim.models import Site, DeviceRole  # pylint: disable=import-outside-toplevel
-        else:
-            self.skipTest("These tests are only supported in Nautobot 1.x")
+        self.skipTest("These tests are only supported in Nautobot 1.x")
 
-        site = Site.objects.create(name="test site")
+        site = Site.objects.create(name="test site")  # noqa:F821  # pylint:disable=undefined-variable
         manufacturer = Manufacturer.objects.create(name="test manufacturer")
         device_type = DeviceType.objects.create(model="test-device-type", manufacturer=manufacturer)
-        device_role = DeviceRole.objects.create(name="test role")
+        device_role = DeviceRole.objects.create(name="test role")  # noqa:F821  # pylint:disable=undefined-variable
         self.device1 = Device.objects.create(
             name="test device 1",
             device_type=device_type,

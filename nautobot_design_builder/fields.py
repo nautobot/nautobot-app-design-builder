@@ -213,7 +213,7 @@ class ManyToOneRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disab
 class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
     """Many to many relationship field."""
 
-    def __init__(self, field: django_models.Field):  # noqa:D102
+    def __init__(self, field: django_models.Field):  # noqa:D102,D107
         super().__init__(field)
         self.auto_through = True
         self.through_fields = field.remote_field.through_fields
@@ -254,7 +254,7 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
 class ManyToManyRelField(ManyToManyField):  # pylint:disable=too-few-public-methods
     """Reverse many to many relationship field."""
 
-    def __init__(self, field: django_models.Field):  # noqa:D102
+    def __init__(self, field: django_models.Field):  # noqa:D102,D107
         super().__init__(field.remote_field)
 
 
@@ -290,7 +290,7 @@ class GenericForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:
 class TagField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
     """Taggit field."""
 
-    def __init__(self, field: django_models.Field):  # noqa:D102
+    def __init__(self, field: django_models.Field):  # noqa:D102,D107
         super().__init__(field)
         self.related_model = field.remote_field.model
 
@@ -346,6 +346,8 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
         """Add an association between the created object and the given value.
 
         Args:
+            obj: (ModelInstance): The object receiving this attribute setter.
+
             values (Model): The related objects to add.
         """
 

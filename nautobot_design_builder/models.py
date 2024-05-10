@@ -65,13 +65,24 @@ def enforce_managed_fields(
         raise ValidationError(changed)
 
 
-class DesignManager(models.Manager):
+class DesignManager(models.Manager):  # pylint:disable=too-few-public-methods
+    """Database Manager for designs.
+
+    This manager annotates all querysets with a `name` field that is
+    determined from the `job.name`.
+    """
+
     def get_queryset(self) -> models.QuerySet:
-        return (
-            super()
-            .get_queryset()
-            .annotate(name=models.F("job__name"))
-        )
+        """Get the default queryset.
+
+        This queryset includes an annotation for the `name` which is determined
+        by joining the job table and retrieving the `job.name` field.
+
+        Returns:
+            models.QuerySet: A default queryset.
+        """
+        return super().get_queryset().annotate(name=models.F("job__name"))
+
 
 class DesignQuerySet(RestrictedQuerySet):
     """Queryset for `Design` objects."""

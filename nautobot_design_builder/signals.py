@@ -55,7 +55,7 @@ def create_design_instance_statuses(**kwargs):
 
 
 @receiver(post_save, sender=Job)
-def create_design_model(sender, instance: Job, **kwargs):  # pylint:disable=unused-argument
+def create_design_model(sender, instance: Job, **kwargs):  # pylint:disable=unused-argument  # noqa:D417
     """Create a `Design` instance for each `DesignJob`.
 
     This receiver will fire every time a `Job` instance is saved. If the
@@ -64,6 +64,7 @@ def create_design_model(sender, instance: Job, **kwargs):  # pylint:disable=unus
 
     Args:
         sender: The Job class
+
         instance (Job): Job instance that has been created or updated.
     """
     if instance.job_class and issubclass(instance.job_class, DesignJob):

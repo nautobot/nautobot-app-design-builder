@@ -15,8 +15,6 @@ from packaging.version import Version
 from packaging.specifiers import Specifier
 import yaml
 
-from django.contrib.contenttypes.models import ContentType
-from django.db.models import Model
 from django.conf import settings
 
 import nautobot
@@ -46,6 +44,8 @@ def load_design_yaml(cls, resource) -> "List | Dict":
     """Loads data from a YAML design file.
 
     Args:
+        cls (type): The class to use to determine the path to find the resource.
+
         resource (str): name of the YAML design file without the path
 
     Returns:
@@ -58,6 +58,8 @@ def load_design_file(cls, resource) -> str:
     """Reads data from a file and returns it as string.
 
     Args:
+        cls (type): The class to use to determine the path to find the resource.
+
         resource (str): name of the YAML design file without the path
 
     Returns:
@@ -143,11 +145,21 @@ def designs_in_directory(
     reload_modules=False,
 ) -> Iterator[Tuple[str, Type["DesignJob"]]]:
     """
-    Walk the available Python modules in the given directory, and for each module, walk its DesignJob class members.
+    Find all the designs in a directory.
+
+    Walk the available Python modules in the given directory, and for each module,
+    walk its DesignJob class members.
 
     Args:
         path (str): Directory to import modules from, outside of sys.path
+
+        package_name (str): The package to which discovered modules will belong.
+
+        local_logger (logging.Logger): The logging instance to use. This is especially useful when a
+            logger includes a JobResult.
+
         module_name (str): Specific module name to select; if unspecified, all modules will be inspected
+
         reload_modules (bool): Whether to force reloading of modules even if previously loaded into Python.
 
     Yields:
@@ -293,6 +305,7 @@ def load_jobs(module_name=None):
 
     frame.f_globals["jobs"] = []
     from nautobot.apps.jobs import register_jobs
+
     for class_name, cls in designs.items():
         new_cls = type(class_name, (cls,), {})
         new_cls.__module__ = frame.f_globals["__name__"]

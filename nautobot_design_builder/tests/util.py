@@ -10,9 +10,7 @@ from nautobot_design_builder.models import Design, DesignInstance, Journal, Jour
 def populate_sample_data():
     """Populate the database with some sample data."""
     job = Job.objects.get(name="Initial Data")
-    job_result, _ = JobResult.objects.get_or_create(
-        name="Test", job_model=job
-    )
+    job_result, _ = JobResult.objects.get_or_create(name="Test", job_model=job)
 
     design, _ = Design.objects.get_or_create(job=job)
     design_instance, _ = DesignInstance.objects.get_or_create(

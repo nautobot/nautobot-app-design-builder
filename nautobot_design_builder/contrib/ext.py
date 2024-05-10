@@ -30,8 +30,10 @@ class LookupMixin:
 
         Args:
             app_label: Content type app-label that the model exists in.
-            model_name_: Name of the model for the query.
-            query (_type_): Dictionary to be used for the query.
+
+            model_name: Name of the model for the query.
+
+            query: Dictionary to be used for the query.
 
         Raises:
             DesignImplementationError: If no matching object is found or no
@@ -56,6 +58,7 @@ class LookupMixin:
 
         Args:
             query (dict): The input query (or subquery during recursion) to flatten.
+
             prefix (str, optional): The prefix to add to each flattened key. Defaults to "".
 
         Returns:
@@ -87,15 +90,17 @@ class LookupMixin:
             Dict[str, Any]: The flattened query dictionary.
 
         Example:
-            >>> query = {
-            ...     "status": {
-            ...         "name": "Active",
-            ...     }
-            ... }
-            >>>
-            >>> LookupMixin.flatten_query(query)
-            {'status__name': 'Active'}
-            >>>
+        ```python
+        >>> query = {
+        ...     "status": {
+        ...         "name": "Active",
+        ...     }
+        ... }
+        >>>
+        >>> LookupMixin.flatten_query(query)
+        {'status__name': 'Active'}
+        >>>
+        ```
         """
         return dict(LookupMixin._flatten(query))
 
@@ -104,10 +109,12 @@ class LookupMixin:
 
         Args:
             queryset: Queryset (e.g. Status.objects.all) from which to query.
+
             query: Query params to filter by.
+
             parent: Optional field used for better error reporting. Set this
-            value to the model instance that is semantically the parent so
-            that DesignModelErrors raised are more easily debugged.
+                value to the model instance that is semantically the parent so
+                that DesignModelErrors raised are more easily debugged.
 
         Raises:
             DoesNotExistError: If either no object is found.
@@ -134,7 +141,7 @@ class LookupMixin:
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
         except MultipleObjectsReturned:
             # pylint: disable=raise-missing-from
-            raise MultipleObjectsReturnedError(queryset.model, query=query, parent=parent)
+            raise MultipleObjectsReturnedError(queryset.model, query_filter=query, parent=parent)
 
 
 class LookupExtension(AttributeExtension, LookupMixin):
@@ -150,11 +157,14 @@ class LookupExtension(AttributeExtension, LookupMixin):
 
         Args:
             *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: A filter describing the object to get. Keys should map to lookup
-            parameters equivalent to Django's `filter()` syntax for the given model.
-            The special `type` parameter will override the relationship's model class
-            and instead lookup the model class using the `ContentType`. The value
-            of the `type` field must match `ContentType` `app_label` and `model` fields.
+                parameters equivalent to Django's `filter()` syntax for the given model.
+                The special `type` parameter will override the relationship's model class
+                and instead lookup the model class using the `ContentType`. The value
+                of the `type` field must match `ContentType` `app_label` and `model` fields.
+
+            model_instance: The model instance that is the parent of this attribute lookup.
 
         Raises:
             DesignImplementationError: if no matching object was found.
@@ -244,12 +254,14 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             *args: Any additional arguments following the tag name. These are `:` delimited.
 
             value: Dictionary with details about the cable. At a minimum
-            the dictionary must have a `to` key which includes a query
-            dictionary that will return exactly one object to be added to the
-            `termination_b` side of the cable. All other attributes map
-            directly to the cable attributes. Cables require a status,
-            so the `status` field is mandatory and follows typical design
-            builder query lookup.
+                the dictionary must have a `to` key which includes a query
+                dictionary that will return exactly one object to be added to the
+                `termination_b` side of the cable. All other attributes map
+                directly to the cable attributes. Cables require a status,
+                so the `status` field is mandatory and follows typical design
+                builder query lookup.
+
+            model_instance: The object receiving the `a` side of this connection.
 
         Raises:
             DesignImplementationError: If no `status` was provided, or no matching
@@ -292,7 +304,9 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             except (DoesNotExistError, FieldError):
                 if not query_managers:
                     # pylint:disable=raise-missing-from
-                    raise DoesNotExistError(model_instance.model_class, query_filter=termination_query)
+                    raise DoesNotExistError(
+                        model=model_instance.model_class, parent=model_instance, query_filter=termination_query
+                    )
 
         cable_attributes.update(
             {
@@ -333,6 +347,8 @@ class NextPrefixExtension(AttributeExtension):
                 split and used as query arguments for the underlying Prefix object. The
                 requested prefix length must be specified using the `length` dictionary
                 key. All other keys are passed on to the query filter directly.
+
+            model_instance: The prefix object that will ultimately be saved to the database.
 
         Raises:
             DesignImplementationError: if value is not a dictionary, the prefix is improperly formatted
@@ -402,6 +418,7 @@ class NextPrefixExtension(AttributeExtension):
 
         Args:
             prefixes (str): Comma separated list of prefixes to search for available subnets.
+
             length (int): The requested prefix length.
 
         Returns:
@@ -430,10 +447,15 @@ class ChildPrefixExtension(AttributeExtension):
 
         Args:
             *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: a dictionary containing the `parent` prefix (string or
-            `Prefix` instance) and the `offset` in the form of a CIDR
-            string. The length of the child prefix will match the length
-            provided in the offset string.
+                `Prefix` instance) and the `offset` in the form of a CIDR
+                string. The length of the child prefix will match the length
+                provided in the offset string.
+
+            model_instance: The object that this prefix string should be assigned to.
+                It could be an IP Address or Prefix or any field that takes a
+                dotted decimal address string.
 
         Raises:
             DesignImplementationError: if value is not a dictionary, or the
@@ -523,9 +545,11 @@ class BGPPeeringExtension(AttributeExtension):
             *args: Any additional arguments following the tag name. These are `:` delimited.
 
             value (dict): dictionary containing the keys `endpoint_a`
-            and `endpoint_z`. Both of these keys must be dictionaries
-            specifying a way to either lookup or create the appropriate
-            peer endpoints.
+                and `endpoint_z`. Both of these keys must be dictionaries
+                specifying a way to either lookup or create the appropriate
+                peer endpoints.
+
+            model_instance (ModelInstance): The BGP Peering that is to be updated.
 
         Raises:
             DesignImplementationError: if the supplied value is not a dictionary

@@ -60,6 +60,8 @@ gitpython = "^3.1.41"
 snakeviz = "^2.2.0"
 towncrier = "~23.6.0"
 ruff = "*"
+to-json-schema = "^1.0.1"
+json-schema = "^0.3"
 
 [tool.poetry.extras]
 nautobot = ["nautobot"]
@@ -104,11 +106,13 @@ disable = """,
     duplicate-code,
     too-many-lines,
     too-many-ancestors,
+    too-many-statements,
     line-too-long,
     nb-replaced-site,
     nb-replaced-device-role,
     nb-code-location-changed,
     nb-code-location-changed-object,
+    nb-use-fields-all,
 """
 
 [tool.pylint.miscellaneous]
@@ -144,6 +148,8 @@ select = [
     "D",  # pydocstyle
 ]
 ignore = [
+    "D106",  # Missing docstring in public nested class - We have Meta and _meta and other similar
+             # classes all over the place, but docstrings here don't usually add much
     # warning: `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible.
     "D203",  # 1 blank line required before class docstring
 

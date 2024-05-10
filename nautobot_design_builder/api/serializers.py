@@ -12,6 +12,7 @@ from nautobot.core.api.utils import get_serializer_for_model
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
+
 class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the design model."""
 
@@ -24,6 +25,7 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
 
 class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the design instance model."""
+
     created_by = SerializerMethodField()
     last_updated_by = SerializerMethodField()
 

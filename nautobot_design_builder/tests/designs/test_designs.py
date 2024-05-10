@@ -160,7 +160,8 @@ class IntegrationDesign(DesignJob):
             ext.ChildPrefixExtension,
         ]
 
-name = "Test Designs"
+
+name = "Test Designs"  # pylint:disable=invalid-name
 
 register_jobs(
     SimpleDesign,
