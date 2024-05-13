@@ -305,9 +305,17 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         )
 
         def connect():
-            existing_cable = dcim.Cable.objects.filter(termination_a_id=model_instance.instance.id).first()
+            existing_cable = dcim.Cable.objects.filter(
+                Q(termination_a_id=model_instance.instance.id) | Q(termination_b_id=remote_instance.instance.id)
+            ).first()
             if existing_cable:
-                if existing_cable.termination_b_id == remote_instance.instance.id:
+                if (
+                    existing_cable.termination_a_id == model_instance.instance.id
+                    and existing_cable.termination_b_id == remote_instance.instance.id
+                ) or (
+                    existing_cable.termination_b_id == model_instance.instance.id
+                    and existing_cable.termination_a_id == remote_instance.instance.id
+                ):
                     return
                 self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
             Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name

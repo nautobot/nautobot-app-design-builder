@@ -173,12 +173,14 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 version=self.design_model().version,
             )
         instance.validated_save()
-        previous_journal = instance.journals.order_by("-last_updated").first()
-        journal = models.Journal(
+        journal, created = models.Journal.objects.get_or_create(
             design_instance=instance,
             job_result=self.job_result,
         )
-        journal.validated_save()
+        if created:
+            journal.validated_save()
+
+        previous_journal = instance.journals.order_by("-last_updated").exclude(job_result=self.job_result).first()
         return (journal, previous_journal)
 
     @staticmethod

@@ -6,9 +6,13 @@ from os import path
 from typing import Type
 from unittest import mock
 from unittest.mock import PropertyMock, patch
+import uuid
 
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
+from nautobot.extras.utils import refresh_job_model_from_job_class
+from nautobot.extras.models import Job, JobResult
 from nautobot_design_builder.design_job import DesignJob
 
 
@@ -32,9 +36,14 @@ class DesignTestCase(TestCase):
 
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
+        job_model, _ = refresh_job_model_from_job_class(Job, "plugins", design_class)
         job = design_class()
-
-        job.job_result = mock.Mock()
+        job.job_result = JobResult.objects.create(
+            name="Fake Job Result",
+            obj_type=ContentType.objects.get_for_model(job_model),
+            job_model=job_model,
+            job_id=uuid.uuid4(),
+        )
         job.save_design_file = lambda filename, content: None
         job.request = mock.Mock()
         self.logged_messages = []
@@ -48,7 +57,7 @@ class DesignTestCase(TestCase):
                     "grouping": grouping,
                 }
             )
-
+        job.job_result.log = mock.Mock()
         job.job_result.log.side_effect = record_log
         return job
 
