@@ -13,7 +13,6 @@ from nautobot.extras.models import Secret
 from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 
-from nautobot_design_builder.util import nautobot_version
 from nautobot_design_builder.jobs import DesignInstanceDecommissioning
 from nautobot_design_builder import models, choices
 
@@ -70,9 +69,6 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             design=self.design1,
             name="My Design 1",
             status=Status.objects.get(content_types=self.content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
-            live_state=Status.objects.get(
-                content_types=self.content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
-            ),
             version=self.design1.version,
         )
         self.design_instance.validated_save()
@@ -81,9 +77,6 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             design=self.design1,
             name="My Design 2",
             status=Status.objects.get(content_types=self.content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
-            live_state=Status.objects.get(
-                content_types=self.content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
-            ),
             version=self.design1.version,
         )
         self.design_instance_2.validated_save()
@@ -103,22 +96,28 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             "instance": "my instance",
         }
 
-        self.job_result = JobResult(
+        self.job_result1 = JobResult(
             job_model=self.job1,
             name=self.job1.class_path,
             job_id=uuid.uuid4(),
             obj_type=ContentType.objects.get_for_model(JobModel),
         )
-        if nautobot_version < "2.0":
-            self.job_result.job_kwargs = {"data": kwargs}
-        else:
-            self.job_result.task_kwargs = kwargs
-        self.job_result.validated_save()
+        self.job_result1.job_kwargs = {"data": kwargs}
+        self.job_result1.validated_save()
 
-        self.journal1 = models.Journal(design_instance=self.design_instance, job_result=self.job_result)
+        self.journal1 = models.Journal(design_instance=self.design_instance, job_result=self.job_result1)
         self.journal1.validated_save()
 
-        self.journal2 = models.Journal(design_instance=self.design_instance_2, job_result=self.job_result)
+        self.job_result2 = JobResult(
+            job_model=self.job1,
+            name=self.job1.class_path,
+            job_id=uuid.uuid4(),
+            obj_type=ContentType.objects.get_for_model(JobModel),
+        )
+        self.job_result2.job_kwargs = {"data": kwargs}
+        self.job_result2.validated_save()
+
+        self.journal2 = models.Journal(design_instance=self.design_instance_2, job_result=self.job_result2)
         self.journal2.validated_save()
 
     def test_basic_decommission_run_with_full_control(self):

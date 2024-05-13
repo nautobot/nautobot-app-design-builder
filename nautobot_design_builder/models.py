@@ -188,7 +188,6 @@ class DesignInstance(PrimaryModel):
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
-    live_state = StatusField(blank=False, null=False, on_delete=models.PROTECT)
     version = models.CharField(max_length=20, blank=True, default="")
 
     objects = DesignInstanceQuerySet.as_manager()
@@ -246,11 +245,8 @@ class DesignInstance(PrimaryModel):
 
     def delete(self, *args, **kwargs):
         """Protect logic to remove Design Instance."""
-        if not (
-            self.status.name == choices.DesignInstanceStatusChoices.DECOMMISSIONED
-            and self.live_state.name != choices.DesignInstanceLiveStateChoices.DEPLOYED
-        ):
-            raise ValidationError("A Design Instance can only be delete if it's Decommissioned and not Deployed.")
+        if not self.status.name == choices.DesignInstanceStatusChoices.DECOMMISSIONED:
+            raise ValidationError("A Design Instance can only be delete if it's Decommissioned.")
         return super().delete(*args, **kwargs)
 
     def get_design_objects(self, model):
@@ -303,7 +299,7 @@ class Journal(PrimaryModel):
         editable=False,
         related_name="journals",
     )
-    job_result = models.ForeignKey(to=JobResult, on_delete=models.PROTECT, editable=False)
+    job_result = models.OneToOneField(to=JobResult, on_delete=models.PROTECT, editable=False)
     active = models.BooleanField(editable=False, default=True)
 
     class Meta:
@@ -508,6 +504,9 @@ class JournalEntry(BaseModel):
     changes = models.JSONField(encoder=NautobotKombuJSONEncoder, editable=False, null=True, blank=True)
     full_control = models.BooleanField(editable=False)
     active = models.BooleanField(editable=False, default=True)
+
+    class Meta:
+        unique_together = [("journal", "index")]
 
     def get_absolute_url(self):
         """Return detail view for design instances."""

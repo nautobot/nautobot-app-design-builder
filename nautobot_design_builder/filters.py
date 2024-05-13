@@ -29,7 +29,6 @@ class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
     """Filter set for the design instance model."""
 
     q = SearchFilter(filter_predicates={})
-    live_state = StatusFilter()
 
     design = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Design.objects.all(),
@@ -47,7 +46,6 @@ class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
             "first_implemented",
             "last_implemented",
             "status",
-            "live_state",
             "version",
         ]
 
