@@ -130,47 +130,12 @@ def _testcases(data_dir):
                 yield yaml.safe_load(file), filename
 
 
-def builder_test_case(data_dir):
-    """Decorator to load tests into a TestCase from a data directory."""
-
-    def class_wrapper(test_class):
-        def _run_checks(self, checks):
-            for index, check in enumerate(checks):
-                for check_name, args in check.items():
-                    _check_name = f"check_{check_name}"
-                    if hasattr(BuilderChecks, _check_name):
-                        getattr(BuilderChecks, _check_name)(self, args, index)
-                    else:
-                        raise ValueError(f"Unknown check {check_name} {check}")
-
-        setattr(test_class, "_run_checks", _run_checks)
-
-        def _run_test_case(self, testcase, data_dir):
-            with patch("nautobot_design_builder.design.Environment.roll_back") as roll_back:
-                self._run_checks(testcase.get("pre_checks", []))
-
-                depends_on = testcase.pop("depends_on", None)
-                if depends_on:
-                    depends_on_path = os.path.join(data_dir, depends_on)
-                    depends_on_dir = os.path.dirname(depends_on_path)
-                    with open(depends_on_path, encoding="utf-8") as file:
-                        self._run_test_case(yaml.safe_load(file), depends_on_dir)
-
-                extensions = []
-                for extension in testcase.get("extensions", []):
-                    extensions.append(_load_class(extension))
-
-                with self.captureOnCommitCallbacks(execute=True):
-                    for design in testcase["designs"]:
-                        environment = Environment(extensions=extensions)
-                        commit = design.pop("commit", True)
-                        environment.implement_design(design=design, commit=commit)
-                        if not commit:
-                            roll_back.assert_called()
-
-                self._run_checks(testcase.get("checks", []))
-
-        setattr(test_class, "_run_test_case", _run_test_case)
+class _BuilderTestCaseMeta(type):
+    def __new__(mcs, name, bases, dct):
+        cls = super().__new__(mcs, name, bases, dct)
+        data_dir = getattr(cls, "data_dir", None)
+        if data_dir is None:
+            return cls
 
         for testcase, filename in _testcases(data_dir):
             if testcase.get("abstract", False):
@@ -180,19 +145,54 @@ def builder_test_case(data_dir):
 
             # Create a new closure for testcase
             def test_wrapper(testcase):
-                def test_runner(self):
+                def test_runner(self: "BuilderTestCase"):
                     if testcase.get("skip", False):
                         self.skipTest("Skipping due to testcase skip=true")
-                    self._run_test_case(testcase, data_dir)
+                    self._run_test_case(testcase, cls.data_dir)  # pylint:disable=protected-access
 
                 return test_runner
 
-            setattr(test_class, testcase_name, test_wrapper(testcase))
-        return test_class
-
-    return class_wrapper
+            setattr(cls, testcase_name, test_wrapper(testcase))
+        return cls
 
 
-@builder_test_case(os.path.join(os.path.dirname(__file__), "testdata"))
-class TestGeneralDesigns(TestCase):
+class BuilderTestCase(TestCase, metaclass=_BuilderTestCaseMeta):  # pylint:disable=missing-class-docstring
+    def _run_checks(self, checks):
+        for index, check in enumerate(checks):
+            for check_name, args in check.items():
+                _check_name = f"check_{check_name}"
+                if hasattr(BuilderChecks, _check_name):
+                    getattr(BuilderChecks, _check_name)(self, args, index)
+                else:
+                    raise ValueError(f"Unknown check {check_name} {check}")
+
+    def _run_test_case(self, testcase, data_dir):
+        with patch("nautobot_design_builder.design.Environment.roll_back") as roll_back:
+            self._run_checks(testcase.get("pre_checks", []))
+
+            depends_on = testcase.pop("depends_on", None)
+            if depends_on:
+                depends_on_path = os.path.join(data_dir, depends_on)
+                depends_on_dir = os.path.dirname(depends_on_path)
+                with open(depends_on_path, encoding="utf-8") as file:
+                    self._run_test_case(yaml.safe_load(file), depends_on_dir)
+
+            extensions = []
+            for extension in testcase.get("extensions", []):
+                extensions.append(_load_class(extension))
+
+            with self.captureOnCommitCallbacks(execute=True):
+                for design in testcase["designs"]:
+                    environment = Environment(extensions=extensions)
+                    commit = design.pop("commit", True)
+                    environment.implement_design(design=design, commit=commit)
+                    if not commit:
+                        roll_back.assert_called()
+
+            self._run_checks(testcase.get("checks", []))
+
+
+class TestGeneralDesigns(BuilderTestCase):
     """Designs that should work with all versions of Nautobot."""
+
+    data_dir = os.path.join(os.path.dirname(__file__), "testdata")
