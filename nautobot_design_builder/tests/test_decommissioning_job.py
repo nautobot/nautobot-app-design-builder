@@ -47,10 +47,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             design=self.designs[0],
             name="My Design 1",
             status=Status.objects.get(content_types=self.content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
-            live_state=Status.objects.get(
-                content_types=self.content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
-            ),
-            version=self.designs[0].version,
+            version=self.design1.version,
         )
         self.design_instance.validated_save()
 
@@ -58,10 +55,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             design=self.designs[0],
             name="My Design 2",
             status=Status.objects.get(content_types=self.content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
-            live_state=Status.objects.get(
-                content_types=self.content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
-            ),
-            version=self.designs[0].version,
+            version=self.design1.version,
         )
         self.design_instance_2.validated_save()
 
@@ -80,11 +74,14 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             "instance": "my instance",
         }
 
-        self.job_result1 = JobResult.objects.create(
-            job_model=self.jobs[0],
-            name=self.jobs[0].class_path,
-            task_kwargs=kwargs,
+        self.job_result1 = JobResult(
+            job_model=self.job1,
+            name=self.job1.class_path,
+            job_id=uuid.uuid4(),
+            obj_type=ContentType.objects.get_for_model(JobModel),
         )
+        self.job_result1.job_kwargs = {"data": kwargs}
+        self.job_result1.validated_save()
 
         self.journal1 = models.Journal(design_instance=self.design_instance, job_result=self.job_result1)
         self.journal1.validated_save()

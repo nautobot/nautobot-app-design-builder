@@ -26,6 +26,7 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
 class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the design instance model."""
 
+    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     created_by = SerializerMethodField()
     last_updated_by = SerializerMethodField()
 

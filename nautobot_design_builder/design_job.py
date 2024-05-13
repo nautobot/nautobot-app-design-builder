@@ -161,9 +161,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 design=self.design_model(),
                 last_implemented=timezone.now(),
                 status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
-                live_state=Status.objects.get(
-                    content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
-                ),
                 version=self.design_model().version,
             )
         instance.validated_save()

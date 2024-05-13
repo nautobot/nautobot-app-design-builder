@@ -49,7 +49,7 @@ def create_design_instance_statuses(**kwargs):
         "Pending": ColorChoices.COLOR_ORANGE,
         "Rolled back": ColorChoices.COLOR_RED,
     }
-    for _, status_name in chain(choices.DesignInstanceStatusChoices, choices.DesignInstanceLiveStateChoices):
+    for _, status_name in chain(choices.DesignInstanceStatusChoices):
         status, _ = Status.objects.get_or_create(name=status_name, defaults={"color": color_mapping[status_name]})
         status.content_types.add(content_type)
 

@@ -22,9 +22,6 @@ class BaseDesignInstanceTest(BaseDesignTest):
             design=design,
             name=design_name,
             status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
-            live_state=Status.objects.get(
-                content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
-            ),
             version=design.version,
         )
         design_instance.validated_save()
