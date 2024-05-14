@@ -82,6 +82,17 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
         )
 
 
+class DesignObjectsTable(BaseTable):
+    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
+    design_object = Column(linkify=True, verbose_name="Design Object")
+
+    class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
+        """Meta attributes."""
+
+        model = JournalEntry
+        fields = ("design_object_type", "design_object")
+
+
 class JournalTable(BaseTable):
     """Table for list view."""
 
@@ -103,6 +114,7 @@ class JournalEntryTable(BaseTable):
 
     pk = Column(linkify=True, verbose_name="ID")
     journal = Column(linkify=True)
+    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
     design_object = Column(linkify=True, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
     active = BooleanColumn(verbose_name="Active")
@@ -111,4 +123,4 @@ class JournalEntryTable(BaseTable):
         """Meta attributes."""
 
         model = JournalEntry
-        fields = ("pk", "journal", "design_object", "changes", "full_control", "active")
+        fields = ("pk", "journal", "design_object_type", "design_object", "changes", "full_control", "active")
