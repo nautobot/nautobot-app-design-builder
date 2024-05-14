@@ -139,6 +139,7 @@ class TestDesignJobIntegration(DesignTestCase):
 
         job = self.get_mocked_job(test_designs.IntegrationDesign)
         job.run(data=self.data, commit=True)
+        self.assertJobSuccess(job)
 
         self.assertEqual(VRF.objects.first().name, "64501:1")
         self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
@@ -157,7 +158,6 @@ class TestDesignJobIntegration(DesignTestCase):
             Device.objects.get(name=self.device2.name).interfaces.first(),
         )
 
-    @unittest.skip("Feature not ready yet, depends on nextprefix logic.")
     def test_create_integration_design_twice(self):
         """Test to validate the second deployment of a design."""
 
@@ -167,6 +167,7 @@ class TestDesignJobIntegration(DesignTestCase):
 
         job = self.get_mocked_job(test_designs.IntegrationDesign)
         job.run(data=self.data, commit=True)
+        self.assertJobSuccess(job)
 
         self.assertEqual(VRF.objects.first().name, "64501:1")
         self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
@@ -192,6 +193,7 @@ class TestDesignJobIntegration(DesignTestCase):
 
         job = self.get_mocked_job(test_designs.IntegrationDesign)
         job.run(data=self.data, commit=True)
+        self.assertJobSuccess(job)
 
         self.assertEqual(VRF.objects.first().name, "64501:1")
         Prefix.objects.get(prefix="192.0.2.4/30")
@@ -206,6 +208,7 @@ class TestDesignJobIntegration(DesignTestCase):
         self.data["customer_name"] = "customer 1"
         job = self.get_mocked_job(test_designs.IntegrationDesign)
         job.run(data=self.data, commit=True)
+        self.assertJobSuccess(job)
 
         # This is a second, and third run with new input to update the deployment
         for i in range(2):
@@ -221,22 +224,22 @@ class TestDesignJobIntegration(DesignTestCase):
 
             job = self.get_mocked_job(test_designs.IntegrationDesign)
             job.run(data=data, commit=True)
-
+            self.assertJobSuccess(job)
             self.assertEqual(VRF.objects.first().name, "64501:2")
             self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
-            self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/30").prefix), "192.0.2.0/30")
-            self.assertEqual(Prefix.objects.get(prefix="192.0.2.0/30").vrf, VRF.objects.first())
+            self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.4/30").prefix), "192.0.2.4/30")
+            self.assertEqual(Prefix.objects.get(prefix="192.0.2.4/30").vrf, VRF.objects.first())
 
             self.assertEqual(
                 data["device_a"].interfaces.first().cable,
                 data["device_b"].interfaces.first().cable,
             )
             self.assertEqual(
-                IPAddress.objects.get(host="192.0.2.2").assigned_object,
+                IPAddress.objects.get(host="192.0.2.6").assigned_object,
                 data["device_a"].interfaces.first(),
             )
 
             self.assertEqual(
-                IPAddress.objects.get(host="192.0.2.1").assigned_object,
+                IPAddress.objects.get(host="192.0.2.5").assigned_object,
                 data["device_b"].interfaces.first(),
             )

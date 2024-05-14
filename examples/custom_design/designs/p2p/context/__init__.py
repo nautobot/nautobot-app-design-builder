@@ -34,3 +34,9 @@ class P2PContext(Context):
         for count, host in enumerate(net_prefix):
             if count == offset:
                 return f"{host}/{net_prefix.prefixlen}"
+
+    def vrf_prefix_tag_name(self):
+        return f"{self.instance_name} VRF Prefix"
+
+    def vrf_prefix_tag_slug(self):
+        return self.vrf_prefix_tag_name().lower().replace(" ", "_")
