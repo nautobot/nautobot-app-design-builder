@@ -210,7 +210,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        journal, previous_journal = self._setup_journal(data.pop("instance_name"))
+        journal, previous_journal = self._setup_journal(data["instance_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
