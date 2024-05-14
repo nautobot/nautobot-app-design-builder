@@ -505,7 +505,7 @@ class JournalEntry(BaseModel):
     full_control = models.BooleanField(editable=False)
     active = models.BooleanField(editable=False, default=True)
 
-    class Meta:
+    class Meta:  # noqa:D106
         unique_together = [("journal", "index")]
 
     def get_absolute_url(self):

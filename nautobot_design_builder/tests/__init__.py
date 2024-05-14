@@ -57,6 +57,7 @@ class DesignTestCase(TestCase):
                     "grouping": grouping,
                 }
             )
+
         job.job_result.log = mock.Mock()
         job.job_result.log.side_effect = record_log
         return job

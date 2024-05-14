@@ -37,7 +37,13 @@ from nautobot_design_builder.forms import (
     JournalEntryFilterForm,
 )
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
-from nautobot_design_builder.tables import DesignObjectsTable, DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
+from nautobot_design_builder.tables import (
+    DesignObjectsTable,
+    DesignTable,
+    DesignInstanceTable,
+    JournalTable,
+    JournalEntryTable,
+)
 
 
 PERMISSIONS_ACTION_MAP.update(
@@ -133,7 +139,12 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
             RequestConfig(request, paginate).configure(journals_table)
             context["journals_table"] = journals_table
 
-            entries = JournalEntry.objects.restrict(request.user, "view").filter_by_instance(instance).filter(active=True).distinct("_design_object_id")
+            entries = (
+                JournalEntry.objects.restrict(request.user, "view")
+                .filter_by_instance(instance)
+                .filter(active=True)
+                .distinct("_design_object_id")
+            )
             entries_table = DesignObjectsTable(entries)
             context["entries_table"] = entries_table
         return context
@@ -159,7 +170,11 @@ class JournalUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            entries = JournalEntry.objects.restrict(request.user, "view").filter(active=True, journal=instance).order_by("-index")
+            entries = (
+                JournalEntry.objects.restrict(request.user, "view")
+                .filter(active=True, journal=instance)
+                .order_by("-index")
+            )
 
             entries_table = JournalEntryTable(entries)
             entries_table.columns.hide("journal")

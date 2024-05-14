@@ -3,7 +3,7 @@
 from django_tables2 import Column
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
-from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
+from nautobot.utilities.tables import BooleanColumn, ButtonsColumn
 
 from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
 
@@ -83,6 +83,8 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
 
 
 class DesignObjectsTable(BaseTable):
+    """Table of objects that belong to a design instance."""
+
     design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
     design_object = Column(linkify=True, verbose_name="Design Object")
 
