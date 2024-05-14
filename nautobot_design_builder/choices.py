@@ -3,7 +3,7 @@
 from nautobot.utilities.choices import ChoiceSet
 
 
-class DesignInstanceStatusChoices(ChoiceSet):
+class DeploymentStatusChoices(ChoiceSet):
     """Status choices for Designs Instances."""
 
     ACTIVE = "Active"

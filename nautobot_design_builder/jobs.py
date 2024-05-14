@@ -3,17 +3,17 @@
 from nautobot.extras.jobs import Job, MultiObjectVar
 
 from .logging import get_logger
-from .models import DesignInstance
+from .models import Deployment
 
 
 name = "Design Builder"  # pylint: disable=invalid-name
 
 
-class DesignInstanceDecommissioning(Job):
+class DeploymentDecommissioning(Job):
     """Job to decommission Design Instances."""
 
-    design_instances = MultiObjectVar(
-        model=DesignInstance,
+    deployments = MultiObjectVar(
+        model=Deployment,
         query_params={"status": "active"},
         description="Design Deployments to decommission.",
     )
@@ -26,15 +26,15 @@ class DesignInstanceDecommissioning(Job):
 
     def run(self, data, commit):
         """Execute Decommissioning job."""
-        design_instances = data["design_instances"]
+        deployments = data["deployments"]
         self.log_info(
-            message=f"Starting decommissioning of design instances: {', '.join([instance.name for instance in design_instances])}",
+            message=f"Starting decommissioning of design instances: {', '.join([instance.name for instance in deployments])}",
         )
 
-        for design_instance in design_instances:
-            self.log_info(obj=design_instance, message="Working on resetting objects for this Design Deployment...")
-            design_instance.decommission(local_logger=get_logger(__name__, self.job_result))
-            self.log_success(f"{design_instance} has been successfully decommissioned from Nautobot.")
+        for deployment in deployments:
+            self.log_info(obj=deployment, message="Working on resetting objects for this Design Deployment...")
+            deployment.decommission(local_logger=get_logger(__name__, self.job_result))
+            self.log_success(f"{deployment} has been successfully decommissioned from Nautobot.")
 
 
-jobs = (DesignInstanceDecommissioning,)
+jobs = (DeploymentDecommissioning,)

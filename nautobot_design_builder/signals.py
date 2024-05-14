@@ -19,7 +19,7 @@ from nautobot_design_builder.models import JournalEntry
 from nautobot_design_builder.middleware import GlobalRequestMiddleware
 
 from .design_job import DesignJob
-from .models import Design, DesignInstance
+from .models import Design, Deployment
 from . import choices
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,9 +38,9 @@ def create_design_model_for_existing(sender, **kwargs):
 
 
 @receiver(nautobot_database_ready, sender=apps.get_app_config("nautobot_design_builder"))
-def create_design_instance_statuses(**kwargs):
+def create_deployment_statuses(**kwargs):
     """Create a default set of statuses for design instances."""
-    content_type = ContentType.objects.get_for_model(DesignInstance)
+    content_type = ContentType.objects.get_for_model(Deployment)
     color_mapping = {
         "Active": ColorChoices.COLOR_GREEN,
         "Decommissioned": ColorChoices.COLOR_GREY,
@@ -49,7 +49,7 @@ def create_design_instance_statuses(**kwargs):
         "Pending": ColorChoices.COLOR_ORANGE,
         "Rolled back": ColorChoices.COLOR_RED,
     }
-    for _, status_name in chain(choices.DesignInstanceStatusChoices):
+    for _, status_name in chain(choices.DeploymentStatusChoices):
         status, _ = Status.objects.get_or_create(name=status_name, defaults={"color": color_mapping[status_name]})
         status.content_types.add(content_type)
 
@@ -88,11 +88,11 @@ def model_delete_design_builder(instance, **kwargs):
         # If there is a design with full_control, only the design can delete it
         if (
             hasattr(instance, "_current_design")
-            and instance._current_design == journal_entry.journal.design_instance  # pylint: disable=protected-access
+            and instance._current_design == journal_entry.journal.deployment  # pylint: disable=protected-access
             and journal_entry.full_control
         ):
             return
-        raise ProtectedError("A design instance owns this object.", set([journal_entry.journal.design_instance]))
+        raise ProtectedError("A design instance owns this object.", set([journal_entry.journal.deployment]))
 
 
 def load_pre_delete_signals():

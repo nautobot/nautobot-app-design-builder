@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from nautobot.extras.models import JobResult, Job
 from nautobot.tenancy.models import Tenant
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 
 def populate_sample_data():
@@ -15,8 +15,8 @@ def populate_sample_data():
     )
 
     design, _ = Design.objects.get_or_create(job=job)
-    design_instance, _ = DesignInstance.objects.get_or_create(design=design, name="Initial Data")
-    Journal.objects.get_or_create(design_instance=design_instance, job_result=job_result)
+    deployment, _ = Deployment.objects.get_or_create(design=design, name="Initial Data")
+    Journal.objects.get_or_create(deployment=deployment, job_result=job_result)
 
 
 def create_test_view_data():
@@ -31,8 +31,8 @@ def create_test_view_data():
 
         # Design Builder models
         design = Design.objects.create(job=job)
-        instance = DesignInstance.objects.create(design=design, name=f"Test Instance {i}")
-        journal = Journal.objects.create(design_instance=instance, job_result=job_result)
+        instance = Deployment.objects.create(design=design, name=f"Test Instance {i}")
+        journal = Journal.objects.create(deployment=instance, job_result=job_result)
         full_control = i == 1  # Have one record where full control is given, more than one where its not.
         JournalEntry.objects.create(
             journal=journal, design_object=object_created_by_job, full_control=full_control, index=0

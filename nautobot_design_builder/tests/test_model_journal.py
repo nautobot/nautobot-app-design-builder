@@ -2,10 +2,10 @@
 
 from nautobot.dcim.models import Manufacturer
 
-from .test_model_design_instance import BaseDesignInstanceTest
+from .test_model_deployment import BaseDeploymentTest
 
 
-class BaseJournalTest(BaseDesignInstanceTest):
+class BaseJournalTest(BaseDeploymentTest):
     """Base Journal Test."""
 
     def setUp(self):
@@ -17,7 +17,7 @@ class BaseJournalTest(BaseDesignInstanceTest):
             "instance": "my instance",
         }
 
-        self.journal = self.create_journal(self.job1, self.design_instance, self.job_kwargs)
+        self.journal = self.create_journal(self.job1, self.deployment, self.job_kwargs)
 
 
 class TestJournal(BaseJournalTest):

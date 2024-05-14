@@ -3,7 +3,7 @@ import unittest
 
 from nautobot.utilities.testing import APIViewTestCases
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 from nautobot_design_builder.tests.util import create_test_view_data
 
 # pylint: disable=missing-class-docstring
@@ -22,12 +22,12 @@ class TestDesign(
         create_test_view_data()
 
 
-class TestDesignInstance(
+class TestDeployment(
     APIViewTestCases.GetObjectViewTestCase,
     APIViewTestCases.ListObjectsViewTestCase,
     APIViewTestCases.NotesURLViewTestCase,
 ):
-    model = DesignInstance
+    model = Deployment
     brief_fields = ["display", "id", "name", "url"]
 
     @classmethod

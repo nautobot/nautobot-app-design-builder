@@ -4,17 +4,17 @@ from nautobot.extras.api.views import NautobotModelViewSet, StatusViewSetMixin
 
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
-    DesignInstanceSerializer,
+    DeploymentSerializer,
     JournalSerializer,
     JournalEntrySerializer,
 )
 from nautobot_design_builder.filters import (
     DesignFilterSet,
-    DesignInstanceFilterSet,
+    DeploymentFilterSet,
     JournalFilterSet,
     JournalEntryFilterSet,
 )
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 
 class DesignAPIViewSet(NautobotModelViewSet):
@@ -25,12 +25,12 @@ class DesignAPIViewSet(NautobotModelViewSet):
     filterset_class = DesignFilterSet
 
 
-class DesignInstanceAPIViewSet(NautobotModelViewSet, StatusViewSetMixin):
+class DeploymentAPIViewSet(NautobotModelViewSet, StatusViewSetMixin):
     """API views for the design instance model."""
 
-    queryset = DesignInstance.objects.all()
-    serializer_class = DesignInstanceSerializer
-    filterset_class = DesignInstanceFilterSet
+    queryset = Deployment.objects.all()
+    serializer_class = DeploymentSerializer
+    filterset_class = DeploymentFilterSet
 
 
 class JournalAPIViewSet(NautobotModelViewSet):

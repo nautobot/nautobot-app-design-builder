@@ -3,7 +3,7 @@
 from nautobot.core.api import BaseModelSerializer
 from rest_framework.relations import HyperlinkedIdentityField
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal
+from nautobot_design_builder.models import Design, Deployment, Journal
 
 
 class NestedDesignSerializer(BaseModelSerializer):
@@ -18,15 +18,15 @@ class NestedDesignSerializer(BaseModelSerializer):
         fields = ["id", "url", "name"]
 
 
-class NestedDesignInstanceSerializer(BaseModelSerializer):
+class NestedDeploymentSerializer(BaseModelSerializer):
     """Nested serializer for the design instance model."""
 
-    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:designinstance-detail")
+    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:deployment-detail")
 
     class Meta:
         """Nested serializer options for the design instance model."""
 
-        model = DesignInstance
+        model = Deployment
         fields = ["id", "url", "name"]
 
 

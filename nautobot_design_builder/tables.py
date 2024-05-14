@@ -5,9 +5,9 @@ from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
 from nautobot.utilities.tables import BooleanColumn, ButtonsColumn
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
-DESIGNTABLE = """
+DESIGN_TABLE = """
 
 <a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
     <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
@@ -26,7 +26,7 @@ class DesignTable(BaseTable):
 
     name = Column(linkify=True)
     instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
-    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGNTABLE)
+    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGN_TABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
@@ -36,9 +36,9 @@ class DesignTable(BaseTable):
         fields = ("name", "version", "job_last_synced", "description", "instance_count")
 
 
-DESIGNINSTANCETABLE = """
+DEPLOYMENT_TABLE = """
 {% load utils %}
-<a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
+<a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DeploymentDecommissioning" %}?deployments={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
 <a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_journal as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"
@@ -48,7 +48,7 @@ DESIGNINSTANCETABLE = """
 """
 
 
-class DesignInstanceTable(StatusTableMixin, BaseTable):
+class DeploymentTable(StatusTableMixin, BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
@@ -58,18 +58,18 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
     created_by = Column(verbose_name="Deployed by")
     last_updated_by = Column(verbose_name="Last Updated by")
     actions = ButtonsColumn(
-        DesignInstance,
+        Deployment,
         buttons=(
             "delete",
             "changelog",
         ),
-        prepend_template=DESIGNINSTANCETABLE,
+        prepend_template=DEPLOYMENT_TABLE,
     )
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = DesignInstance
+        model = Deployment
         fields = (
             "name",
             "design",
@@ -99,7 +99,7 @@ class JournalTable(BaseTable):
     """Table for list view."""
 
     pk = Column(linkify=True, verbose_name="ID")
-    design_instance = Column(linkify=True, verbose_name="Deployment")
+    deployment = Column(linkify=True, verbose_name="Deployment")
     job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
     journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
     active = BooleanColumn(verbose_name="Active Journal")
@@ -108,7 +108,7 @@ class JournalTable(BaseTable):
         """Meta attributes."""
 
         model = Journal
-        fields = ("pk", "design_instance", "job_result", "journal_entry_count", "active")
+        fields = ("pk", "deployment", "job_result", "journal_entry_count", "active")
 
 
 class JournalEntryTable(BaseTable):

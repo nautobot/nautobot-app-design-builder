@@ -731,7 +731,7 @@ class ModelInstance:
         try:
             if self.environment.journal.design_journal:
                 self.instance._current_design = (  # pylint: disable=protected-access
-                    self.environment.journal.design_journal.design_instance
+                    self.environment.journal.design_journal.deployment
                 )
             self.instance.full_clean()
             self.instance.save(**self.metadata.save_args)
@@ -783,7 +783,7 @@ class Environment(LoggingMixin):
 
     model_map: Dict[str, Type[Model]]
     model_class_index: Dict[Type, "ModelInstance"]
-    design_instance: models.DesignInstance
+    deployment: models.Deployment
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder is initialized."""
@@ -843,13 +843,13 @@ class Environment(LoggingMixin):
 
         self.journal = Journal(design_journal=journal)
         if journal:
-            self.design_instance = journal.design_instance
+            self.deployment = journal.deployment
 
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""
-        self.journal.design_journal.design_instance.decommission(object_id, local_logger=self.logger)
+        self.journal.design_journal.deployment.decommission(object_id, local_logger=self.logger)
         self.log_success(
-            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.design_instance}."
+            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.deployment}."
         )
 
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:

@@ -62,13 +62,13 @@ class BaseValidator(PluginCustomValidator):
                     if (
                         hasattr(obj, "_current_design")
                         and obj._current_design  # pylint: disable=protected-access
-                        == journal_entry.journal.design_instance
+                        == journal_entry.journal.deployment
                     ):
                         continue
 
                     self.validation_error(
                         {
-                            attribute_name: f"The attribute is managed by the Design Instance: {journal_entry.journal.design_instance}. {error_context}"
+                            attribute_name: f"The attribute is managed by the Design Instance: {journal_entry.journal.deployment}. {error_context}"
                         }
                     )
 

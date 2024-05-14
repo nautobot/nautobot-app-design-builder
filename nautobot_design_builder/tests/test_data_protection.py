@@ -13,7 +13,7 @@ from nautobot.extras.plugins import register_custom_validators
 from nautobot.users.models import ObjectPermission
 
 from nautobot_design_builder.design import calculate_changes
-from .test_model_design_instance import BaseDesignInstanceTest
+from .test_model_deployment import BaseDeploymentTest
 from ..models import JournalEntry
 from ..custom_validators import custom_validators
 from ..signals import load_pre_delete_signals
@@ -32,7 +32,7 @@ plugin_settings_with_protection_and_superuser_bypass_disabled["nautobot_design_b
 ] = False
 
 
-class DataProtectionBaseTest(BaseDesignInstanceTest):  # pylint: disable=too-many-instance-attributes
+class DataProtectionBaseTest(BaseDeploymentTest):  # pylint: disable=too-many-instance-attributes
     """Data Protection Test."""
 
     def setUp(self):
@@ -44,7 +44,7 @@ class DataProtectionBaseTest(BaseDesignInstanceTest):  # pylint: disable=too-man
             "instance": "my instance",
         }
 
-        self.journal = self.create_journal(self.job1, self.design_instance, self.job_kwargs)
+        self.journal = self.create_journal(self.job1, self.deployment, self.job_kwargs)
         self.initial_entry = JournalEntry.objects.create(
             design_object=self.manufacturer_from_design,
             full_control=True,
@@ -111,7 +111,7 @@ class DataProtectionBaseTestWithProtection(DataProtectionBaseTest):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.json()["description"][0],
-            f"The attribute is managed by the Design Instance: {self.design_instance}. ",
+            f"The attribute is managed by the Design Instance: {self.deployment}. ",
         )
 
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
@@ -166,7 +166,7 @@ class DataProtectionBaseTestWithProtectionBypassDisabled(DataProtectionBaseTest)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.json()["description"][0],
-            f"The attribute is managed by the Design Instance: {self.design_instance}. ",
+            f"The attribute is managed by the Design Instance: {self.deployment}. ",
         )
 
     @unittest.skip("Issue with TransactionManagerError in tests.")

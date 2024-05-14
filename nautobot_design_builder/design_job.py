@@ -159,22 +159,22 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
     def _setup_journal(self, instance_name: str):
         try:
-            instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
+            instance = models.Deployment.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
             instance.last_implemented = timezone.now()
-        except models.DesignInstance.DoesNotExist:
+        except models.Deployment.DoesNotExist:
             self.log_info(message=f'Implementing new design "{instance_name}".')
-            content_type = ContentType.objects.get_for_model(models.DesignInstance)
-            instance = models.DesignInstance(
+            content_type = ContentType.objects.get_for_model(models.Deployment)
+            instance = models.Deployment(
                 name=instance_name,
                 design=self.design_model(),
                 last_implemented=timezone.now(),
-                status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+                status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
                 version=self.design_model().version,
             )
         instance.validated_save()
         journal, created = models.Journal.objects.get_or_create(
-            design_instance=instance,
+            deployment=instance,
             job_result=self.job_result,
         )
         if created:
@@ -246,21 +246,21 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 deleted_object_ids = previous_journal - journal
                 if deleted_object_ids:
                     self.log_info(f"Decommissioning {deleted_object_ids}")
-                    journal.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+                    journal.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 
             if commit:
                 self.post_implementation(context, self.environment)
                 # The Journal stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
-                journal.design_instance.status = Status.objects.get(
-                    content_types=ContentType.objects.get_for_model(models.DesignInstance),
-                    name=choices.DesignInstanceStatusChoices.ACTIVE,
+                journal.deployment.status = Status.objects.get(
+                    content_types=ContentType.objects.get_for_model(models.Deployment),
+                    name=choices.DeploymentStatusChoices.ACTIVE,
                 )
-                journal.design_instance.save()
+                journal.deployment.save()
                 journal.save()
                 self.job_result.data["related_objects"] = {
                     "journal": journal.pk,
-                    "design_instance": journal.design_instance.pk,
+                    "deployment": journal.deployment.pk,
                 }
                 if hasattr(self.Meta, "report"):
                     self.report = self.render_report(context, self.environment.journal)

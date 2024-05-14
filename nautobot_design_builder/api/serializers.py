@@ -9,11 +9,11 @@ from nautobot.utilities.api import get_serializer_for_model
 from rest_framework.fields import SerializerMethodField, DictField
 from rest_framework.relations import HyperlinkedIdentityField
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 from nautobot_design_builder.api.nested_serializers import (
     NestedDesignSerializer,
-    NestedDesignInstanceSerializer,
+    NestedDeploymentSerializer,
     NestedJournalSerializer,
 )
 
@@ -34,7 +34,7 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
         ]
 
 
-class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin):
+class DeploymentSerializer(NautobotModelSerializer, TaggedModelSerializerMixin, StatusModelSerializerMixin):
     """Serializer for the design instance model."""
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
@@ -45,7 +45,7 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
     class Meta:
         """Serializer options for the design model."""
 
-        model = DesignInstance
+        model = Deployment
         fields = [
             "id",
             "url",
@@ -71,14 +71,14 @@ class JournalSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the journal model."""
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:journal-detail")
-    design_instance = NestedDesignInstanceSerializer()
+    deployment = NestedDeploymentSerializer()
     job_result = NestedJobResultSerializer()
 
     class Meta:
         """Serializer options for the journal model."""
 
         model = Journal
-        fields = ["id", "url", "design_instance", "job_result"]
+        fields = ["id", "url", "deployment", "job_result"]
 
 
 class JournalEntrySerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
