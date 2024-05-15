@@ -11,13 +11,13 @@ class BaseJournalTest(BaseDeploymentTest):
     def setUp(self):
         super().setUp()
         self.original_name = "original equipment manufacturer"
-        self.manufacturer = Manufacturer.objects.create(name=self.original_name)
+        self.customer_name = "Customer 1"
         self.job_kwargs = {
-            "manufacturer": f"{self.manufacturer.pk}",
-            "instance": "my instance",
+            "customer_name": self.customer_name,
+            "deployment_name": "my instance",
         }
 
-        self.journal = self.create_journal(self.job1, self.deployment, self.job_kwargs)
+        self.journal = self.create_journal(self.job, self.deployment, self.job_kwargs)
 
 
 class TestJournal(BaseJournalTest):
@@ -25,5 +25,5 @@ class TestJournal(BaseJournalTest):
 
     def test_user_input(self):
         user_input = self.journal.user_input
-        self.assertEqual(self.manufacturer, user_input["manufacturer"])
-        self.assertEqual("my instance", user_input["instance"])
+        self.assertEqual(self.customer_name, user_input["customer_name"])
+        self.assertEqual("my instance", user_input["deployment_name"])

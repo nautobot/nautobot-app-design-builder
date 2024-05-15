@@ -66,7 +66,8 @@ def create_design_model(sender, instance: Job, **kwargs):  # pylint:disable=unus
         sender: The Job class
         instance (Job): Job instance that has been created or updated.
     """
-    if instance.job_class and issubclass(instance.job_class, DesignJob):
+    job_class = instance.job_class
+    if job_class and issubclass(job_class, DesignJob) and job_class.is_deployment_job():
         _, created = Design.objects.get_or_create(job=instance)
         if created:
             _LOGGER.debug("Created design from %s", instance)

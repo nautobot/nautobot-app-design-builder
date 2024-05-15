@@ -22,9 +22,7 @@ class DesignTestCase(TestCase):
     def setUp(self):
         """Setup a mock git repo to watch for config context creation."""
         super().setUp()
-        self.data = {
-            "instance_name": "Test Design",
-        }
+        self.data = {}
         self.logged_messages = []
         self.git_patcher = patch("nautobot_design_builder.ext.GitRepo")
         self.git_mock = self.git_patcher.start()

@@ -369,9 +369,3 @@ class Context(_DictNode, LoggingMixin):
 
         if len(errors) > 0:
             raise DesignValidationError("\n".join(errors))
-
-    @property
-    def _instance_name(self):
-        if nautobot_version < "2.0.0":
-            return f"{self.design_name} - {self.job_result.job_kwargs['data']['instance_name']}"
-        return f"{self.design_name} - {self.job_result.job_kwargs['instance_name']}"

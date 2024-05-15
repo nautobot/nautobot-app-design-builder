@@ -14,7 +14,7 @@ from django.utils import timezone
 from jinja2 import TemplateError
 
 from nautobot.extras.models import Status
-from nautobot.extras.jobs import Job, StringVar
+from nautobot.extras.jobs import Job, JobForm, StringVar
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -33,8 +33,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     a Meta class.
     """
 
-    instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
-
     @classmethod
     @abstractmethod
     def Meta(cls) -> Job.Meta:  # pylint: disable=invalid-name
@@ -51,6 +49,50 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.report = None
 
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def is_deployment_job(cls):
+        design_mode = getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
+        return design_mode == choices.DesignModeChoices.DEPLOYMENT
+
+    @classmethod
+    def deployment_name_field(cls):
+        getattr(cls.Meta, "deployment_name_field", None)
+
+    @classmethod
+    def determine_deployment_name(cls, data):
+        if not cls.is_deployment_job():
+            return None
+        deployment_name_field = cls.deployment_name_field()
+        if deployment_name_field is None:
+            if "deployment_name" not in data:
+                raise DesignImplementationError("No instance name was provided for the deployment.")
+            return data["deployment_name"]
+        return data[deployment_name_field]
+
+    @classmethod
+    def _get_vars(cls):
+        cls_vars = {}
+        if cls.is_deployment_job():
+            if cls.deployment_name_field() is None:
+                cls_vars["deployment_name"] = StringVar(
+                    label="Deployment Name",
+                    max_length=models.DESIGN_NAME_MAX_LENGTH,
+                )
+
+        cls_vars.update(super()._get_vars())
+        return cls_vars
+
+    @classmethod
+    def as_form_class(cls):
+        fields = {name: var.as_field() for name, var in cls._get_vars().items()}
+        def clean(self):
+            cleaned_data = super(type(self), self).clean()
+            context = cls.Meta.context_class(cleaned_data)
+            context.validate()
+            return cleaned_data
+        fields["clean"] = clean
+        return type("DesignJobForm", (JobForm,), fields)
 
     def design_model(self):
         """Get the related Job."""
@@ -157,16 +199,19 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
 
-    def _setup_journal(self, instance_name: str):
+    def _setup_journal(self, deployment_name: str):
+        if not self.is_deployment_job():
+            return None, None
+
         try:
-            instance = models.Deployment.objects.get(name=instance_name, design=self.design_model())
-            self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
+            instance = models.Deployment.objects.get(name=deployment_name, design=self.design_model())
+            self.log_info(message=f'Existing design instance of "{deployment_name}" was found, re-running design job.')
             instance.last_implemented = timezone.now()
         except models.Deployment.DoesNotExist:
-            self.log_info(message=f'Implementing new design "{instance_name}".')
+            self.log_info(message=f'Implementing new design "{deployment_name}".')
             content_type = ContentType.objects.get_for_model(models.Deployment)
             instance = models.Deployment(
-                name=instance_name,
+                name=deployment_name,
                 design=self.design_model(),
                 last_implemented=timezone.now(),
                 status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
@@ -210,7 +255,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        journal, previous_journal = self._setup_journal(data["instance_name"])
+        data["deployment_name"] = self.determine_deployment_name(data)
+        journal, previous_journal = self._setup_journal(data["deployment_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
@@ -252,16 +298,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 self.post_implementation(context, self.environment)
                 # The Journal stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
-                journal.deployment.status = Status.objects.get(
-                    content_types=ContentType.objects.get_for_model(models.Deployment),
-                    name=choices.DeploymentStatusChoices.ACTIVE,
-                )
-                journal.deployment.save()
-                journal.save()
-                self.job_result.data["related_objects"] = {
-                    "journal": journal.pk,
-                    "deployment": journal.deployment.pk,
-                }
+                if self.is_deployment_job():
+                    journal.deployment.status = Status.objects.get(
+                        content_types=ContentType.objects.get_for_model(models.Deployment),
+                        name=choices.DeploymentStatusChoices.ACTIVE,
+                    )
+                    journal.deployment.save()
+                    journal.save()
                 if hasattr(self.Meta, "report"):
                     self.report = self.render_report(context, self.environment.journal)
                     self.log_success(message=self.report)

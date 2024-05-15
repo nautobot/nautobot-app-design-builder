@@ -33,7 +33,7 @@ class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance
             "manufacturer": f"{self.manufacturer.pk}",
             "instance": "my instance",
         }
-        self.journal = self.create_journal(self.job1, self.deployment, self.job_kwargs)
+        self.journal = self.create_journal(self.job, self.deployment, self.job_kwargs)
 
         self.initial_entry = JournalEntry(
             design_object=self.secret,

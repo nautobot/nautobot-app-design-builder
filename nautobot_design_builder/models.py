@@ -15,7 +15,7 @@ from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusFie
 from nautobot.extras.utils import extras_features
 from nautobot.utilities.querysets import RestrictedQuerySet
 
-from .util import nautobot_version, get_created_and_last_updated_usernames_for_model
+from .util import get_created_and_last_updated_usernames_for_model
 from . import choices
 from .errors import DesignValidationError
 
@@ -161,9 +161,9 @@ class Design(PrimaryModel):
 class DeploymentQuerySet(RestrictedQuerySet):
     """Queryset for `Deployment` objects."""
 
-    def get_by_natural_key(self, design_name, instance_name):
+    def get_by_natural_key(self, design_name, deployment_name):
         """Get a Deployment by its natural key."""
-        return self.get(design__job__name=design_name, name=instance_name)
+        return self.get(design__job__name=design_name, name=deployment_name)
 
 
 DESIGN_NAME_MAX_LENGTH = 255
@@ -320,10 +320,7 @@ class Journal(PrimaryModel):
             input values are deserialized from the job_result of the
             last run.
         """
-        if nautobot_version < "2.0":
-            user_input = self.job_result.job_kwargs.get("data", {}).copy()
-        else:
-            user_input = self.job_result.task_kwargs.copy()  # pylint: disable=no-member
+        user_input = self.job_result.job_kwargs.get("data", {}).copy()
         job = self.deployment.design.job
         return job.job_class.deserialize_data(user_input)
 

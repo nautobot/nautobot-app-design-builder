@@ -102,7 +102,7 @@ class TestDesignJobIntegration(DesignTestCase):
     def setUp(self):
         """Per-test setup."""
         super().setUp()
-
+        self.data["deployment_name"] = "Test Design"
         site = Site.objects.create(name="test site")
         manufacturer = Manufacturer.objects.create(name="test manufacturer")
         device_type = DeviceType.objects.create(model="test-device-type", manufacturer=manufacturer)
@@ -185,7 +185,7 @@ class TestDesignJobIntegration(DesignTestCase):
             Device.objects.get(name=self.device2.name).interfaces.first(),
         )
 
-        self.data["instance_name"] = "another deployment"
+        self.data["deployment_name"] = "another deployment"
         self.data["device_b"] = self.device1
         self.data["device_a"] = self.device2
         self.data["customer_name"] = "customer 1"

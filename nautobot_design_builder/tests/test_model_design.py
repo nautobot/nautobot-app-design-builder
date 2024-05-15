@@ -26,13 +26,13 @@ class BaseDesignTest(DesignTestCase):
             "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
         }
 
-        self.job1 = JobModel(
+        self.job = JobModel(
             **defaults.copy(),
             name="Simple Design",
-            job_class_name=test_designs.SimpleDesign.__name__,
+            job_class_name=test_designs.IntegrationDesign.__name__,
         )
-        self.job1.validated_save()
-        self.design1 = models.Design.objects.get(job=self.job1)
+        self.job.validated_save()
+        self.design = models.Design.objects.get(job=self.job)
 
         self.job2 = JobModel(
             **defaults.copy(),
@@ -40,32 +40,30 @@ class BaseDesignTest(DesignTestCase):
             job_class_name=test_designs.SimpleDesignReport.__name__,
         )
         self.job2.validated_save()
-        self.design2 = models.Design.objects.get(job=self.job2)
 
 
 class TestDesign(BaseDesignTest):
     """Test Design."""
 
     def test_create_from_signal(self):
-        # TODO: move back to 2 when the designs are outside of the repo
-        self.assertEqual(5, models.Design.objects.all().count())
-        self.assertEqual(self.design1.job_id, self.job1.id)
-        self.assertEqual(self.design2.job_id, self.job2.id)
-        self.assertEqual(str(self.design1), self.design1.name)
+        self.assertEqual(2, models.Design.objects.all().count())
+        self.assertEqual(self.design.job_id, self.job.id)
+        self.assertEqual(str(self.design), self.design.name)
 
     def test_design_queryset(self):
-        self.assertIsNotNone(self.design1)
-        self.assertEqual(self.design1.job_id, self.job1.id)
+        # TODO: What is the point of this unittest?
+        self.assertIsNotNone(self.design)
+        self.assertEqual(self.design.job_id, self.job.id)
 
     def test_job_cannot_be_changed(self):
         with self.assertRaises(ValidationError):
-            self.design1.job = self.job2
-            self.design1.validated_save()
+            self.design.job = self.job2
+            self.design.validated_save()
 
         with self.assertRaises(ValidationError):
-            self.design1.job = None
-            self.design1.validated_save()
+            self.design.job = None
+            self.design.validated_save()
 
     def test_no_duplicates(self):
         with self.assertRaises(IntegrityError):
-            models.Design.objects.create(job=self.job1)
+            models.Design.objects.create(job=self.job)

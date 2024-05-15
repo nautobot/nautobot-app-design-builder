@@ -45,7 +45,7 @@ class IntegrationTestContext(Context):
                 return f"{host}/{net_prefix.prefixlen}"
 
     def vrf_prefix_tag_name(self):
-        return f"{self.instance_name} VRF Prefix"
+        return f"{self.deployment_name} VRF Prefix"
 
     def vrf_prefix_tag_slug(self):
         return self.vrf_prefix_tag_name().lower().replace(" ", "_")

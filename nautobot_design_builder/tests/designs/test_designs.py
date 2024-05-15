@@ -3,6 +3,7 @@
 from nautobot.dcim.models import Manufacturer, Device, Interface
 from nautobot.extras.jobs import StringVar, ObjectVar
 
+from nautobot_design_builder.choices import DesignModeChoices
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.design import ModelInstance
 from nautobot_design_builder.ext import Extension, AttributeExtension
@@ -157,3 +158,4 @@ class IntegrationDesign(DesignJob):
             NextInterfaceExtension,
             ext.ChildPrefixExtension,
         ]
+        design_mode = DesignModeChoices.DEPLOYMENT

@@ -1,4 +1,4 @@
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 import ipaddress
 
 from nautobot.dcim.models import Device
@@ -18,6 +18,10 @@ class P2PContext(Context):
     def __hash__(self):
         return hash((self.device_a.name, self.device_b.name, self.customer_name))
 
+    def validate_unique_devices(self):
+        if self.device_a == self.device_b:
+            raise ValidationError({"device_a": "Both routers can't be the same."})
+        
     def get_customer_id(self, customer_name, p2p_asn):
         try:
             vrf = VRF.objects.get(description=f"VRF for customer {customer_name}")
@@ -36,7 +40,7 @@ class P2PContext(Context):
                 return f"{host}/{net_prefix.prefixlen}"
 
     def vrf_prefix_tag_name(self):
-        return f"{self.instance_name} VRF Prefix"
+        return f"{self.deployment_name} VRF Prefix"
 
     def vrf_prefix_tag_slug(self):
         return self.vrf_prefix_tag_name().lower().replace(" ", "_")
