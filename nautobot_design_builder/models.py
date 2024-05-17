@@ -358,13 +358,13 @@ class Journal(PrimaryModel):
             )
             # Look up the pre_change state from the existing
             # record and record the differences.
-            entry.changes = model_instance.get_changes(entry.changes["pre_change"])
+            entry.changes.update(model_instance.metadata.changes)
             entry.save()
         except JournalEntry.DoesNotExist:
             entry = self.entries.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
-                changes=model_instance.get_changes(),
+                changes=model_instance.metadata.changes,
                 full_control=model_instance.metadata.created,
                 index=self._next_index(),
             )
@@ -543,7 +543,7 @@ class JournalEntry(BaseModel):
             DesignValidationError: when the design object is referenced by other active Journals.
 
         """
-        if not self.design_object:
+        if self.design_object is None:
             # This is something that may happen when a design has been updated and object was deleted
             return
 
@@ -560,74 +560,39 @@ class JournalEntry(BaseModel):
         object_str = str(self.design_object)
 
         local_logger.info("Reverting journal entry", extra={"obj": self.design_object})
-        # local_logger.info("Reverting journal entry for %s %s", object_type, object_str, extra={"obj": self})
         if self.full_control:
-            related_entries = list(JournalEntry.objects.filter_related(self).values_list("id", flat=True))
-            if related_entries:
-                active_journal_ids = ",".join(map(str, related_entries))
+            related_entries = JournalEntry.objects.filter_related(self)
+            if related_entries.count() > 0:
+                active_journal_ids = ",".join(map(lambda entry: str(entry.id), related_entries))
                 raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
 
             self.design_object._current_design = self.journal.deployment  # pylint: disable=protected-access
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:
-            if not self.changes:
-                local_logger.info("No changes found in the Journal Entry.")
-                return
-
-            if "differences" not in self.changes:
-                # TODO: We should probably change the `changes` dictionary to
-                # a concrete class so that our static analysis tools can catch
-                # problems like this.
-                local_logger.error("`differences` key not present.")
-                return
-
-            differences = self.changes["differences"]
-            for attribute in differences.get("added", {}):
-                added_value = differences["added"][attribute]
-                if differences["removed"]:
-                    removed_value = differences["removed"][attribute]
+            for attr_name, change in self.changes.items():
+                current_value = getattr(self.design_object, attr_name)
+                if "old_items" in change:
+                    old_items = set(change["old_items"])
+                    new_items = set(change["new_items"])
+                    added_items = new_items - old_items
+                    current_items = set([item.pk for item in current_value.all()])
+                    current_items -= added_items
+                    current_value.set(current_value.filter(pk__in=current_items))
                 else:
-                    removed_value = None
-                if isinstance(added_value, dict) and (not removed_value or isinstance(removed_value, dict)):
-                    # If the value is a dictionary (e.g., config context), we only update the
-                    # keys changed, honouring the current value of the attribute
-                    current_value = getattr(self.design_object, attribute)
-                    current_value_type = type(current_value)
-                    if isinstance(current_value, dict):
+                    old_value = change["old_value"]
+                    new_value = change["new_value"]
+
+                    if isinstance(old_value, dict):
+                        # config-context like thing, only change the keys
+                        # that were added/changed
                         self.update_current_value_from_dict(
                             current_value=current_value,
-                            added_value=added_value,
-                            removed_value=removed_value if removed_value else {},
+                            added_value=new_value,
+                            removed_value=old_value if old_value else {},
                         )
-                    elif isinstance(current_value, models.Model):
-                        # The attribute is a Foreign Key that is represented as a dict
-                        try:
-                            current_value = current_value_type.objects.get(id=removed_value["id"])
-                        except ObjectDoesNotExist:
-                            current_value = None
-                    elif current_value is None:
-                        pass
                     else:
-                        # TODO: cover other use cases, such as M2M relationship
-                        local_logger.error(
-                            "%s can't be reverted because decommission of type %s is not supported yet.",
-                            current_value,
-                            current_value_type,
-                        )
-
-                    setattr(self.design_object, attribute, current_value)
-                else:
-                    try:
-                        setattr(self.design_object, attribute, removed_value)
-                    except AttributeError:
-                        # TODO: the current serialization (serialize_object_v2) doesn't exclude properties
-                        local_logger.debug(
-                            "Attribute %s in this object %s can't be set. It may be a 'property'.",
-                            attribute,
-                            object_str,
-                            extra={"obj": self.design_object},
-                        )
+                        setattr(self.design_object, attr_name, old_value)
 
                 self.design_object.save()
                 local_logger.info(

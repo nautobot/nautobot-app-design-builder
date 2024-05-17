@@ -12,7 +12,6 @@ from nautobot.dcim.models import Manufacturer
 from nautobot.extras.plugins import register_custom_validators
 from nautobot.users.models import ObjectPermission
 
-from nautobot_design_builder.design import calculate_changes
 from .test_model_deployment import BaseDeploymentTest
 from ..models import JournalEntry
 from ..custom_validators import custom_validators
@@ -48,7 +47,10 @@ class DataProtectionBaseTest(BaseDeploymentTest):  # pylint: disable=too-many-in
         self.initial_entry = JournalEntry.objects.create(
             design_object=self.manufacturer_from_design,
             full_control=True,
-            changes=calculate_changes(self.manufacturer_from_design),
+            changes={
+                "name": {"old_value": None, "new_value": self.original_name},
+                "description": {"old_value": None, "new_value": "something"},
+            },
             journal=self.journal,
             index=self.journal._next_index(),  # pylint:disable=protected-access
         )

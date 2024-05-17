@@ -44,13 +44,13 @@ class BaseValidator(PluginCustomValidator):
                 current_attribute_value = getattr(existing_object, attribute_name)
 
                 if new_attribute_value != current_attribute_value and (
-                    attribute_name in journal_entry.changes["differences"].get("added", {})
-                    and journal_entry.changes["differences"]["added"][attribute_name]
+                    attribute_name in journal_entry.changes
+                    and journal_entry.changes[attribute_name]["new_value"]
                 ):
                     error_context = ""
                     # For dict attributes (i.e., JSON fields), the design builder can own only a few keys
                     if isinstance(current_attribute_value, dict):
-                        for key, value in journal_entry.changes["differences"]["added"][attribute_name].items():
+                        for key, value in journal_entry.changes[attribute_name]["new_value"].items():
                             if new_attribute_value[key] != value:
                                 error_context = f"Key {key}"
                                 break

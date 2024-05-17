@@ -151,9 +151,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             journal=self.journal2,
             design_object=self.secret,
             full_control=False,
-            changes={
-                "differences": {},
-            },
+            changes={},
             index=self.journal2._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_2.validated_save()
@@ -183,7 +181,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             journal=self.journal2,
             design_object=self.secret,
             full_control=False,
-            changes={"differences": {}},
+            changes={},
             index=self.journal2._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_2.validated_save()
@@ -201,7 +199,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             journal=self.journal1,
             design_object=self.secret,
             full_control=False,
-            changes={"differences": {}},
+            changes={},
             index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
         journal_entry_1.validated_save()
@@ -219,10 +217,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"description": "test description"},
-                    "removed": {"description": "previous description"},
-                }
+                "description": {"old_value": "previous description", "new_value": "test description"},
             },
             index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
@@ -239,10 +234,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"parameters": self.changed_params},
-                    "removed": {"parameters": self.initial_params},
-                }
+                "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
             index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
@@ -261,10 +253,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"parameters": self.changed_params},
-                    "removed": {"parameters": self.initial_params},
-                }
+                "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
             index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
@@ -283,10 +272,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"parameters": self.changed_params},
-                    "removed": {"parameters": self.initial_params},
-                }
+                "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
             index=self.journal1._next_index(),  # pylint:disable=protected-access
         )
