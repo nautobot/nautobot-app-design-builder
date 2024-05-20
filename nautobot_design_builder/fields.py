@@ -213,10 +213,18 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
 
     def __init__(self, field: django_models.Field):  # noqa:D102
         super().__init__(field)
-        if hasattr(field.remote_field, "through"):
-            through = field.remote_field.through
-            if not through._meta.auto_created:
-                self.related_model = through
+        self.auto_through = True
+        self.through_fields = field.remote_field.through_fields
+        through = field.remote_field.through
+        if not through._meta.auto_created:
+            self.auto_through = False
+            self.related_model = through
+            if field.remote_field.through_fields:
+                self.link_field = field.remote_field.through_fields[0]
+            else:
+                for f in through._meta.fields:
+                    if f.related_model == field.model:
+                        self.link_field = f.name
 
     @debug_set
     def __set__(self, obj: "ModelInstance", values):  # noqa:D105
@@ -224,12 +232,28 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
             items = []
             for value in values:
                 value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
+                if self.auto_through:
+                    # Only need to call `add` if the through relationship was
+                    # auto-created. Otherwise we explicitly create the through
+                    # object
+                    items.append(value.instance)
+                else:
+                    setattr(value.instance, self.link_field, obj.instance)
                 if value.metadata.created:
                     value.save()
-                items.append(value.instance)
-            getattr(obj.instance, self.field_name).add(*items)
+                else:
+                    value.environment.journal.log(value)
+            if items:
+                getattr(obj.instance, self.field_name).add(*items)
 
         obj.connect("POST_INSTANCE_SAVE", setter)
+
+
+class ManyToManyRelField(ManyToManyField):  # pylint:disable=too-few-public-methods
+    """Reverse many to many relationship field."""
+
+    def __init__(self, field: django_models.Field):  # noqa:D102
+        super().__init__(field.remote_field)
 
 
 class GenericRelationField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -259,12 +283,29 @@ class GenericForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:
         setattr(obj.instance, ct_field, ContentType.objects.get_for_model(value.instance))
 
 
-class TagField(ManyToManyField):  # pylint:disable=too-few-public-methods
+class TagField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
     """Taggit field."""
 
     def __init__(self, field: django_models.Field):  # noqa:D102
         super().__init__(field)
         self.related_model = field.remote_field.model
+
+    def __set__(self, obj: "ModelInstance", values):  # noqa:D105
+        # I hate that this code is almost identical to the ManyToManyField
+        # __set__ code, but I don't see an easy way to DRY it up at the
+        # moment.
+        def setter():
+            items = []
+            for value in values:
+                value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
+                if value.metadata.created:
+                    value.save()
+                else:
+                    value.environment.journal.log(value)
+                items.append(value.instance)
+            getattr(obj.instance, self.field_name).add(*items)
+
+        obj.connect("POST_INSTANCE_SAVE", setter)
 
 
 class GenericRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -348,8 +389,10 @@ def field_factory(arg1, arg2) -> ModelField:
         field = ForeignKeyField(arg2)
     elif isinstance(arg2, django_models.ManyToOneRel):
         field = ManyToOneRelField(arg2)
-    elif isinstance(arg2, (django_models.ManyToManyField, django_models.ManyToManyRel)):
+    elif isinstance(arg2, django_models.ManyToManyField):
         field = ManyToManyField(arg2)
+    elif isinstance(arg2, django_models.ManyToManyRel):
+        field = ManyToManyRelField(arg2)
     else:
         raise DesignImplementationError(f"Cannot manufacture field for {type(arg2)}, {arg2} {arg2.is_relation}")
     return field

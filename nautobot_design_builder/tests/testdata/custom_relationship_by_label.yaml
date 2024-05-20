@@ -1,6 +1,7 @@
 ---
 extensions:
   - "nautobot_design_builder.contrib.ext.LookupExtension"
+depends_on: "base_test.yaml"
 designs:
   - relationships:
       - label: "Device to VLANS"
@@ -13,29 +14,6 @@ designs:
           app_label: "ipam"
           model: "vlan"
 
-    manufacturers:
-      - name: "manufacturer1"
-
-    device_types:
-      - manufacturer__name: "manufacturer1"
-        model: "model name"
-        u_height: 1
-
-    roles:
-      - name: "device role"
-        content_types:
-          - "!get:app_label": "dcim"
-            "!get:model": "device"
-
-    location_types:
-      - name: "Site"
-        content_types:
-          - "!get:app_label": "dcim"
-            "!get:model": "device"
-        locations:
-          - name: "site_1"
-            status__name: "Active"
-
     vlans:
       - "!create_or_update:vid": 42
         name: "The Answer"
@@ -43,7 +21,7 @@ designs:
 
     devices:
       - name: "device_1"
-        location__name: "site_1"
+        location__name: "Site"
         status__name: "Active"
         device_type__model: "model name"
         role__name: "device role"

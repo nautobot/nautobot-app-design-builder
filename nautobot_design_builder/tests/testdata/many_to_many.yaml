@@ -1,9 +1,7 @@
 ---
+depends_on: "base_test.yaml"
 designs:
-  - manufacturers:
-      - name: "manufacturer1"
-
-    device_types:
+  - device_types:
       - manufacturer__name: "manufacturer1"
         model: "model1"
         "!ref": "model1"
@@ -23,6 +21,7 @@ checks:
 
   - equal:
       - model: "nautobot.dcim.models.DeviceType"
+        query: {model__in: ["model1", "model2"]}
       - model: "nautobot.extras.models.ConfigContext"
         query: {name: "My Context"}
         attribute: "device_types"

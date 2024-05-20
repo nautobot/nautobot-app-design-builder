@@ -1,0 +1,42 @@
+---
+abstract: true
+designs:
+  - manufacturers:
+      - name: "manufacturer1"
+
+    device_types:
+      - manufacturer__name: "manufacturer1"
+        model: "model name"
+        u_height: 1
+
+    roles:
+      - name: "device role"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+
+    location_types:
+      - name: "Site"
+        content_types:
+          - "!get:app_label": "circuits"
+            "!get:model": "circuittermination"
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+          - "!get:app_label": "dcim"
+            "!get:model": "powerpanel"
+          - "!get:app_label": "dcim"
+            "!get:model": "rack"
+          - "!get:app_label": "dcim"
+            "!get:model": "rackgroup"
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+          - "!get:app_label": "ipam"
+            "!get:model": "vlan"
+          - "!get:app_label": "ipam"
+            "!get:model": "vlangroup"
+          - "!get:app_label": "virtualization"
+            "!get:model": "cluster"
+        locations:
+          - "name": "Site"
+            "location_type__name": "Site"
+            "status__name": "Active"
