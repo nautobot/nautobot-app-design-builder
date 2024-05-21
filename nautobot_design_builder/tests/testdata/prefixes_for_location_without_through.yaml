@@ -1,0 +1,21 @@
+---
+depends_on: "base_test.yaml"
+designs:
+  - locations:
+      - "!update:name": "Site"
+        prefixes:
+          - prefix: "10.1.0.0/16"
+            status__name: "Active"
+  - prefixes:
+      - prefix: "10.0.0.0/23"
+        type: "container"
+        status__name: "Active"
+        locations:
+          - "!get:name": "Site"
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {location__name: "Site", prefix: "10.0.0.0/23"}
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {location__name: "Site", prefix: "10.1.0.0/16"}
