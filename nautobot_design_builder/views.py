@@ -3,6 +3,7 @@
 from django_tables2 import RequestConfig
 from django.apps import apps as global_apps
 from django.shortcuts import render
+from django.core.exceptions import FieldDoesNotExist
 
 from rest_framework.decorators import action
 
@@ -222,23 +223,22 @@ class DesignProtectionObjectView(ObjectView):
         """Generate extra context for rendering the DesignProtection template."""
         content = {}
 
-        journalentry_references = JournalEntry.objects.filter(
+        journal_entries = JournalEntry.objects.filter(
             _design_object_id=instance.id, active=True
         ).exclude_decommissioned()
 
-        if journalentry_references:
-            design_owner = journalentry_references.filter(full_control=True)
+        if journal_entries:
+            design_owner = journal_entries.filter(full_control=True, _design_object_id=instance.pk)
             if design_owner:
                 content["object"] = design_owner.first().journal.deployment
-            for journalentry in journalentry_references:
-                for attribute in instance._meta.fields:
-                    attribute_name = attribute.name
-                    if attribute_name.startswith("_"):
-                        continue
-                    if (
-                        attribute_name in journalentry.changes["differences"].get("added", {})
-                        and journalentry.changes["differences"].get("added", {})[attribute_name]
-                    ):
-                        content[attribute_name] = journalentry.journal.deployment
+            for journal_entry in journal_entries:
+                for attribute in journal_entry.changes:
+                    try:
+                        field = instance._meta.get_field(attribute)
+                        content[field.name] = journal_entry.journal.deployment
+                    except FieldDoesNotExist:
+                        # TODO: should this be logged? I can't think of when we would care
+                        # that a model's fields have changed since a design was implemented
+                        pass
 
         return {"active_tab": request.GET["tab"], "design_protection": content}

@@ -91,8 +91,9 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         fields = {name: var.as_field() for name, var in cls._get_vars().items()}
         def clean(self):
             cleaned_data = super(type(self), self).clean()
-            context = cls.Meta.context_class(cleaned_data)
-            context.validate()
+            if self.is_valid():
+                context = cls.Meta.context_class(cleaned_data)
+                context.validate()
             return cleaned_data
         fields["clean"] = clean
         return type("DesignJobForm", (JobForm,), fields)
