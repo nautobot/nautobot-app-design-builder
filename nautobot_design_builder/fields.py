@@ -61,11 +61,22 @@ if TYPE_CHECKING:
 
 def _get_change_value(value):
     if isinstance(value, Manager):
-        value = set([item.pk for item in value.all()])
+        value = {item.pk for item in value.all()}
     return value
 
+
 @contextmanager
-def change_log(model_instance: "ModelInstance", attr_name):
+def change_log(model_instance: "ModelInstance", attr_name: str):
+    """Log changes for a field.
+
+    This context manager will record the value of a field prior to a change
+    as well as the value after the change. If the values are different then
+    a change record is added to the underlying model instance.
+
+    Args:
+        model_instance (ModelInstance): The model instance that is being updated.
+        attr_name (str): The attribute to be updated.
+    """
     old_value = _get_change_value(getattr(model_instance.instance, attr_name))
     yield
     new_value = _get_change_value(getattr(model_instance.instance, attr_name))
@@ -208,7 +219,7 @@ class ForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
                 model_instance.save()
             else:
                 model_instance.environment.journal.log(model_instance)
-            
+
             with change_log(obj, self.field.attname):
                 setattr(obj.instance, self.field_name, model_instance.instance)
 
@@ -366,9 +377,9 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
                         "source_id": source.id,
                         "source_type_id": source_type.id,
                         "destination_id": destination.id,
-                        "destination_type_id": destination_type.id
+                        "destination_type_id": destination_type.id,
                     },
-                    parent=obj
+                    parent=obj,
                 )
                 relationship_association.save()
 

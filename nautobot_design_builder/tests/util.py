@@ -8,6 +8,7 @@ from nautobot.tenancy.models import Tenant
 from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 from nautobot_design_builder.tests.designs import test_designs
 
+
 def populate_sample_data():
     """Populate the database with some sample data."""
     job = Job.objects.get(name="Initial Data")
@@ -26,7 +27,7 @@ def create_test_view_data():
         test_designs.SimpleDesign,
         test_designs.SimpleDesign3,
         test_designs.SimpleDesignReport,
-        test_designs.IntegrationDesign
+        test_designs.IntegrationDesign,
     ]
     for i, job_class in enumerate(job_classes, 1):
         # Core models

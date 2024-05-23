@@ -8,8 +8,6 @@ from django.contrib.contenttypes.models import ContentType
 
 from nautobot.extras.models import Status, JobResult, Job
 
-from nautobot_design_builder.util import nautobot_version
-
 from .test_model_design import BaseDesignTest
 from .. import models, choices
 

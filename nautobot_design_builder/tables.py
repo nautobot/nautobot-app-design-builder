@@ -31,10 +31,17 @@ class DesignTable(BaseTable):
     actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGN_TABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
 
-    def render_design_mode(self, value, record):
+    def render_design_mode(self, value):
+        """Lookup the human readable design mode from the assigned mode value."""
         return choices.DesignModeChoices.as_dict()[value]
 
     def render_deployment_count(self, value, record):
+        """Calculate the number of deployments for a design.
+
+        If the design is a deployment then return the count of deployments for the design. If
+        the mode is `classic` then return a dash to indicate deployments aren't tracked in that
+        mode.
+        """
         if record.design_mode != choices.DesignModeChoices.CLASSIC:
             return value
         return "-"

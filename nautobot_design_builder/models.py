@@ -130,7 +130,10 @@ class Design(PrimaryModel):
 
     @property
     def design_mode(self):
-        return self.job.job_class.design_mode()
+        """Determine the implementation mode for the design."""
+        if self.job.job_class:
+            return self.job.job_class.design_mode()
+        return None
 
     def get_absolute_url(self):
         """Return detail view for Designs."""
@@ -580,7 +583,7 @@ class JournalEntry(BaseModel):
                     old_items = set(change["old_items"])
                     new_items = set(change["new_items"])
                     added_items = new_items - old_items
-                    current_items = set([item.pk for item in current_value.all()])
+                    current_items = {item.pk for item in current_value.all()}
                     current_items -= added_items
                     current_value.set(current_value.filter(pk__in=current_items))
                 else:

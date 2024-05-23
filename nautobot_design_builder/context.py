@@ -14,7 +14,6 @@ from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.util import load_design_yaml
-from nautobot_design_builder.util import nautobot_version
 
 
 class ContextNodeMixin:
