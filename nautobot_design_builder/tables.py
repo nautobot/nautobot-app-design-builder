@@ -5,6 +5,7 @@ from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
 from nautobot.utilities.tables import BooleanColumn, ButtonsColumn
 
+from nautobot_design_builder import choices
 from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 DESIGN_TABLE = """
@@ -25,15 +26,24 @@ class DesignTable(BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
-    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
+    design_mode = Column(verbose_name="Mode")
+    deployment_count = Column(verbose_name="Deployments")
     actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGN_TABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
+
+    def render_design_mode(self, value, record):
+        return choices.DesignModeChoices.as_dict()[value]
+
+    def render_deployment_count(self, value, record):
+        if record.design_mode != choices.DesignModeChoices.CLASSIC:
+            return value
+        return "-"
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "version", "job_last_synced", "description", "instance_count")
+        fields = ("name", "design_mode", "version", "job_last_synced", "description")
 
 
 DEPLOYMENT_TABLE = """

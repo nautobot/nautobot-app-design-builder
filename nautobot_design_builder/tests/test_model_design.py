@@ -1,11 +1,9 @@
 """Test Design."""
 
-from os import path
-
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from nautobot.extras.models import Job as JobModel
+from nautobot.extras.utils import refresh_job_model_from_job_class
 
 from nautobot_design_builder.tests import DesignTestCase
 
@@ -18,35 +16,16 @@ class BaseDesignTest(DesignTestCase):
 
     def setUp(self):
         super().setUp()
-        settings.JOBS_ROOT = path.dirname(test_designs.__file__)
-        defaults = {
-            "grouping": "Designs",
-            "source": "local",
-            "installed": True,
-            "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
-        }
-
-        self.job = JobModel(
-            **defaults.copy(),
-            name="Simple Design",
-            job_class_name=test_designs.IntegrationDesign.__name__,
-        )
-        self.job.validated_save()
+        self.job, _ = refresh_job_model_from_job_class(JobModel, "plugins", test_designs.IntegrationDesign)
         self.design = models.Design.objects.get(job=self.job)
-
-        self.job2 = JobModel(
-            **defaults.copy(),
-            name="Simple Design Report",
-            job_class_name=test_designs.SimpleDesignReport.__name__,
-        )
-        self.job2.validated_save()
+        self.job2, _ = refresh_job_model_from_job_class(JobModel, "plugins", test_designs.SimpleDesignReport)
 
 
 class TestDesign(BaseDesignTest):
     """Test Design."""
 
     def test_create_from_signal(self):
-        self.assertEqual(2, models.Design.objects.all().count())
+        self.assertEqual(5, models.Design.objects.all().count())
         self.assertEqual(self.design.job_id, self.job.id)
         self.assertEqual(str(self.design), self.design.name)
 

@@ -51,9 +51,12 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         super().__init__(*args, **kwargs)
 
     @classmethod
+    def design_mode(cls):
+        return getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
+
+    @classmethod
     def is_deployment_job(cls):
-        design_mode = getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
-        return design_mode == choices.DesignModeChoices.DEPLOYMENT
+        return cls.design_mode() == choices.DesignModeChoices.DEPLOYMENT
 
     @classmethod
     def deployment_name_field(cls):

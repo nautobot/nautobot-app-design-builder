@@ -18,6 +18,7 @@ from nautobot.utilities.utils import count_related
 from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
 
+from nautobot_design_builder import choices
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
     DeploymentSerializer,
@@ -64,7 +65,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
 
     filterset_class = DesignFilterSet
     filterset_form_class = DesignFilterForm
-    queryset = Design.objects.annotate(instance_count=count_related(Deployment, "design"))
+    queryset = Design.objects.annotate(deployment_count=count_related(Deployment, "design"))
     serializer_class = DesignSerializer
     table_class = DesignTable
     action_buttons = ()
@@ -74,6 +75,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
+            context["is_deployment"] = instance.design_mode == choices.DesignModeChoices.DEPLOYMENT
             deployments = Deployment.objects.restrict(request.user, "view").filter(design=instance)
 
             instances_table = DeploymentTable(deployments)

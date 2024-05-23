@@ -23,6 +23,6 @@ class DesignModeChoices(ChoiceSet):
     DEPLOYMENT = "deployment"
 
     CHOICES = (
-        (CLASSIC, "Classic Behavior"),
+        (CLASSIC, "Ad-Hoc"),
         (DEPLOYMENT, "Design Deployment"),
     )

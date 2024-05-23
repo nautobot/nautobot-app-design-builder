@@ -128,6 +128,10 @@ class Design(PrimaryModel):
         """Property for job name."""
         return self.job.name
 
+    @property
+    def design_mode(self):
+        return self.job.job_class.design_mode()
+
     def get_absolute_url(self):
         """Return detail view for Designs."""
         return reverse("plugins:nautobot_design_builder:design", args=[self.pk])
