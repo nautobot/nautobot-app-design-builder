@@ -21,7 +21,7 @@ class P2PContext(Context):
     def validate_unique_devices(self):
         if self.device_a == self.device_b:
             raise ValidationError({"device_a": "Both routers can't be the same."})
-        
+
     def get_customer_id(self, customer_name, p2p_asn):
         try:
             vrf = VRF.objects.get(description=f"VRF for customer {customer_name}")

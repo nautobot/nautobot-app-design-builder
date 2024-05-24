@@ -14,7 +14,6 @@ from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.util import load_design_yaml
-from nautobot_design_builder.util import nautobot_version
 
 
 class ContextNodeMixin:
@@ -300,11 +299,10 @@ class Context(_DictNode, LoggingMixin):
               or their native type.
     """
 
-    def __init__(self, data: dict = None, job_result: JobResult = None, design_name: str = ""):
+    def __init__(self, data: dict = None, job_result: JobResult = None):
         """Constructor for Context class that creates data nodes from input data."""
         super().__init__(data)
         self.job_result = job_result
-        self.design_name = design_name
 
         for base, filename in self.base_context_files():
             context = load_design_yaml(base, filename)

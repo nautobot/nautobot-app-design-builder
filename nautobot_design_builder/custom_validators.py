@@ -44,8 +44,7 @@ class BaseValidator(PluginCustomValidator):
                 current_attribute_value = getattr(existing_object, attribute_name)
 
                 if new_attribute_value != current_attribute_value and (
-                    attribute_name in journal_entry.changes
-                    and journal_entry.changes[attribute_name]["new_value"]
+                    attribute_name in journal_entry.changes and journal_entry.changes[attribute_name]["new_value"]
                 ):
                     error_context = ""
                     # For dict attributes (i.e., JSON fields), the design builder can own only a few keys
@@ -61,8 +60,7 @@ class BaseValidator(PluginCustomValidator):
                     # If the update is coming from the design instance owner, it can be updated
                     if (
                         hasattr(obj, "_current_design")
-                        and obj._current_design  # pylint: disable=protected-access
-                        == journal_entry.journal.deployment
+                        and obj._current_design == journal_entry.journal.deployment  # pylint: disable=protected-access
                     ):
                         continue
 

@@ -51,16 +51,27 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         super().__init__(*args, **kwargs)
 
     @classmethod
+    def design_mode(cls):
+        """Determine the implementation mode for the design."""
+        return getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
+
+    @classmethod
     def is_deployment_job(cls):
-        design_mode = getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
-        return design_mode == choices.DesignModeChoices.DEPLOYMENT
+        """Determine if a design job has been set to deployment mode."""
+        return cls.design_mode() == choices.DesignModeChoices.DEPLOYMENT
 
     @classmethod
     def deployment_name_field(cls):
+        """Determine what the deployment name field is.
+
+        Returns `None` if no deployment has been set in the job Meta class. In this
+        case the field will default to `deployment_name`
+        """
         getattr(cls.Meta, "deployment_name_field", None)
 
     @classmethod
     def determine_deployment_name(cls, data):
+        """Determine the deployment name field, if specified."""
         if not cls.is_deployment_job():
             return None
         deployment_name_field = cls.deployment_name_field()
@@ -72,6 +83,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
     @classmethod
     def _get_vars(cls):
+        """Retrieve the script variables for the job.
+
+        If no deployment name field has been specified this method will
+        also add a `deployment_name` field.
+        """
         cls_vars = {}
         if cls.is_deployment_job():
             if cls.deployment_name_field() is None:
@@ -83,14 +99,22 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         cls_vars.update(super()._get_vars())
         return cls_vars
 
-    @classmethod
-    def as_form_class(cls):
-        fields = {name: var.as_field() for name, var in cls._get_vars().items()}
+    def as_form_class(self):
+        """Dynamically generate the job form.
+
+        This will add the deployment name field, if needed, and also provides
+        a clean method that call's the context validations methods.
+        """
+        fields = {name: var.as_field() for name, var in self._get_vars().items()}
+        old_clean = JobForm.clean
+
         def clean(self):
-            cleaned_data = super(type(self), self).clean()
-            context = cls.Meta.context_class(cleaned_data)
-            context.validate()
+            cleaned_data = old_clean(self)
+            if self.is_valid():
+                context = self.Meta.context_class(cleaned_data)
+                context.validate()
             return cleaned_data
+
         fields["clean"] = clean
         return type("DesignJobForm", (JobForm,), fields)
 
@@ -268,7 +292,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design_files = None
 
         if hasattr(self.Meta, "context_class"):
-            context = self.Meta.context_class(data=data, job_result=self.job_result, design_name=self.Meta.name)
+            context = self.Meta.context_class(data=data, job_result=self.job_result)
             context.validate()
         else:
             context = {}

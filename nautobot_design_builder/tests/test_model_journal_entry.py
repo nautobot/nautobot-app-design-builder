@@ -186,7 +186,7 @@ class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance
             },
         )
 
-        entry = self.get_entry(secret)
+        entry = self.get_entry(secret, None)
         entry.revert()
         secret.refresh_from_db()
         self.assertDictEqual(self.secret.parameters, secret.parameters)
@@ -231,9 +231,7 @@ class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance
         updated_device_type = DeviceType.objects.get(id=self.device_type.id)
         updated_device_type.model = "new name"
         updated_device_type.save()
-        entry = self.get_entry(
-            updated_device_type, design_object=self.device_type, initial_state=self.initial_state_device_type
-        )
+        entry = self.get_entry(updated_device_type, None)
         entry.revert()
         self.device_type.refresh_from_db()
         self.assertEqual(self.device_type.model, "test device type")
@@ -246,7 +244,8 @@ class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance
         updated_device_type.save()
 
         entry = self.get_entry(
-            updated_device_type, {"manufacturer_id": {"old_value": self.manufacturer.id, "new_value": new_manufacturer.id}}
+            updated_device_type,
+            {"manufacturer_id": {"old_value": self.manufacturer.id, "new_value": new_manufacturer.id}},
         )
         entry.revert()
         self.device_type.refresh_from_db()

@@ -20,26 +20,6 @@ from nautobot_design_builder.fields import CustomRelationshipField, field_factor
 from nautobot_design_builder import models
 
 
-class ChangeRecord:
-    def __init__(self, data = None):
-        self._internal = data
-        if self._internal is None:
-            self._internal = {}
-
-    def __iter__(self):
-        for attr_name in self._internal:
-            yield attr_name
-
-    def __setitem__(self, key, value):
-        self._internal[key] = value
-
-    def items(self):
-        return self._internal.items()
-
-    def update(self, other: "ChangeRecord"):
-        self._internal.update(other._internal)
-
-
 # TODO: Refactor this code into the Journal model
 class Journal:
     """Keep track of the objects created or updated during the course of a design's implementation.
@@ -172,8 +152,7 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
 
         self.save_args = kwargs.get("save_args", {})
 
-        self.changes = {
-        }
+        self.changes = {}
 
         # The following attributes are dunder attributes
         # because they should only be set in the @attributes.setter
