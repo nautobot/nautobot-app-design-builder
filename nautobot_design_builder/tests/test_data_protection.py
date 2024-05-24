@@ -13,7 +13,7 @@ from nautobot.extras.plugins import register_custom_validators
 from nautobot.users.models import ObjectPermission
 
 from .test_model_deployment import BaseDeploymentTest
-from ..models import JournalEntry
+from ..models import ChangeRecord
 from ..custom_validators import custom_validators
 from ..signals import load_pre_delete_signals
 
@@ -43,16 +43,16 @@ class DataProtectionBaseTest(BaseDeploymentTest):  # pylint: disable=too-many-in
             "instance": "my instance",
         }
 
-        self.journal = self.create_journal(self.job, self.deployment, self.job_kwargs)
-        self.initial_entry = JournalEntry.objects.create(
+        self.change_set = self.create_change_set(self.job, self.deployment, self.job_kwargs)
+        self.initial_record = ChangeRecord.objects.create(
             design_object=self.manufacturer_from_design,
             full_control=True,
             changes={
                 "name": {"old_value": None, "new_value": self.original_name},
                 "description": {"old_value": None, "new_value": "something"},
             },
-            journal=self.journal,
-            index=self.journal._next_index(),  # pylint:disable=protected-access
+            change_set=self.change_set,
+            index=self.change_set._next_index(),  # pylint:disable=protected-access
         )
 
         self.client = Client()

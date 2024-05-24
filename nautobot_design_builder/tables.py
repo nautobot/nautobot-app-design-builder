@@ -6,7 +6,7 @@ from nautobot.apps.tables import StatusTableMixin, BaseTable
 from nautobot.utilities.tables import BooleanColumn, ButtonsColumn
 
 from nautobot_design_builder import choices
-from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
 DESIGN_TABLE = """
 
@@ -58,7 +58,7 @@ DEPLOYMENT_TABLE = """
 <a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DeploymentDecommissioning" %}?deployments={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
-<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_journal as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"
+<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_change_set as last_change_set %}{{ last_change_set.job_result.pk }}{% endwith %}"
     class="btn btn-xs btn-success" title="Re-run job with same arguments.">
     <i class="mdi mdi-repeat"></i>
 </a>
@@ -108,31 +108,31 @@ class DesignObjectsTable(BaseTable):
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = JournalEntry
+        model = ChangeRecord
         fields = ("design_object_type", "design_object")
 
 
-class JournalTable(BaseTable):
+class ChangeSetTable(BaseTable):
     """Table for list view."""
 
     pk = Column(linkify=True, verbose_name="ID")
     deployment = Column(linkify=True, verbose_name="Deployment")
     job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
-    journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
-    active = BooleanColumn(verbose_name="Active Journal")
+    record_count = Column(accessor=Accessor("record_count"), verbose_name="Change Records")
+    active = BooleanColumn(verbose_name="Active")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = Journal
-        fields = ("pk", "deployment", "job_result", "journal_entry_count", "active")
+        model = ChangeSet
+        fields = ("pk", "deployment", "job_result", "record_count", "active")
 
 
-class JournalEntryTable(BaseTable):
+class ChangeRecordTable(BaseTable):
     """Table for list view."""
 
     pk = Column(linkify=True, verbose_name="ID")
-    journal = Column(linkify=True)
+    change_set = Column(linkify=True)
     design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
     design_object = Column(linkify=True, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
@@ -141,5 +141,5 @@ class JournalEntryTable(BaseTable):
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = JournalEntry
-        fields = ("pk", "journal", "design_object_type", "design_object", "changes", "full_control", "active")
+        model = ChangeRecord
+        fields = ("pk", "change_set", "design_object_type", "design_object", "changes", "full_control", "active")

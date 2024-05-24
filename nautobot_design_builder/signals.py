@@ -15,7 +15,7 @@ from nautobot.core.signals import nautobot_database_ready
 from nautobot.extras.models import Job, Status
 from nautobot.utilities.choices import ColorChoices
 from nautobot.extras.registry import registry
-from nautobot_design_builder.models import JournalEntry
+from nautobot_design_builder.models import ChangeRecord
 from nautobot_design_builder.middleware import GlobalRequestMiddleware
 
 from .design_job import DesignJob
@@ -48,6 +48,7 @@ def create_deployment_statuses(**kwargs):
         "Deployed": ColorChoices.COLOR_GREEN,
         "Pending": ColorChoices.COLOR_ORANGE,
         "Rolled back": ColorChoices.COLOR_RED,
+        "Unknown": ColorChoices.COLOR_DARK_RED,
     }
     for _, status_name in chain(choices.DeploymentStatusChoices):
         status, _ = Status.objects.get_or_create(name=status_name, defaults={"color": color_mapping[status_name]})
@@ -83,17 +84,17 @@ def model_delete_design_builder(instance, **kwargs):
     ):
         return
 
-    for journal_entry in JournalEntry.objects.filter(
+    for record in ChangeRecord.objects.filter(
         _design_object_id=instance.id, active=True
     ).exclude_decommissioned():
         # If there is a design with full_control, only the design can delete it
         if (
             hasattr(instance, "_current_design")
-            and instance._current_design == journal_entry.journal.deployment  # pylint: disable=protected-access
-            and journal_entry.full_control
+            and instance._current_design == record.change_set.deployment  # pylint: disable=protected-access
+            and record.full_control
         ):
             return
-        raise ProtectedError("A design instance owns this object.", set([journal_entry.journal.deployment]))
+        raise ProtectedError("A design instance owns this object.", set([record.change_set.deployment]))
 
 
 def load_pre_delete_signals():

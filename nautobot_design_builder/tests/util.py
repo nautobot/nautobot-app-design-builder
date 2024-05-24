@@ -5,7 +5,7 @@ from nautobot.extras.models import JobResult, Job
 from nautobot.extras.utils import refresh_job_model_from_job_class
 from nautobot.tenancy.models import Tenant
 
-from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 from nautobot_design_builder.tests.designs import test_designs
 
 
@@ -18,7 +18,7 @@ def populate_sample_data():
 
     design, _ = Design.objects.get_or_create(job=job)
     deployment, _ = Deployment.objects.get_or_create(design=design, name="Initial Data")
-    Journal.objects.get_or_create(deployment=deployment, job_result=job_result)
+    ChangeSet.objects.get_or_create(deployment=deployment, job_result=job_result)
 
 
 def create_test_view_data():
@@ -39,8 +39,8 @@ def create_test_view_data():
 
         # Design Builder models
         instance = Deployment.objects.create(design=Design.objects.get(job_id=job.id), name=f"Test Instance {i}")
-        journal = Journal.objects.create(deployment=instance, job_result=job_result)
+        change_set = ChangeSet.objects.create(deployment=instance, job_result=job_result)
         full_control = i == 1  # Have one record where full control is given, more than one where its not.
-        JournalEntry.objects.create(
-            journal=journal, design_object=object_created_by_job, full_control=full_control, index=0
+        ChangeRecord.objects.create(
+            change_set=change_set, design_object=object_created_by_job, full_control=full_control, index=0
         )

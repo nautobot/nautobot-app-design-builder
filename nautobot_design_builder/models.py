@@ -231,16 +231,16 @@ class Deployment(PrimaryModel):
     def decommission(self, *object_ids, local_logger=logger):
         """Decommission a design instance.
 
-        This will reverse the journal entries for the design instance and
+        This will reverse the change records for the design instance and
         reset associated objects to their pre-design state.
         """
         if not object_ids:
             local_logger.info("Decommissioning design", extra={"obj": self})
             self.__class__.pre_decommission.send(self.__class__, deployment=self)
-        # Iterate the journals in reverse order (most recent first) and
-        # revert each journal.
-        for journal in self.journals.filter(active=True).order_by("-last_updated"):
-            journal.revert(*object_ids, local_logger=local_logger)
+        # Iterate the change sets in reverse order (most recent first) and
+        # revert each change set.
+        for change_set in self.change_sets.filter(active=True).order_by("-last_updated"):
+            change_set.revert(*object_ids, local_logger=local_logger)
 
         if not object_ids:
             content_type = ContentType.objects.get_for_model(Deployment)
@@ -268,8 +268,8 @@ class Deployment(PrimaryModel):
         Returns:
             Queryset of matching objects.
         """
-        entries = JournalEntry.objects.filter_by_instance(self, model=model)
-        return model.objects.filter(pk__in=entries.values_list("_design_object_id", flat=True))
+        records = ChangeRecord.objects.filter_by_instance(self, model=model)
+        return model.objects.filter(pk__in=records.values_list("_design_object_id", flat=True))
 
     @property
     def created_by(self):
@@ -286,16 +286,16 @@ class Deployment(PrimaryModel):
         return last_updated_by
 
 
-class Journal(PrimaryModel):
-    """The Journal represents a single execution of a design instance.
+class ChangeSet(PrimaryModel):
+    """The ChangeSet represents a single execution of a design instance.
 
-    A design instance will have a minimum of one journal. When the design
-    is first implemented the journal is created and includes a list of
+    A design instance will have a minimum of one change set. When the design
+    is first implemented the change set is created and includes a list of
     all changes. If a design instance is re-run then the last input is
-    used to run the job again. A new journal is created for each run
+    used to run the job again. A new change set is created for each run
     after the first.
 
-    In the future, the Journal will be used to provide idempotence for
+    In the future, the ChangeSet will be used to provide idempotence for
     designs. However, we will need to implement an identifier strategy
     for every object within a design before that can happen.
     """
@@ -304,7 +304,7 @@ class Journal(PrimaryModel):
         to=Deployment,
         on_delete=models.CASCADE,
         editable=False,
-        related_name="journals",
+        related_name="change_sets",
     )
     job_result = models.OneToOneField(to=JobResult, on_delete=models.PROTECT, editable=False)
     active = models.BooleanField(editable=False, default=True)
@@ -316,7 +316,7 @@ class Journal(PrimaryModel):
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
-        return reverse("plugins:nautobot_design_builder:journal", args=[self.pk])
+        return reverse("plugins:nautobot_design_builder:changeset", args=[self.pk])
 
     @property
     def user_input(self):
@@ -336,7 +336,7 @@ class Journal(PrimaryModel):
         # and not complain about `no-member`
         index = getattr(self, "_index", None)
         if index is None:
-            index = self.entries.aggregate(index=models.Max("index"))["index"]
+            index = self.records.aggregate(index=models.Max("index"))["index"]
             if index is None:
                 index = -1
         index += 1
@@ -348,9 +348,9 @@ class Journal(PrimaryModel):
 
         This will log the differences between a model instance's
         initial state and its current state. If the model instance
-        was previously updated during the life of the current journal
+        was previously updated during the life of the current change set
         than the comparison is made with the initial state when the
-        object was logged in this journal.
+        object was logged in this change set.
 
         Args:
             model_instance: Model instance to log changes.
@@ -359,7 +359,7 @@ class Journal(PrimaryModel):
         content_type = ContentType.objects.get_for_model(instance)
 
         try:
-            entry = self.entries.get(
+            entry = self.records.get(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
             )
@@ -367,8 +367,8 @@ class Journal(PrimaryModel):
             # record and record the differences.
             entry.changes.update(model_instance.metadata.changes)
             entry.save()
-        except JournalEntry.DoesNotExist:
-            entry = self.entries.create(
+        except ChangeRecord.DoesNotExist:
+            entry = self.records.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
                 changes=model_instance.metadata.changes,
@@ -378,7 +378,7 @@ class Journal(PrimaryModel):
         return entry
 
     def revert(self, *object_ids, local_logger: logging.Logger = logger):
-        """Revert the changes represented in this Journal.
+        """Revert the changes represented in this ChangeSet.
 
         Raises:
             ValueError: the error will include the trace from the original exception.
@@ -389,93 +389,93 @@ class Journal(PrimaryModel):
         # Without a design object we cannot have changes, right? I suppose if the
         # object has been deleted since the change was made then it wouldn't exist,
         # but I think we need to discuss the implications of this further.
-        entries = self.entries.order_by("-index").exclude(_design_object_id=None).exclude(active=False)
+        records = self.records.order_by("-index").exclude(_design_object_id=None).exclude(active=False)
         if not object_ids:
-            local_logger.info("Reverting journal", extra={"obj": self})
+            local_logger.info("Reverting change set", extra={"obj": self})
         else:
-            entries = entries.filter(_design_object_id__in=object_ids)
+            records = records.filter(_design_object_id__in=object_ids)
 
-        for journal_entry in entries:
+        for record in records:
             try:
-                journal_entry.revert(local_logger=local_logger)
+                record.revert(local_logger=local_logger)
             except (ValidationError, DesignValidationError) as ex:
-                local_logger.error(str(ex), extra={"obj": journal_entry.design_object})
+                local_logger.error(str(ex), extra={"obj": record.design_object})
                 raise ValueError from ex
 
         if not object_ids:
-            # When the Journal is reverted, we mark is as not active anymore
+            # When the change set is reverted, we mark is as not active anymore
             self.active = False
             self.save()
 
-    def __sub__(self, other: "Journal"):
-        """Calculate the difference between two journals.
+    def __sub__(self, other: "ChangeSet"):
+        """Calculate the difference between two change sets.
 
-        This method calculates the differences between the journal entries of two
-        journals. This is similar to Python's `set.difference` method. The result
-        is a queryset of JournalEntries from this journal that represent objects
-        that are are not in the `other` journal.
+        This method calculates the differences between the records of two
+        change sets. This is similar to Python's `set.difference` method. The result
+        is a queryset of ChangeRecords from this change set that represent objects
+        that are are not in the `other` change set.
 
         Args:
-            other (Journal): The other Journal to subtract from this journal.
+            other (ChangeSet): The other ChangeSet to subtract from this change set.
 
         Returns:
-            Queryset of journal entries
+            Queryset of change records
         """
         if other is None:
             return []
 
-        other_ids = other.entries.values_list("_design_object_id")
+        other_ids = other.records.values_list("_design_object_id")
 
         return (
-            self.entries.order_by("-index")
+            self.records.order_by("-index")
             .exclude(_design_object_id__in=other_ids)
             .values_list("_design_object_id", flat=True)
         )
 
 
-class JournalEntryQuerySet(RestrictedQuerySet):
-    """Queryset for `JournalEntry` objects."""
+class ChangeRecordQuerySet(RestrictedQuerySet):
+    """Queryset for `ChangeRecord` objects."""
 
     def exclude_decommissioned(self):
-        """Returns JournalEntry which the related Deployment is not decommissioned."""
-        return self.exclude(journal__deployment__status__name=choices.DeploymentStatusChoices.DECOMMISSIONED)
+        """Returns a ChangeRecord queryset which the related Deployment is not decommissioned."""
+        return self.exclude(change_set__deployment__status__name=choices.DeploymentStatusChoices.DECOMMISSIONED)
 
     def filter_related(self, entry):
-        """Returns other JournalEntries which have the same object ID but are in different designs.
+        """Returns other ChangeRecords which have the same object ID but are in different designs.
 
         Args:
-            entry (JournalEntry): The JournalEntry to use as reference.
+            entry (ChangeRecord): The ChangeRecord to use as reference.
 
         Returns:
-            QuerySet: The queryset that matches other journal entries with the same design object ID. This
-            excludes matching entries in the same design.
+            QuerySet: The queryset that matches other change records with the same design object ID. This
+            excludes matching records in the same design.
         """
         return (
             self.filter(active=True)
             .filter(_design_object_id=entry._design_object_id)  # pylint:disable=protected-access
-            .exclude(journal__deployment_id=entry.journal.deployment_id)
+            .exclude(change_set__deployment_id=entry.change_set.deployment_id)
         )
 
     def filter_by_instance(self, deployment: "Deployment", model=None):
-        """Lookup all the entries for a design instance an optional model type.
+        """Lookup all the records for a design instance an optional model type.
 
         Args:
-            deployment (Deployment): The design instance to retrieve all of the journal entries.
+            deployment (Deployment): The design instance to retrieve all of the change records.
             model (type, optional): An optional model type to filter by. Defaults to None.
 
         Returns:
             Query set matching the options.
         """
-        queryset = self.filter(journal__deployment=deployment)
+        queryset = self.filter(change_set__deployment=deployment)
         if model:
             queryset.filter(_design_object_type=ContentType.objects.get_for_model(model))
         return queryset
 
 
-class JournalEntry(BaseModel):
-    """A single entry in the journal for exactly 1 object.
+class ChangeRecord(BaseModel):
+    """A single entry in the change set for exactly 1 object.
 
-    The journal entry represents the changes that design builder
+    The change record represents the changes that design builder
     made to a single object. The field changes are recorded in the
     `changes` attribute and the object that was changed can be
     accessed via the `design_object` attribute.If `full_control` is
@@ -483,16 +483,16 @@ class JournalEntry(BaseModel):
     design builder only updated the object.
     """
 
-    objects = JournalEntryQuerySet.as_manager()
+    objects = ChangeRecordQuerySet.as_manager()
 
     created = models.DateField(auto_now_add=True, null=True)
 
     last_updated = models.DateTimeField(auto_now=True, null=True)
 
-    journal = models.ForeignKey(
-        to=Journal,
+    change_set = models.ForeignKey(
+        to=ChangeSet,
         on_delete=models.CASCADE,
-        related_name="entries",
+        related_name="records",
     )
 
     index = models.IntegerField(null=False, blank=False)
@@ -510,11 +510,11 @@ class JournalEntry(BaseModel):
     active = models.BooleanField(editable=False, default=True)
 
     class Meta:  # noqa:D106
-        unique_together = [("journal", "index")]
+        unique_together = [("change_set", "index")]
 
     def get_absolute_url(self):
         """Return detail view for design instances."""
-        return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
+        return reverse("plugins:nautobot_design_builder:changerecord", args=[self.pk])
 
     @staticmethod
     def update_current_value_from_dict(current_value, added_value, removed_value):
@@ -536,29 +536,29 @@ class JournalEntry(BaseModel):
         for key in keys_to_remove:
             del current_value[key]
 
-        # Recovering old keys that the JournalEntry deleted.
+        # Recovering old keys that the ChangeRecord deleted.
         for key in removed_value:
             if key not in added_value:
                 current_value[key] = removed_value[key]
 
     def revert(self, local_logger: logging.Logger = logger):  # pylint: disable=too-many-branches
-        """Revert the changes that are represented in this journal entry.
+        """Revert the changes that are represented in this change record.
 
         Raises:
             ValidationError: the error will include all of the managed fields that have
             changed.
-            DesignValidationError: when the design object is referenced by other active Journals.
+            DesignValidationError: when the design object is referenced by other active change sets.
 
         """
         if self.design_object is None:
             # This is something that may happen when a design has been updated and object was deleted
             return
 
-        # It is possible that the journal entry contains a stale copy of the
-        # design object. Consider this example: A journal entry is create and
+        # It is possible that the change record contains a stale copy of the
+        # design object. Consider this example: A change record is create and
         # kept in memory. The object it represents is changed in another area
         # of code, but using a different in-memory object. The in-memory copy
-        # of the journal entry's `design_object` is now no-longer representative
+        # of the change record's `design_object` is now no-longer representative
         # of the actual database state. Since we need to know the current state
         # of the design object, the only way to be sure of this is to
         # refresh our copy.
@@ -566,14 +566,16 @@ class JournalEntry(BaseModel):
         object_type = self.design_object._meta.verbose_name.title()
         object_str = str(self.design_object)
 
-        local_logger.info("Reverting journal entry", extra={"obj": self.design_object})
+        local_logger.info("Reverting change record", extra={"obj": self.design_object})
         if self.full_control:
-            related_entries = JournalEntry.objects.filter_related(self)
-            if related_entries.count() > 0:
-                active_journal_ids = ",".join(map(lambda entry: str(entry.id), related_entries))
-                raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
+            related_records = ChangeRecord.objects.filter_related(self)
+            if related_records.count() > 0:
+                active_record_ids = ",".join(map(lambda entry: str(entry.id), related_records))
+                raise DesignValidationError(
+                    f"This object is referenced by other active ChangeSets: {active_record_ids}"
+                )
 
-            self.design_object._current_design = self.journal.deployment  # pylint: disable=protected-access
+            self.design_object._current_design = self.change_set.deployment  # pylint: disable=protected-access
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:

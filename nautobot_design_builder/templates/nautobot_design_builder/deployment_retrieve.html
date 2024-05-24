@@ -46,10 +46,10 @@
 {% endblock content_left_page %}
 
 {% block content_right_page %}
-{% include 'utilities/obj_table.html' with table=journals_table table_template='panel_table.html' heading='Journals' %}
+{% include 'utilities/obj_table.html' with table=change_sets_table table_template='panel_table.html' heading='ChangeSets' %}
 <div class="row"></div>
 {% endblock content_right_page %}
 
 {% block content_full_width_page %}
-{% include 'utilities/obj_table.html' with table=entries_table table_template='panel_table.html' heading='Design Objects' %}
+{% include 'utilities/obj_table.html' with table=change_records_table table_template='panel_table.html' heading='Design Objects' %}
 {% endblock content_full_width_page %}

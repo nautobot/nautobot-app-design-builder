@@ -9,12 +9,12 @@ from nautobot.utilities.api import get_serializer_for_model
 from rest_framework.fields import SerializerMethodField, DictField
 from rest_framework.relations import HyperlinkedIdentityField
 
-from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
 from nautobot_design_builder.api.nested_serializers import (
     NestedDesignSerializer,
     NestedDeploymentSerializer,
-    NestedJournalSerializer,
+    NestedChangeSetSerializer,
 )
 
 
@@ -67,33 +67,33 @@ class DeploymentSerializer(NautobotModelSerializer, TaggedModelSerializerMixin, 
         return instance.last_updated_by
 
 
-class JournalSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
-    """Serializer for the journal model."""
+class ChangeSetSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
+    """Serializer for the ChangeSet model."""
 
-    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:journal-detail")
+    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:changeset-detail")
     deployment = NestedDeploymentSerializer()
     job_result = NestedJobResultSerializer()
 
     class Meta:
-        """Serializer options for the journal model."""
+        """Serializer options for the ChangeSet model."""
 
-        model = Journal
+        model = ChangeSet
         fields = ["id", "url", "deployment", "job_result"]
 
 
-class JournalEntrySerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
-    """Serializer for the journal entry model."""
+class ChangeRecordSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
+    """Serializer for the ChangeRecord model."""
 
-    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:journalentry-detail")
-    journal = NestedJournalSerializer()
+    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:changerecord-detail")
+    change_set = NestedChangeSetSerializer()
     _design_object_type = ContentTypeField(queryset=ContentType.objects.all(), label="design_object_type")
     design_object = SerializerMethodField(read_only=True)
 
     class Meta:
-        """Serializer options for the journal entry model."""
+        """Serializer options for the ChangeRecord model."""
 
-        model = JournalEntry
-        fields = ["id", "url", "journal", "_design_object_type", "design_object", "changes", "full_control"]
+        model = ChangeRecord
+        fields = ["id", "url", "change_set", "_design_object_type", "design_object", "changes", "full_control"]
 
     @extend_schema_field(DictField())
     def get_design_object(self, obj):
