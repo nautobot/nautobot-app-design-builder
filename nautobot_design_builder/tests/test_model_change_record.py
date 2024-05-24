@@ -66,16 +66,6 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
             index=1,
         )
 
-    def get_record(self, design_object, changes):
-        """Generate a ChangeRecord."""
-        return ChangeRecord(
-            design_object=design_object,
-            changes=changes,
-            full_control=False,
-            change_set=self.change_set,
-            index=self.change_set._next_index(),  # pylint:disable=protected-access
-        )
-
     @patch("nautobot_design_builder.models.ChangeRecord.objects")
     def test_revert_full_control(self, objects: Mock):
         objects.filter_related.side_effect = lambda *args, **kwargs: objects
@@ -96,7 +86,7 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         old_value = updated_secret.name
         updated_secret.name = "new name"
         updated_secret.save()
-        entry = self.get_record(updated_secret, {"name": {"old_value": old_value, "new_value": "new name"}})
+        entry = self.create_change_record(updated_secret, {"name": {"old_value": old_value, "new_value": "new name"}})
         entry.revert()
         self.secret.refresh_from_db()
         self.assertEqual(self.secret.name, "test secret")
@@ -106,7 +96,9 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         old_value = {**secret.parameters}
         secret.parameters["key2"] = "new-value"
         secret.save()
-        entry = self.get_record(secret, {"parameters": {"old_value": old_value, "new_value": secret.parameters}})
+        entry = self.create_change_record(
+            secret, {"parameters": {"old_value": old_value, "new_value": secret.parameters}}
+        )
         secret.refresh_from_db()
         self.assertDictEqual(
             secret.parameters,
@@ -127,7 +119,9 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         old_value = {**secret.parameters}
         secret.parameters["key1"] = "new-value"
         secret.save()
-        entry = self.get_record(secret, {"parameters": {"old_value": old_value, "new_value": secret.parameters}})
+        entry = self.create_change_record(
+            secret, {"parameters": {"old_value": old_value, "new_value": secret.parameters}}
+        )
         secret.refresh_from_db()
         self.assertDictEqual(
             secret.parameters,
@@ -147,7 +141,9 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         old_value = {**secret.parameters}
         secret.parameters = {"key2": "new-value"}
         secret.save()
-        entry = self.get_record(secret, {"parameters": {"old_value": old_value, "new_value": secret.parameters}})
+        entry = self.create_change_record(
+            secret, {"parameters": {"old_value": old_value, "new_value": secret.parameters}}
+        )
         secret.refresh_from_db()
         self.assertDictEqual(
             secret.parameters,
@@ -186,7 +182,7 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
             },
         )
 
-        entry = self.get_record(secret, None)
+        entry = self.create_change_record(secret, None)
         entry.revert()
         secret.refresh_from_db()
         self.assertDictEqual(self.secret.parameters, secret.parameters)
@@ -201,7 +197,7 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
                 parameters=None,
             )
             secret.parameters = {"key1": "value1"}
-            entry = self.get_record(secret, {"parameters": {"old_value": {}, "new_value": secret.parameters}})
+            entry = self.create_change_record(secret, {"parameters": {"old_value": {}, "new_value": secret.parameters}})
             self.assertEqual(entry.design_object.parameters, {"key1": "value1"})
             entry.revert()
             self.assertEqual(entry.design_object.parameters, {})
@@ -219,7 +215,7 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
                 parameters={"key1": "value1"},
             )
             secret.parameters = None
-            entry = self.get_record(secret, secret)
+            entry = self.create_change_record(secret, secret)
             self.assertEqual(entry.design_object.parameters, None)
             entry.revert()
             self.assertEqual(entry.design_object.parameters, {"key1": "value1"})
@@ -231,7 +227,7 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         updated_device_type = DeviceType.objects.get(id=self.device_type.id)
         updated_device_type.model = "new name"
         updated_device_type.save()
-        entry = self.get_record(updated_device_type, None)
+        entry = self.create_change_record(updated_device_type, None)
         entry.revert()
         self.device_type.refresh_from_db()
         self.assertEqual(self.device_type.model, "test device type")
@@ -243,7 +239,7 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         updated_device_type.manufacturer = new_manufacturer
         updated_device_type.save()
 
-        entry = self.get_record(
+        entry = self.create_change_record(
             updated_device_type,
             {"manufacturer_id": {"old_value": self.manufacturer.id, "new_value": new_manufacturer.id}},
         )

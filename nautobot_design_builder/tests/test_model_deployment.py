@@ -43,6 +43,17 @@ class BaseDeploymentTest(BaseDesignTest):
         change_set.validated_save()
         return change_set
 
+    def create_change_record(self, design_object, changes, full_control=False, active=False):
+        """Generate a ChangeRecord."""
+        return models.ChangeRecord(
+            design_object=design_object,
+            changes=changes,
+            full_control=full_control,
+            change_set=self.change_set,
+            active=active,
+            index=self.change_set._next_index(),  # pylint:disable=protected-access
+        )
+
     def setUp(self):
         super().setUp()
         self.design_name = "My Design"

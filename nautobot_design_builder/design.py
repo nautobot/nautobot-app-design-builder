@@ -448,6 +448,7 @@ class ModelInstance:
 
         try:
             self._load_instance()
+            setattr(self.instance, "__design_builder_instance", self)
         except ObjectDoesNotExist as ex:
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:

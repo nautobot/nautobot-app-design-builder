@@ -575,7 +575,10 @@ class ChangeRecord(BaseModel):
                     f"This object is referenced by other active ChangeSets: {active_record_ids}"
                 )
 
-            self.design_object._current_design = self.change_set.deployment  # pylint: disable=protected-access
+            # The _current_deployment attribute is essentially a signal to our
+            # pre-delete handler letting it know to forgo the protections for
+            # deletion since this delete operation is part of an owning design.
+            self.design_object._current_deployment = self.change_set.deployment  # pylint: disable=protected-access
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:

@@ -223,9 +223,7 @@ class DesignProtectionObjectView(ObjectView):
         """Generate extra context for rendering the DesignProtection template."""
         content = {}
 
-        records = ChangeRecord.objects.filter(
-            _design_object_id=instance.id, active=True
-        ).exclude_decommissioned()
+        records = ChangeRecord.objects.filter(_design_object_id=instance.id, active=True).exclude_decommissioned()
 
         if records:
             design_owner = records.filter(full_control=True, _design_object_id=instance.pk)
