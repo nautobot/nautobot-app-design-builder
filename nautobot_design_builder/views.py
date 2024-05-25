@@ -79,15 +79,15 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
             context["is_deployment"] = instance.design_mode == choices.DesignModeChoices.DEPLOYMENT
             deployments = Deployment.objects.restrict(request.user, "view").filter(design=instance)
 
-            instances_table = DeploymentTable(deployments)
-            instances_table.columns.hide("design")
+            deployments_table = DeploymentTable(deployments)
+            deployments_table.columns.hide("design")
 
             paginate = {
                 "paginator_class": EnhancedPaginator,
                 "per_page": get_paginate_count(request),
             }
-            RequestConfig(request, paginate).configure(instances_table)
-            context["instances_table"] = instances_table
+            RequestConfig(request, paginate).configure(deployments_table)
+            context["deployments_table"] = deployments_table
         return context
 
     @action(detail=True, methods=["get"])

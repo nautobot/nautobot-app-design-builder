@@ -89,12 +89,12 @@ class DesignQuerySet(RestrictedQuerySet):
 class Design(PrimaryModel):
     """Design represents a single design job.
 
-    Design may or may not have any instances (implementations), but
+    Design may or may not have any deployments (implementations), but
     is available for execution. It is largely a one-to-one type
     relationship with Job, but will only exist if the Job has a
     DesignJob in its ancestry.
 
-    Instances of the Design model are created automatically from
+    Deployments of the Design model are created automatically from
     signals.
 
     In the future this model may include a version field to indicate
@@ -191,7 +191,7 @@ class Deployment(PrimaryModel):
     post_decommission = Signal()
 
     status = StatusField(blank=False, null=False, on_delete=models.PROTECT, related_name="deployment_statuses")
-    design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
+    design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="deployments")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
@@ -221,7 +221,7 @@ class Deployment(PrimaryModel):
             enforce_managed_fields(self, ["design"], message="is a field that cannot be changed")
 
     def get_absolute_url(self):
-        """Return detail view for design instances."""
+        """Return detail view for design deployments."""
         return reverse("plugins:nautobot_design_builder:deployment", args=[self.pk])
 
     def __str__(self):
@@ -315,7 +315,7 @@ class ChangeSet(PrimaryModel):
         ordering = ["-last_updated"]
 
     def get_absolute_url(self):
-        """Return detail view for design instances."""
+        """Return detail view for changeset."""
         return reverse("plugins:nautobot_design_builder:changeset", args=[self.pk])
 
     @property
@@ -513,7 +513,7 @@ class ChangeRecord(BaseModel):
         unique_together = [("change_set", "index")]
 
     def get_absolute_url(self):
-        """Return detail view for design instances."""
+        """Return detail view for design change record."""
         return reverse("plugins:nautobot_design_builder:changerecord", args=[self.pk])
 
     @staticmethod

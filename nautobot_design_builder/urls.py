@@ -14,7 +14,7 @@ from nautobot_design_builder.views import (
 
 router = NautobotUIViewSetRouter()
 router.register("designs", DesignUIViewSet)
-router.register("design-instances", DeploymentUIViewSet)
+router.register("design-deployments", DeploymentUIViewSet)
 router.register("change-sets", ChangeSetUIViewSet)
 router.register("change-records", ChangeRecordUIViewSet)
 

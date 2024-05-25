@@ -33,7 +33,7 @@ def create_design_model_for_existing(sender, **kwargs):
 
 @receiver(nautobot_database_ready, sender=apps.get_app_config("nautobot_design_builder"))
 def create_deployment_statuses(**kwargs):
-    """Create a default set of statuses for design instances."""
+    """Create a default set of statuses for design deployments."""
     content_type = ContentType.objects.get_for_model(Deployment)
     color_mapping = {
         "Active": ColorChoices.COLOR_GREEN,

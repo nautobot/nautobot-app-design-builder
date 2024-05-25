@@ -71,7 +71,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         editable=False,
                         on_delete=django.db.models.deletion.PROTECT,
-                        related_name="instances",
+                        related_name="deployments",
                         to="nautobot_design_builder.design",
                     ),
                 ),

@@ -11,7 +11,7 @@ from nautobot_design_builder.api.views import (
 router = OrderedDefaultRouter()
 
 router.register("designs", DesignAPIViewSet)
-router.register("design-instances", DeploymentAPIViewSet)
+router.register("design-deployments", DeploymentAPIViewSet)
 router.register("change-sets", ChangeSetAPIViewSet)
 router.register("change-records", ChangeRecordAPIViewSet)
 
