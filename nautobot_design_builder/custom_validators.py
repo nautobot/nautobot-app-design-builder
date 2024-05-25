@@ -29,8 +29,21 @@ def validate_delete(instance, **kwargs):
     if change_record and change_record.change_set.deployment == getattr(instance, "_current_deployment", None):
         if change_record.full_control:
             return
+    # The next couple of lines need some explanation... due to the way
+    # Django tests run, an exception is caused during unit tests when
+    # an exception has been raised and then a query takes place. When we
+    # raise the ProtectedError here the dispatch method catches it and
+    # produces an error message, which includes the string representation
+    # of the protected_objects. This string representation ultimately causes
+    # a lookup for the job name (since the design name is the job name).
+    # This lookup then causes a new transaction error and the test fails. In
+    # order to prevent this, we're going to prime the lookups before we
+    # raise the exception.
+    design = change_record.change_set.deployment.design
+    design.name  # pylint:disable=pointless-statement
+
     # Only prevent deletion if we do *not* have full control
-    raise ProtectedError("A design instance owns this object.", set([change_record.change_set.deployment]))
+    raise ProtectedError("A design instance owns this object.", set([design]))
 
 
 class BaseValidator(PluginCustomValidator):
@@ -40,6 +53,11 @@ class BaseValidator(PluginCustomValidator):
 
     @classmethod
     def factory(cls, app_label, model):
+        """Create a new validator class for the app_label/model combination.
+
+        This factory dynamically creates a custom validator for a given model. The
+        validator's parent class is
+        """
         model_class = apps.get_model(app_label=app_label, model_name=model)
         pre_delete.connect(validate_delete, sender=model_class)
         return type(
@@ -47,6 +65,11 @@ class BaseValidator(PluginCustomValidator):
             (BaseValidator,),
             {"model": f"{app_label}.{model}"},
         )
+
+    @classmethod
+    def disconnect(cls):
+        """Disconnect the pre_delete handler for this model."""
+        pre_delete.disconnect(validate_delete, sender=cls.model)
 
     def clean(self):
         """The clean method executes the actual rule enforcement logic for each model.
@@ -124,5 +147,6 @@ class CustomValidatorIterator:  # pylint: disable=too-few-public-methods
                 if (app_label, model) in settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_models"]:
                     cls = BaseValidator.factory(app_label, model)
                     yield cls
+
 
 custom_validators = CustomValidatorIterator()

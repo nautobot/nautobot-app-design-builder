@@ -59,6 +59,13 @@ class BaseDeploymentTest(BaseDesignTest):
         self.design_name = "My Design"
         self.deployment = self.create_deployment(self.design_name, self.design)
 
+        self.customer_name = "Customer 1"
+        self.job_kwargs = {
+            "customer_name": self.customer_name,
+            "deployment_name": "my instance",
+        }
+        self.change_set = self.create_change_set(self.job, self.deployment, self.job_kwargs)
+
 
 class TestDeployment(BaseDeploymentTest):
     """Test Deployment."""

@@ -11,13 +11,6 @@ class BaseChangeSetTest(BaseDeploymentTest):
     def setUp(self):
         super().setUp()
         self.original_name = "original equipment manufacturer"
-        self.customer_name = "Customer 1"
-        self.job_kwargs = {
-            "customer_name": self.customer_name,
-            "deployment_name": "my instance",
-        }
-
-        self.change_set = self.create_change_set(self.job, self.deployment, self.job_kwargs)
 
 
 class TestChangeSet(BaseChangeSetTest):

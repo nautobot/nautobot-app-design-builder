@@ -22,13 +22,21 @@ User = get_user_model()
 
 @contextmanager
 def register_validators(*models):
+    """Register a set of validators for testing.
+
+    This context manager will register the design builder custom validator
+    for each of the models given. Once registered, the context manager yields
+    for the tests to run, and then will remove the custom validators when done.
+    """
     validators_registry = registry["plugin_custom_validators"]
-    pre_validators = {cls: config for cls, config in validators_registry.items()}
+    pre_validators = {**validators_registry}
     validators = []
     for app_label, model in models:
         validators.append(BaseValidator.factory(app_label, model))
     register_custom_validators(validators)
     yield
+    for validator in validators:
+        validator.disconnect()
     post_models = set(validators_registry.keys())
     for model in pre_validators:
         validators_registry[model] = pre_validators[model]
@@ -39,6 +47,8 @@ def register_validators(*models):
 
 
 class CustomValidatorTest(BaseDeploymentTest):
+    """Test the Design Builder custom validator."""
+
     def setUp(self):
         super().setUp()
         self.change_set = self.create_change_set(self.job, self.deployment, {})
@@ -111,7 +121,6 @@ class CustomValidatorTest(BaseDeploymentTest):
     def test_unprotected_delete(self):
         response = self._delete(
             self.user,
-            ("dcim", "manufacturer"),
         )
         self.assertEqual(response.status_code, 204)
 
@@ -120,7 +129,7 @@ class CustomValidatorTest(BaseDeploymentTest):
             self.user,
             ("dcim", "manufacturer"),
         )
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, 409)
 
     def test_protected_update_as_admin(self):
         settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_superuser_bypass"] = True
