@@ -39,9 +39,6 @@ def create_deployment_statuses(**kwargs):
         "Active": ColorChoices.COLOR_GREEN,
         "Decommissioned": ColorChoices.COLOR_GREY,
         "Disabled": ColorChoices.COLOR_GREY,
-        "Deployed": ColorChoices.COLOR_GREEN,
-        "Pending": ColorChoices.COLOR_ORANGE,
-        "Rolled back": ColorChoices.COLOR_RED,
         "Unknown": ColorChoices.COLOR_DARK_RED,
     }
     for _, status_name in chain(choices.DeploymentStatusChoices):
