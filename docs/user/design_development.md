@@ -108,7 +108,7 @@ Design files specifies a list of Jinja template that should be used to produce t
 
 ### `design_mode`
 
-It defines how this design is going to be tracked in Nautobot. By default, it uses the `CLASSIC` mode that has no tracking of objects created (for backwards compatibility), but it can use the new `DEPLOYMENT` mode that allows every design deployment to implement a full lifecycle.
+The `design_mode` indicates how this design's state will be tracked in Nautobot. By default, the design mode is set to CLASSIC` mode, which means that objects are created in an ad-hoc fashion and no change sets are created. Classic mode is how all designs worked prior to the introduction of the design lifecycle features. If a design is intended to be tracked as a deployment, then design mode should be set to `DEPLOYMENT` in order to implement the full lifecycle.
 
 ### `context_class`
 
