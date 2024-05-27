@@ -20,7 +20,7 @@ A `Design` is a one to one mapping with a Nautobot `Job`, enriched with some dat
 - The `description` string from the `DesignJob`.
 - The `docs` string from the `DesignJob`.
 
-In the next figure, the Designs table view exposes the previous information. Notice that for `ad-hoc` Designs, there are not deployments. When the Design is deployed, there is no traceability in Nautobot (this is the first mode supported by this app.)
+In the next figure, the Designs table view exposes the previous information. Notice that for `ad-hoc` Designs, there are no deployments. When ad-hoc Designs are executed, there is no traceability in Nautobot (this is the original behavior of this app).
 
 ![designs](../images/screenshots/designs.png)
 
@@ -28,7 +28,7 @@ From the `Design`, the user can manage the associated `Job` configuration (yello
 
 ## Design Deployment or `DesignDeployment`
 
-Once a design (with the `DEPLOYMENT` mode) is deployed in Nautobot, a Design Deployment (or `DesignDeployment`) is created with the report of the changes implemented (i.e. `Journals`), and with actions to update or decommission it (see next subsections).
+Once a design (with the `DEPLOYMENT` mode) is deployed in Nautobot, a Design Deployment is created with the report of the changes implemented (i.e. `Journals`), and with actions to update or decommission it (see next subsections).
 
 The `DesignDeployment` stores:
 
@@ -59,7 +59,7 @@ The update feature comes with a few assumptions:
 - Object identifiers should keep consistent in multiple design runs. For example, you can't target a device with the device name and update the name on the same design.
 - When design provides a list of objects, the objects are assumed to be in the same order. For example, if the first design creates `[deviceA1, deviceB1]`, if expanded, it should be `[deviceA1, deviceB1, deviceA2, deviceB2]`, not `[deviceA1, deviceA2, deviceB1, deviceB2]`.
 
-Every time you update a design deployment, a new `Journal` is created, tracking the changes for each iteration, as you can see in the next detail view for a deployment:
+Every time you update a design deployment, a new `ChangeSet` is created, tracking the changes for each iteration, as you can see in the next detail view for a deployment:
 
 ![design-deployment-detail](../images/screenshots/design-deployment-detail.png)
 
