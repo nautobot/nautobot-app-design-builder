@@ -28,8 +28,8 @@ class BaseDeploymentTest(BaseDesignTest):
         deployment.validated_save()
         return deployment
 
-    def create_journal(self, job, deployment, kwargs):
-        """Creates a Journal."""
+    def create_change_set(self, job, deployment, kwargs):
+        """Creates a ChangeSet."""
         job_result = JobResult(
             job_model=self.job,
             name=job.class_path,
@@ -39,14 +39,32 @@ class BaseDeploymentTest(BaseDesignTest):
         job_result.log = mock.Mock()
         job_result.job_kwargs = {"data": kwargs}
         job_result.validated_save()
-        journal = models.Journal(deployment=deployment, job_result=job_result)
-        journal.validated_save()
-        return journal
+        change_set = models.ChangeSet(deployment=deployment, job_result=job_result)
+        change_set.validated_save()
+        return change_set
+
+    def create_change_record(self, design_object, changes, full_control=False, active=False):
+        """Generate a ChangeRecord."""
+        return models.ChangeRecord(
+            design_object=design_object,
+            changes=changes,
+            full_control=full_control,
+            change_set=self.change_set,
+            active=active,
+            index=self.change_set._next_index(),  # pylint:disable=protected-access
+        )
 
     def setUp(self):
         super().setUp()
         self.design_name = "My Design"
         self.deployment = self.create_deployment(self.design_name, self.design)
+
+        self.customer_name = "Customer 1"
+        self.job_kwargs = {
+            "customer_name": self.customer_name,
+            "deployment_name": "my instance",
+        }
+        self.change_set = self.create_change_set(self.job, self.deployment, self.job_kwargs)
 
 
 class TestDeployment(BaseDeploymentTest):
@@ -66,8 +84,8 @@ class TestDeployment(BaseDeploymentTest):
         with self.assertRaises(IntegrityError):
             models.Deployment.objects.create(design=self.design, name=self.design_name)
 
-    def test_decommission_single_journal(self):
+    def test_decommission_single_change_set(self):
         """TODO"""
 
-    def test_decommission_multiple_journal(self):
+    def test_decommission_multiple_change_set(self):
         """TODO"""

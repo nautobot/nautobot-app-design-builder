@@ -4,7 +4,7 @@
 {% block content_left_page %}
         <div class="panel panel-default">
             <div class="panel-heading">
-                <strong>Journal</strong>
+                <strong>Change Set</strong>
             </div>
             <table class="table table-hover panel-body attr-table">
                 <tr>
@@ -24,6 +24,6 @@
 {% endblock content_left_page %}
 
 {% block content_full_width_page %}
-{% include 'utilities/obj_table.html' with table=entries_table table_template='panel_table.html' heading='Entries' %}
+{% include 'utilities/obj_table.html' with table=records_table table_template='panel_table.html' heading='Entries' %}
 <div class="row"></div>
 {% endblock content_full_width_page %}

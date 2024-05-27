@@ -10,7 +10,7 @@ name = "Design Builder"  # pylint: disable=invalid-name
 
 
 class DeploymentDecommissioning(Job):
-    """Job to decommission Design Instances."""
+    """Job to decommission Design Deployments."""
 
     deployments = MultiObjectVar(
         model=Deployment,
@@ -28,7 +28,7 @@ class DeploymentDecommissioning(Job):
         """Execute Decommissioning job."""
         deployments = data["deployments"]
         self.log_info(
-            message=f"Starting decommissioning of design instances: {', '.join([instance.name for instance in deployments])}",
+            message=f"Starting decommissioning of design deployments: {', '.join([instance.name for instance in deployments])}",
         )
 
         for deployment in deployments:

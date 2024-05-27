@@ -43,12 +43,12 @@ class Journal:
     will only be in each of those indices at most once.
     """
 
-    def __init__(self, design_journal: models.Journal = None):
+    def __init__(self, change_set: models.ChangeSet = None):
         """Constructor for Journal object."""
         self.index = set()
         self.created = defaultdict(set)
         self.updated = defaultdict(set)
-        self.design_journal = design_journal
+        self.change_set = change_set
 
     def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
@@ -58,8 +58,8 @@ class Journal:
         """
         instance = model.instance
         model_type = instance.__class__
-        if self.design_journal:
-            self.design_journal.log(model)
+        if self.change_set:
+            self.change_set.log(model)
 
         if instance.pk not in self.index:
             self.index.add(instance.pk)
@@ -448,6 +448,7 @@ class ModelInstance:
 
         try:
             self._load_instance()
+            setattr(self.instance, "__design_builder_instance", self)
         except ObjectDoesNotExist as ex:
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
@@ -680,7 +681,7 @@ class Environment(LoggingMixin):
         return object.__new__(cls)
 
     def __init__(
-        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
+        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, change_set: models.ChangeSet = None
     ):
         """Create a new build environment for implementing designs.
 
@@ -721,15 +722,15 @@ class Environment(LoggingMixin):
 
             self.extensions["extensions"].append(extn)
 
-        self.journal = Journal(design_journal=journal)
-        if journal:
-            self.deployment = journal.deployment
+        self.journal = Journal(change_set=change_set)
+        if change_set:
+            self.deployment = change_set.deployment
 
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""
-        self.journal.design_journal.deployment.decommission(object_id, local_logger=self.logger)
+        self.journal.change_set.deployment.decommission(object_id, local_logger=self.logger)
         self.log_success(
-            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.deployment}."
+            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.change_set.deployment}."
         )
 
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:

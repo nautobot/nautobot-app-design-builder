@@ -107,11 +107,12 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """
         fields = {name: var.as_field() for name, var in self._get_vars().items()}
         old_clean = JobForm.clean
+        context_class = self.Meta.context_class
 
         def clean(self):
             cleaned_data = old_clean(self)
             if self.is_valid():
-                context = self.Meta.context_class(cleaned_data)
+                context = context_class(cleaned_data)
                 context.validate()
             return cleaned_data
 
@@ -223,7 +224,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
 
-    def _setup_journal(self, deployment_name: str):
+    def _setup_changeset(self, deployment_name: str):
         if not self.is_deployment_job():
             return None, None
 
@@ -242,15 +243,15 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 version=self.design_model().version,
             )
         instance.validated_save()
-        journal, created = models.Journal.objects.get_or_create(
+        change_set, created = models.ChangeSet.objects.get_or_create(
             deployment=instance,
             job_result=self.job_result,
         )
         if created:
-            journal.validated_save()
+            change_set.validated_save()
 
-        previous_journal = instance.journals.order_by("-last_updated").exclude(job_result=self.job_result).first()
-        return (journal, previous_journal)
+        previous_change_set = instance.change_sets.order_by("-last_updated").exclude(job_result=self.job_result).first()
+        return (change_set, previous_change_set)
 
     @staticmethod
     def validate_data_logic(data):
@@ -280,13 +281,13 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
         data["deployment_name"] = self.determine_deployment_name(data)
-        journal, previous_journal = self._setup_journal(data["deployment_name"])
+        change_set, previous_change_set = self._setup_changeset(data["deployment_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
             job_result=self.job_result,
             extensions=extensions,
-            journal=journal,
+            change_set=change_set,
         )
 
         design_files = None
@@ -312,23 +313,23 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
 
-            if previous_journal:
-                deleted_object_ids = previous_journal - journal
+            if previous_change_set:
+                deleted_object_ids = previous_change_set - change_set
                 if deleted_object_ids:
                     self.log_info(f"Decommissioning {deleted_object_ids}")
-                    journal.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+                    change_set.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 
             if commit:
                 self.post_implementation(context, self.environment)
-                # The Journal stores the design (with Nautobot identifiers from post_implementation)
+                # The ChangeSet stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
                 if self.is_deployment_job():
-                    journal.deployment.status = Status.objects.get(
+                    change_set.deployment.status = Status.objects.get(
                         content_types=ContentType.objects.get_for_model(models.Deployment),
                         name=choices.DeploymentStatusChoices.ACTIVE,
                     )
-                    journal.deployment.save()
-                    journal.save()
+                    change_set.deployment.save()
+                    change_set.save()
                 if hasattr(self.Meta, "report"):
                     self.report = self.render_report(context, self.environment.journal)
                     self.log_success(message=self.report)

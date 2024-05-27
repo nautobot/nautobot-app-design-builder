@@ -105,8 +105,8 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.job_result1.job_kwargs = {"data": kwargs}
         self.job_result1.validated_save()
 
-        self.journal1 = models.Journal(deployment=self.deployment, job_result=self.job_result1)
-        self.journal1.validated_save()
+        self.change_set1 = models.ChangeSet(deployment=self.deployment, job_result=self.job_result1)
+        self.change_set1.validated_save()
 
         self.job_result2 = JobResult(
             job_model=self.job1,
@@ -117,19 +117,19 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.job_result2.job_kwargs = {"data": kwargs}
         self.job_result2.validated_save()
 
-        self.journal2 = models.Journal(deployment=self.deployment_2, job_result=self.job_result2)
-        self.journal2.validated_save()
+        self.change_set2 = models.ChangeSet(deployment=self.deployment_2, job_result=self.job_result2)
+        self.change_set2.validated_save()
 
     def test_basic_decommission_run_with_full_control(self):
         self.assertEqual(1, Secret.objects.count())
 
-        journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry.validated_save()
+        record.validated_save()
 
         self.job.run(data={"deployments": [self.deployment]}, commit=True)
 
@@ -138,23 +138,23 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
     def test_decommission_run_with_dependencies(self):
         self.assertEqual(1, Secret.objects.count())
 
-        journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record_1 = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
 
-        journal_entry_1.validated_save()
+        record_1.validated_save()
 
-        journal_entry_2 = models.JournalEntry.objects.create(
-            journal=self.journal2,
+        record_2 = models.ChangeRecord.objects.create(
+            change_set=self.change_set2,
             design_object=self.secret,
             full_control=False,
             changes={},
-            index=self.journal2._next_index(),  # pylint:disable=protected-access
+            index=self.change_set2._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry_2.validated_save()
+        record_2.validated_save()
 
         self.assertRaises(
             ValueError,
@@ -168,23 +168,23 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
     def test_decommission_run_with_dependencies_but_decommissioned(self):
         self.assertEqual(1, Secret.objects.count())
 
-        journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record_1 = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
 
-        journal_entry_1.validated_save()
+        record_1.validated_save()
 
-        journal_entry_2 = models.JournalEntry.objects.create(
-            journal=self.journal2,
+        record_2 = models.ChangeRecord.objects.create(
+            change_set=self.change_set2,
             design_object=self.secret,
             full_control=False,
             changes={},
-            index=self.journal2._next_index(),  # pylint:disable=protected-access
+            index=self.change_set2._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry_2.validated_save()
+        record_2.validated_save()
 
         self.deployment_2.decommission()
 
@@ -195,14 +195,14 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
     def test_basic_decommission_run_without_full_control(self):
         self.assertEqual(1, Secret.objects.count())
 
-        journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record_1 = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={},
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry_1.validated_save()
+        record_1.validated_save()
 
         self.job.run(data={"deployments": [self.deployment]}, commit=True)
 
@@ -212,16 +212,16 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertEqual(1, Secret.objects.count())
         self.assertEqual("test description", Secret.objects.first().description)
 
-        journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
                 "description": {"old_value": "previous description", "new_value": "test description"},
             },
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry.validated_save()
+        record.validated_save()
 
         self.job.run(data={"deployments": [self.deployment]}, commit=True)
 
@@ -229,16 +229,16 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertEqual("previous description", Secret.objects.first().description)
 
     def test_decommission_run_without_full_control_dict_value_with_overlap(self):
-        journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
                 "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry.validated_save()
+        record.validated_save()
 
         self.job.run(data={"deployments": [self.deployment]}, commit=True)
 
@@ -248,16 +248,16 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.secret.parameters = {**self.initial_params, **self.changed_params}
         self.secret.validated_save()
 
-        journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
                 "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry.validated_save()
+        record.validated_save()
 
         self.job.run(data={"deployments": [self.deployment]}, commit=True)
 
@@ -267,16 +267,16 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         """This test validates that an original dictionary with `initial_params`, that gets added
         new values, and later another `new_value` out of control, and removing the `initial_params` works as expected.
         """
-        journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
                 "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry.validated_save()
+        record.validated_save()
 
         # After the initial data, a new key value is added to the dictionary
         new_params = {"key3": "value3"}
@@ -291,13 +291,13 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         models.Deployment.pre_decommission.connect(fake_ok)
         self.assertEqual(1, Secret.objects.count())
 
-        journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record_1 = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry_1.validated_save()
+        record_1.validated_save()
 
         self.job.run(data={"deployments": [self.deployment]}, commit=True)
 
@@ -307,13 +307,13 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
     def test_decommission_run_with_pre_hook_fail(self):
         models.Deployment.pre_decommission.connect(fake_ko)
         self.assertEqual(1, Secret.objects.count())
-        journal_entry_1 = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record_1 = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry_1.validated_save()
+        record_1.validated_save()
 
         self.assertRaises(
             DesignValidationError,
@@ -326,13 +326,13 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         models.Deployment.pre_decommission.disconnect(fake_ko)
 
     def test_decommission_run_multiple_deployment(self):
-        journal_entry = models.JournalEntry.objects.create(
-            journal=self.journal1,
+        record = models.ChangeRecord.objects.create(
+            change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
-            index=self.journal1._next_index(),  # pylint:disable=protected-access
+            index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry.validated_save()
+        record.validated_save()
 
         secret_2 = Secret.objects.create(
             name="test secret_2",
@@ -341,13 +341,13 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         secret_2.validated_save()
 
-        journal_entry_2 = models.JournalEntry.objects.create(
-            journal=self.journal2,
+        record_2 = models.ChangeRecord.objects.create(
+            change_set=self.change_set2,
             design_object=secret_2,
             full_control=True,
-            index=self.journal2._next_index(),  # pylint:disable=protected-access
+            index=self.change_set2._next_index(),  # pylint:disable=protected-access
         )
-        journal_entry_2.validated_save()
+        record_2.validated_save()
 
         self.assertEqual(2, Secret.objects.count())
 

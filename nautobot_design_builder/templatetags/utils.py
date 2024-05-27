@@ -9,6 +9,6 @@ register = template.Library()
 
 @library.filter()
 @register.filter()
-def get_last_journal(deployment):
-    """Get last run journal in a design instance."""
-    return deployment.journals.order_by("last_updated").last()
+def get_last_change_set(deployment):
+    """Get last run ChangeSet in a design instance."""
+    return deployment.change_sets.order_by("last_updated").last()
