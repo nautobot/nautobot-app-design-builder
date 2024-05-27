@@ -15,16 +15,16 @@ services:
       - "../examples/custom_design/jobs:/opt/nautobot/jobs:cached"
     healthcheck:
       test: ["CMD", "true"]  # Due to layering, disable: true won't work. Instead, change the test
-  docs:
-    entrypoint: "mkdocs serve -v -a 0.0.0.0:8080"
-    ports:
-      - "8001:8080"
-    volumes:
-      - "../:/source"
-    image: "nautobot-design-builder/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
-    healthcheck:
-      disable: true
-    tty: true
+  # docs:
+  #   entrypoint: "mkdocs serve -v -a 0.0.0.0:8080"
+  #   ports:
+  #     - "8001:8080"
+  #   volumes:
+  #     - "../:/source"
+  #   image: "nautobot-design-builder/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
+  #   healthcheck:
+  #     disable: true
+  #   tty: true
   worker:
     entrypoint:
       - "sh"

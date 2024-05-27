@@ -28,7 +28,7 @@ From the `Design`, the user can manage the associated `Job` configuration (yello
 
 ## Design Deployment or `DesignDeployment`
 
-Once a design (with the `DEPLOYMENT` mode) is deployed in Nautobot, a Design Deployment is created with the report of the changes implemented (i.e. `Journals`), and with actions to update or decommission it (see next subsections).
+Once a design (with the `DEPLOYMENT` mode) is deployed in Nautobot, a Design Deployment is created with the report of the changes implemented (i.e. `ChangeSets`), and with actions to update or decommission it (see next subsections).
 
 The `DesignDeployment` stores:
 
@@ -37,7 +37,7 @@ The `DesignDeployment` stores:
 - The `version` from the `Design` when it was deployed or updated.
 - When it was initially deployed and last updated, and the user who did it.
 - The `status` of the design, for example `Active` or `Decommissioned`.
-- The `Journals` that have been run in every create and update operation (more in the next section).
+- The `ChangeSets` that have been run in every create and update operation (more in the next section).
 
 In the Design Deployment table view, you can see a few examples of deployments. Checking the deployment versus update time, you can notice that the "Initial Data - demo" deployment has been update after its initial deployment.
 
@@ -49,9 +49,7 @@ Each design deployment can be decommissioned (blue icon), updated (green icon), 
 
 ### Design Deployment Update
 
-This feature provides a means to re-run a design deployment with different **input data**. Re-running the job will update the implemented design with the new changes: additions and removals.
-
-It leverages a complete tracking of previous design implementations and a function to combine the new design and previous design, to understand the changes to be implemented and the objects to be decommissioned (more in next section).
+This feature provides a means to re-run a design deployment with different **input data**. Re-running the job will update the implemented design with the new changes: additions, changes and decommissions (more in the next section). It relies on the previous `ChangeSet` to understand the necessary changes.
 
 The update feature comes with a few assumptions:
 
