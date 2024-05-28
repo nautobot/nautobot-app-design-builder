@@ -26,7 +26,7 @@ class SimpleDesignWithPostImplementation(DesignJob):
 
     def post_implementation(self, context: Context, environment: Environment):
         if Manufacturer.objects.all().count() != 2:
-            raise Exception("Invalid manufacturer count")
+            raise Exception("Invalid manufacturer count")  # pylint:disable=broad-exception-raised
         setattr(self, "post_implementation_called", True)
 
 

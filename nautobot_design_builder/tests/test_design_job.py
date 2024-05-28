@@ -42,7 +42,7 @@ class TestDesignJob(DesignTestCase):
     def test_simple_design_with_post_implementation(self):
         job = self.get_mocked_job(test_designs.SimpleDesignWithPostImplementation)
         job.run(data={}, dryrun=False)
-        self.assertTrue(job.post_implementation_called)
+        self.assertTrue(getattr(job, "post_implementation_called"))
 
     def test_simple_design_report(self):
         job = self.get_mocked_job(test_designs.SimpleDesignReport)
