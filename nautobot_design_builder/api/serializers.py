@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.utils import extend_schema_field
 
 from rest_framework.fields import SerializerMethodField, DictField
+from rest_framework.serializers import HyperlinkedIdentityField
 
 from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
 from nautobot.core.api import ContentTypeField
