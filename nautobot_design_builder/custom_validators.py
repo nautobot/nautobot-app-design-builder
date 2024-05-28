@@ -111,7 +111,7 @@ class BaseValidator(PluginCustomValidator):
                     error_context = ""
                     # For dict attributes (i.e., JSON fields), the design builder can own only a few keys
                     if isinstance(old_value, dict):
-                        for key, value in record[attribute]["new_value"].items():
+                        for key, value in record.changes[attribute]["new_value"].items():
                             if new_value[key] != value:
                                 error_context = f"Key {key}"
                                 break
