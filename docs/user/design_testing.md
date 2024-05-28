@@ -1,6 +1,6 @@
 # Design Testing
 
-Design Builder bring the higher responsibility for intended data generation to the design. The user's input data will tailor each deployment, but everything is done within the guardrails of the design. Thus, the designs **should** be tested properly on a continuous integration to ensure that they are behaving as expected.
+Design Builder brings the higher responsibility for intended data generation to the design. The user's input data will tailor each deployment, but everything is done within the guardrails of the design. Thus, the designs **should** be tested properly on a continuous integration to ensure that they are behaving as expected.
 
 This means that if the design is only for ad-hoc deployments (i.e., not tracked), at least the expected output should be validated for a few input data sets. If the design is implementing the lifecycle, then the tests should include the update and decommissioning features to grant that it will behave as expected.
 
