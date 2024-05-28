@@ -357,16 +357,16 @@ def get_created_and_last_updated_usernames_for_model(instance):
     from nautobot.extras.choices import ObjectChangeActionChoices
     from nautobot.extras.models import ObjectChange
 
-    object_change_records = get_changes_for_model(instance)
+    object_records = get_changes_for_model(instance)
     created_by = None
     last_updated_by = None
     try:
-        created_by_record = object_change_records.get(action=ObjectChangeActionChoices.ACTION_CREATE)
+        created_by_record = object_records.get(action=ObjectChangeActionChoices.ACTION_CREATE)
         created_by = created_by_record.user_name
     except ObjectChange.DoesNotExist:
         pass
 
-    last_updated_by_record = object_change_records.order_by("time").last()
+    last_updated_by_record = object_records.order_by("time").last()
     if last_updated_by_record:
         last_updated_by = last_updated_by_record.user_name
 

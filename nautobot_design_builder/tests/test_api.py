@@ -3,7 +3,7 @@ import unittest
 
 from nautobot.utilities.testing import APIViewTestCases
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 from nautobot_design_builder.tests.util import create_test_view_data
 
 # pylint: disable=missing-class-docstring
@@ -22,12 +22,12 @@ class TestDesign(
         create_test_view_data()
 
 
-class TestDesignInstance(
+class TestDeployment(
     APIViewTestCases.GetObjectViewTestCase,
     APIViewTestCases.ListObjectsViewTestCase,
     APIViewTestCases.NotesURLViewTestCase,
 ):
-    model = DesignInstance
+    model = Deployment
     brief_fields = ["display", "id", "name", "url"]
 
     @classmethod
@@ -35,12 +35,12 @@ class TestDesignInstance(
         create_test_view_data()
 
 
-class TestJournal(
+class TestChangeSetAPI(
     APIViewTestCases.GetObjectViewTestCase,
     APIViewTestCases.ListObjectsViewTestCase,
     APIViewTestCases.NotesURLViewTestCase,
 ):
-    model = Journal
+    model = ChangeSet
     brief_fields = ["display", "id", "url"]
 
     @classmethod
@@ -48,12 +48,12 @@ class TestJournal(
         create_test_view_data()
 
 
-class TestJournalEntry(
+class TestChangeRecordAPI(
     APIViewTestCases.GetObjectViewTestCase,
     APIViewTestCases.ListObjectsViewTestCase,
     APIViewTestCases.NotesURLViewTestCase,
 ):
-    model = JournalEntry
+    model = ChangeRecord
     brief_fields = None
 
     @classmethod
@@ -62,4 +62,4 @@ class TestJournalEntry(
 
     @unittest.skip
     def test_list_objects_brief(self):
-        """Brief is not supported for journal entries."""
+        """Brief is not supported for change records."""

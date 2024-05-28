@@ -3,9 +3,8 @@
 from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, StatusModelFilterSetMixin
 from nautobot.extras.models import Job, JobResult
 from nautobot.utilities.filters import SearchFilter
-from nautobot.extras.filters.mixins import StatusFilter
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
 
 class DesignFilterSet(NautobotFilterSet):
@@ -25,11 +24,10 @@ class DesignFilterSet(NautobotFilterSet):
         fields = ["id", "job"]
 
 
-class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
+class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
     """Filter set for the design instance model."""
 
     q = SearchFilter(filter_predicates={})
-    live_state = StatusFilter()
 
     design = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Design.objects.all(),
@@ -39,7 +37,7 @@ class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
     class Meta:
         """Meta attributes for filter."""
 
-        model = DesignInstance
+        model = Deployment
         fields = [
             "id",
             "design",
@@ -47,18 +45,17 @@ class DesignInstanceFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
             "first_implemented",
             "last_implemented",
             "status",
-            "live_state",
             "version",
         ]
 
 
-class JournalFilterSet(NautobotFilterSet):
-    """Filter set for the journal model."""
+class ChangeSetFilterSet(NautobotFilterSet):
+    """Filter set for the ChangeSet model."""
 
     q = SearchFilter(filter_predicates={})
 
-    design_instance = NaturalKeyOrPKMultipleChoiceFilter(
-        queryset=DesignInstance.objects.all(),
+    deployment = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=Deployment.objects.all(),
         label="Design Deployment (ID)",
     )
 
@@ -70,23 +67,23 @@ class JournalFilterSet(NautobotFilterSet):
     class Meta:
         """Meta attributes for filter."""
 
-        model = Journal
-        fields = ["id", "design_instance", "job_result"]
+        model = ChangeSet
+        fields = ["id", "deployment", "job_result"]
 
 
-class JournalEntryFilterSet(NautobotFilterSet):
-    """Filter set for the journal entrymodel."""
+class ChangeRecordFilterSet(NautobotFilterSet):
+    """Filter set for the ChangeRecord model."""
 
     q = SearchFilter(filter_predicates={})
 
-    journal = NaturalKeyOrPKMultipleChoiceFilter(
-        queryset=Journal.objects.all(),
-        label="Journal (ID)",
+    change_set = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=ChangeSet.objects.all(),
+        label="Change Set (ID)",
     )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = JournalEntry
+        model = ChangeRecord
         # TODO: Support design_object somehow?
-        fields = ["id", "journal", "changes", "full_control"]
+        fields = ["id", "change_set", "changes", "full_control"]

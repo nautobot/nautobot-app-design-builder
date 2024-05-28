@@ -4,17 +4,17 @@ from nautobot.extras.api.views import NautobotModelViewSet, StatusViewSetMixin
 
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
-    DesignInstanceSerializer,
-    JournalSerializer,
-    JournalEntrySerializer,
+    DeploymentSerializer,
+    ChangeSetSerializer,
+    ChangeRecordSerializer,
 )
 from nautobot_design_builder.filters import (
     DesignFilterSet,
-    DesignInstanceFilterSet,
-    JournalFilterSet,
-    JournalEntryFilterSet,
+    DeploymentFilterSet,
+    ChangeSetFilterSet,
+    ChangeRecordFilterSet,
 )
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
 
 class DesignAPIViewSet(NautobotModelViewSet):
@@ -25,25 +25,25 @@ class DesignAPIViewSet(NautobotModelViewSet):
     filterset_class = DesignFilterSet
 
 
-class DesignInstanceAPIViewSet(NautobotModelViewSet, StatusViewSetMixin):
+class DeploymentAPIViewSet(NautobotModelViewSet, StatusViewSetMixin):
     """API views for the design instance model."""
 
-    queryset = DesignInstance.objects.all()
-    serializer_class = DesignInstanceSerializer
-    filterset_class = DesignInstanceFilterSet
+    queryset = Deployment.objects.all()
+    serializer_class = DeploymentSerializer
+    filterset_class = DeploymentFilterSet
 
 
-class JournalAPIViewSet(NautobotModelViewSet):
-    """API views for the journal model."""
+class ChangeSetAPIViewSet(NautobotModelViewSet):
+    """API views for the ChangeSet model."""
 
-    queryset = Journal.objects.all()
-    serializer_class = JournalSerializer
-    filterset_class = JournalFilterSet
+    queryset = ChangeSet.objects.all()
+    serializer_class = ChangeSetSerializer
+    filterset_class = ChangeSetFilterSet
 
 
-class JournalEntryAPIViewSet(NautobotModelViewSet):
-    """API views for the journal entry model."""
+class ChangeRecordAPIViewSet(NautobotModelViewSet):
+    """API views for the ChangeRecord entry model."""
 
-    queryset = JournalEntry.objects.all()
-    serializer_class = JournalEntrySerializer
-    filterset_class = JournalEntryFilterSet
+    queryset = ChangeRecord.objects.all()
+    serializer_class = ChangeRecordSerializer
+    filterset_class = ChangeRecordFilterSet

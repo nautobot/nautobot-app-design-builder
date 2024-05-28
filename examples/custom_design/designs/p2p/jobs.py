@@ -1,10 +1,9 @@
 """Design to create a P2P connection."""
 
-from django.core.exceptions import ValidationError
-
 from nautobot.dcim.models import Device, Interface
 from nautobot.extras.jobs import ObjectVar, StringVar
 
+from nautobot_design_builder.choices import DesignModeChoices
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.design import ModelInstance
 from nautobot_design_builder.ext import AttributeExtension
@@ -30,9 +29,7 @@ class NextInterfaceExtension(AttributeExtension):
             dict: Dictionary with the new interface name `{"!create_or_update:name": new_interface_name}
         """
         root_interface_name = "GigabitEthernet"
-        previous_interfaces = self.environment.design_instance.get_design_objects(Interface).values_list(
-            "id", flat=True
-        )
+        previous_interfaces = self.environment.deployment.get_design_objects(Interface).values_list("id", flat=True)
         interfaces = model_instance.relationship_manager.filter(
             name__startswith="GigabitEthernet",
         )
@@ -66,6 +63,7 @@ class P2PDesign(DesignJob):
     class Meta:
         """Metadata needed to implement the P2P design."""
 
+        design_mode = DesignModeChoices.DEPLOYMENT
         name = "P2P Connection Design"
         commit_default = False
         design_files = [
@@ -93,9 +91,3 @@ The outcome of the design contains:
     - A new `Interface` in each one of the Devices with a corresponding `IPAddress` from the previous `Prefix`
     - A cable connected to both `Interfaces`
 """
-
-    @staticmethod
-    def validate_data_logic(data):
-        """Validate the P2P Design data."""
-        if data["device_a"] == data["device_b"]:
-            raise ValidationError("Both routers can't be the same.")

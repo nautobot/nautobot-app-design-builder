@@ -1,14 +1,14 @@
 ---
 
 tags:
-    - "!create_or_update:name": "VRF Prefix"
-      "slug": "vrf_prefix"
+    - "!create_or_update:name": "{{ vrf_prefix_tag_name() }}"
+      "slug": "{{ vrf_prefix_tag_slug() }}"
     - "!create_or_update:name": "VRF Interface"
       "slug": "vrf_interface"
 
 prefixes:
     - "!create_or_update:prefix": "{{ p2p_prefix }}"
-      status__name: "Reserved"
+      status__name: "Container"
 
 vrfs:
   - "!create_or_update:name": "{{ p2p_asn }}:{{ get_customer_id(customer_name, p2p_asn) }}"
@@ -16,10 +16,10 @@ vrfs:
     prefixes:
       - "!next_prefix":
           identified_by:
-            tags__name: "VRF Prefix"
+            tags__name: "{{ vrf_prefix_tag_name() }}"
           prefix: "{{ p2p_prefix }}"
           length: 30
         status__name: "Reserved"
         tags:
-          - {"!get:name": "VRF Prefix"}
+          - {"!get:name": "{{ vrf_prefix_tag_name() }}"}
         "!ref": "p2p_prefix"

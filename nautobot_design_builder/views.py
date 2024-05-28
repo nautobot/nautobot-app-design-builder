@@ -3,6 +3,7 @@
 from django_tables2 import RequestConfig
 from django.apps import apps as global_apps
 from django.shortcuts import render
+from django.core.exceptions import FieldDoesNotExist
 
 from rest_framework.decorators import action
 
@@ -18,26 +19,33 @@ from nautobot.utilities.utils import count_related
 from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
 
+from nautobot_design_builder import choices
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
-    DesignInstanceSerializer,
-    JournalSerializer,
-    JournalEntrySerializer,
+    DeploymentSerializer,
+    ChangeSetSerializer,
+    ChangeRecordSerializer,
 )
 from nautobot_design_builder.filters import (
     DesignFilterSet,
-    DesignInstanceFilterSet,
-    JournalFilterSet,
-    JournalEntryFilterSet,
+    DeploymentFilterSet,
+    ChangeSetFilterSet,
+    ChangeRecordFilterSet,
 )
 from nautobot_design_builder.forms import (
     DesignFilterForm,
-    DesignInstanceFilterForm,
-    JournalFilterForm,
-    JournalEntryFilterForm,
+    DeploymentFilterForm,
+    ChangeSetFilterForm,
+    ChangeRecordFilterForm,
 )
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
-from nautobot_design_builder.tables import DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.tables import (
+    DesignObjectsTable,
+    DesignTable,
+    DeploymentTable,
+    ChangeSetTable,
+    ChangeRecordTable,
+)
 
 
 PERMISSIONS_ACTION_MAP.update(
@@ -58,7 +66,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
 
     filterset_class = DesignFilterSet
     filterset_form_class = DesignFilterForm
-    queryset = Design.objects.annotate(instance_count=count_related(DesignInstance, "design"))
+    queryset = Design.objects.annotate(deployment_count=count_related(Deployment, "design"))
     serializer_class = DesignSerializer
     table_class = DesignTable
     action_buttons = ()
@@ -68,17 +76,18 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            design_instances = DesignInstance.objects.restrict(request.user, "view").filter(design=instance)
+            context["is_deployment"] = instance.design_mode == choices.DesignModeChoices.DEPLOYMENT
+            deployments = Deployment.objects.restrict(request.user, "view").filter(design=instance)
 
-            instances_table = DesignInstanceTable(design_instances)
-            instances_table.columns.hide("design")
+            deployments_table = DeploymentTable(deployments)
+            deployments_table.columns.hide("design")
 
             paginate = {
                 "paginator_class": EnhancedPaginator,
                 "per_page": get_paginate_count(request),
             }
-            RequestConfig(request, paginate).configure(instances_table)
-            context["instances_table"] = instances_table
+            RequestConfig(request, paginate).configure(deployments_table)
+            context["deployments_table"] = deployments_table
         return context
 
     @action(detail=True, methods=["get"])
@@ -93,7 +102,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
         return render(request, "nautobot_design_builder/markdown_render.html", context)
 
 
-class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
+class DeploymentUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
@@ -102,11 +111,11 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
 ):
     """UI views for the design instance model."""
 
-    filterset_class = DesignInstanceFilterSet
-    filterset_form_class = DesignInstanceFilterForm
-    queryset = DesignInstance.objects.all()
-    serializer_class = DesignInstanceSerializer
-    table_class = DesignInstanceTable
+    filterset_class = DeploymentFilterSet
+    filterset_form_class = DeploymentFilterForm
+    queryset = Deployment.objects.all()
+    serializer_class = DeploymentSerializer
+    table_class = DeploymentTable
     action_buttons = ()
     lookup_field = "pk"
     verbose_name = "Design Deployment"
@@ -116,38 +125,42 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            journals = (
-                Journal.objects.restrict(request.user, "view")
-                .filter(design_instance=instance)
+            change_sets = (
+                ChangeSet.objects.restrict(request.user, "view")
+                .filter(deployment=instance)
                 .order_by("last_updated")
-                .annotate(journal_entry_count=count_related(JournalEntry, "journal"))
+                .annotate(record_count=count_related(ChangeRecord, "change_set"))
             )
 
-            journals_table = JournalTable(journals)
-            journals_table.columns.hide("design_instance")
+            change_sets_table = ChangeSetTable(change_sets)
+            change_sets_table.columns.hide("deployment")
 
             paginate = {
                 "paginator_class": EnhancedPaginator,
                 "per_page": get_paginate_count(request),
             }
-            RequestConfig(request, paginate).configure(journals_table)
-            context["journals_table"] = journals_table
+            RequestConfig(request, paginate).configure(change_sets_table)
+            context["change_sets_table"] = change_sets_table
+
+            design_objects = ChangeRecord.objects.restrict(request.user, "view").design_objects(instance)
+            design_objects_table = DesignObjectsTable(design_objects)
+            context["design_objects_table"] = design_objects_table
         return context
 
 
-class JournalUIViewSet(  # pylint:disable=abstract-method
+class ChangeSetUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
 ):
-    """UI views for the journal model."""
+    """UI views for the ChangeSet model."""
 
-    filterset_class = JournalFilterSet
-    filterset_form_class = JournalFilterForm
-    queryset = Journal.objects.annotate(journal_entry_count=count_related(JournalEntry, "journal"))
-    serializer_class = JournalSerializer
-    table_class = JournalTable
+    filterset_class = ChangeSetFilterSet
+    filterset_form_class = ChangeSetFilterForm
+    queryset = ChangeSet.objects.annotate(record_count=count_related(ChangeRecord, "change_set"))
+    serializer_class = ChangeSetSerializer
+    table_class = ChangeSetTable
     action_buttons = ()
     lookup_field = "pk"
 
@@ -155,32 +168,36 @@ class JournalUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            entries = JournalEntry.objects.restrict(request.user, "view").filter(journal=instance).order_by("-index")
+            records = (
+                ChangeRecord.objects.restrict(request.user, "view")
+                .filter(active=True, change_set=instance)
+                .order_by("-index")
+            )
 
-            entries_table = JournalEntryTable(entries)
-            entries_table.columns.hide("journal")
+            records_table = ChangeRecordTable(records)
+            records_table.columns.hide("change_set")
 
             paginate = {
                 "paginator_class": EnhancedPaginator,
                 "per_page": get_paginate_count(request),
             }
-            RequestConfig(request, paginate).configure(entries_table)
-            context["entries_table"] = entries_table
+            RequestConfig(request, paginate).configure(records_table)
+            context["records_table"] = records_table
         return context
 
 
-class JournalEntryUIViewSet(  # pylint:disable=abstract-method
+class ChangeRecordUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
 ):
-    """UI views for the journal entry model."""
+    """UI views for the ChangeRecord model."""
 
-    filterset_class = JournalEntryFilterSet
-    filterset_form_class = JournalEntryFilterForm
-    queryset = JournalEntry.objects.all()
-    serializer_class = JournalEntrySerializer
-    table_class = JournalEntryTable
+    filterset_class = ChangeRecordFilterSet
+    filterset_form_class = ChangeRecordFilterForm
+    queryset = ChangeRecord.objects.all()
+    serializer_class = ChangeRecordSerializer
+    table_class = ChangeRecordTable
     action_buttons = ()
     lookup_field = "pk"
 
@@ -201,23 +218,20 @@ class DesignProtectionObjectView(ObjectView):
         """Generate extra context for rendering the DesignProtection template."""
         content = {}
 
-        journalentry_references = JournalEntry.objects.filter(
-            _design_object_id=instance.id, active=True
-        ).exclude_decommissioned()
+        records = ChangeRecord.objects.filter(_design_object_id=instance.id, active=True).exclude_decommissioned()
 
-        if journalentry_references:
-            design_owner = journalentry_references.filter(full_control=True)
+        if records:
+            design_owner = records.filter(full_control=True, _design_object_id=instance.pk)
             if design_owner:
-                content["object"] = design_owner.first().journal.design_instance
-            for journalentry in journalentry_references:
-                for attribute in instance._meta.fields:
-                    attribute_name = attribute.name
-                    if attribute_name.startswith("_"):
-                        continue
-                    if (
-                        attribute_name in journalentry.changes["differences"].get("added", {})
-                        and journalentry.changes["differences"].get("added", {})[attribute_name]
-                    ):
-                        content[attribute_name] = journalentry.journal.design_instance
+                content["object"] = design_owner.first().change_set.deployment
+            for record in records:
+                for attribute in record.changes:
+                    try:
+                        field = instance._meta.get_field(attribute)
+                        content[field.name] = record.change_set.deployment
+                    except FieldDoesNotExist:
+                        # TODO: should this be logged? I can't think of when we would care
+                        # that a model's fields have changed since a design was implemented
+                        pass
 
         return {"active_tab": request.GET["tab"], "design_protection": content}

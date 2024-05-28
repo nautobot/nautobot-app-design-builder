@@ -3,6 +3,7 @@
 from nautobot.dcim.models import Manufacturer, Device, Interface
 from nautobot.extras.jobs import StringVar, ObjectVar
 
+from nautobot_design_builder.choices import DesignModeChoices
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.design import ModelInstance
 from nautobot_design_builder.ext import Extension, AttributeExtension
@@ -108,9 +109,7 @@ class NextInterfaceExtension(AttributeExtension):
             dict: Dictionary with the new interface name `{"!create_or_update:name": new_interface_name}
         """
         root_interface_name = "GigabitEthernet"
-        previous_interfaces = self.environment.design_instance.get_design_objects(Interface).values_list(
-            "id", flat=True
-        )
+        previous_interfaces = self.environment.deployment.get_design_objects(Interface).values_list("id", flat=True)
         interfaces = model_instance.relationship_manager.filter(
             name__startswith="GigabitEthernet",
         )
@@ -157,3 +156,4 @@ class IntegrationDesign(DesignJob):
             NextInterfaceExtension,
             ext.ChildPrefixExtension,
         ]
+        design_mode = DesignModeChoices.DEPLOYMENT

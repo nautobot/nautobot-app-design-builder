@@ -3,11 +3,12 @@
 from django_tables2 import Column
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
-from nautobot.utilities.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
+from nautobot.utilities.tables import BooleanColumn, ButtonsColumn
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder import choices
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
-DESIGNTABLE = """
+DESIGN_TABLE = """
 
 <a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
     <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
@@ -25,30 +26,46 @@ class DesignTable(BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
-    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
-    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGNTABLE)
+    design_mode = Column(verbose_name="Mode")
+    deployment_count = Column(verbose_name="Deployments")
+    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGN_TABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
+
+    def render_design_mode(self, value):
+        """Lookup the human readable design mode from the assigned mode value."""
+        return choices.DesignModeChoices.as_dict()[value]
+
+    def render_deployment_count(self, value, record):
+        """Calculate the number of deployments for a design.
+
+        If the design is a deployment then return the count of deployments for the design. If
+        the mode is `classic` then return a dash to indicate deployments aren't tracked in that
+        mode.
+        """
+        if record.design_mode != choices.DesignModeChoices.CLASSIC:
+            return value
+        return "-"
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "version", "job_last_synced", "description", "instance_count")
+        fields = ("name", "design_mode", "version", "job_last_synced", "description")
 
 
-DESIGNINSTANCETABLE = """
+DEPLOYMENT_TABLE = """
 {% load utils %}
-<a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
+<a href="{% url "extras:job" class_path="plugins/nautobot_design_builder.jobs/DeploymentDecommissioning" %}?deployments={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
-<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_journal as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"
+<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_change_set as last_change_set %}{{ last_change_set.job_result.pk }}{% endwith %}"
     class="btn btn-xs btn-success" title="Re-run job with same arguments.">
     <i class="mdi mdi-repeat"></i>
 </a>
 """
 
 
-class DesignInstanceTable(StatusTableMixin, BaseTable):
+class DeploymentTable(StatusTableMixin, BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
@@ -57,20 +74,19 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
     last_implemented = Column(verbose_name="Last Update Time")
     created_by = Column(verbose_name="Deployed by")
     last_updated_by = Column(verbose_name="Last Updated by")
-    live_state = ColoredLabelColumn(verbose_name="Operational State")
     actions = ButtonsColumn(
-        DesignInstance,
+        Deployment,
         buttons=(
             "delete",
             "changelog",
         ),
-        prepend_template=DESIGNINSTANCETABLE,
+        prepend_template=DEPLOYMENT_TABLE,
     )
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = DesignInstance
+        model = Deployment
         fields = (
             "name",
             "design",
@@ -80,31 +96,44 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
             "last_updated_by",
             "last_implemented",
             "status",
-            "live_state",
         )
 
 
-class JournalTable(BaseTable):
-    """Table for list view."""
+class DesignObjectsTable(BaseTable):
+    """Table of objects that belong to a design instance."""
 
-    pk = Column(linkify=True, verbose_name="ID")
-    design_instance = Column(linkify=True, verbose_name="Deployment")
-    job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
-    journal_entry_count = Column(accessor=Accessor("journal_entry_count"), verbose_name="Journal Entries")
-    active = BooleanColumn(verbose_name="Active Journal")
+    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
+    design_object = Column(linkify=True, verbose_name="Design Object")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = Journal
-        fields = ("pk", "design_instance", "job_result", "journal_entry_count", "active")
+        model = ChangeRecord
+        fields = ("design_object_type", "design_object")
 
 
-class JournalEntryTable(BaseTable):
+class ChangeSetTable(BaseTable):
     """Table for list view."""
 
     pk = Column(linkify=True, verbose_name="ID")
-    journal = Column(linkify=True)
+    deployment = Column(linkify=True, verbose_name="Deployment")
+    job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
+    record_count = Column(accessor=Accessor("record_count"), verbose_name="Change Records")
+    active = BooleanColumn(verbose_name="Active")
+
+    class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
+        """Meta attributes."""
+
+        model = ChangeSet
+        fields = ("pk", "deployment", "job_result", "record_count", "active")
+
+
+class ChangeRecordTable(BaseTable):
+    """Table for list view."""
+
+    pk = Column(linkify=True, verbose_name="ID")
+    change_set = Column(linkify=True)
+    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
     design_object = Column(linkify=True, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
     active = BooleanColumn(verbose_name="Active")
@@ -112,5 +141,5 @@ class JournalEntryTable(BaseTable):
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = JournalEntry
-        fields = ("pk", "journal", "design_object", "changes", "full_control", "active")
+        model = ChangeRecord
+        fields = ("pk", "change_set", "design_object_type", "design_object", "changes", "full_control", "active")

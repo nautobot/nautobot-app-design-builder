@@ -39,9 +39,11 @@ See also: https://docs.python.org/3/howto/descriptor.html
 """
 
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from typing import Any, Mapping, Type, TYPE_CHECKING
 
 from django.db import models as django_models
+from django.db.models.manager import Manager
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 
@@ -55,7 +57,40 @@ from nautobot_design_builder.debug import debug_set
 
 if TYPE_CHECKING:
     from .design import ModelInstance
-    from django.db.models.manager import Manager
+
+
+def _get_change_value(value):
+    if isinstance(value, Manager):
+        value = {item.pk for item in value.all()}
+    return value
+
+
+@contextmanager
+def change_log(model_instance: "ModelInstance", attr_name: str):
+    """Log changes for a field.
+
+    This context manager will record the value of a field prior to a change
+    as well as the value after the change. If the values are different then
+    a change record is added to the underlying model instance.
+
+    Args:
+        model_instance (ModelInstance): The model instance that is being updated.
+        attr_name (str): The attribute to be updated.
+    """
+    old_value = _get_change_value(getattr(model_instance.instance, attr_name))
+    yield
+    new_value = _get_change_value(getattr(model_instance.instance, attr_name))
+    if old_value != new_value:
+        if isinstance(old_value, set):
+            model_instance.metadata.changes[attr_name] = {
+                "old_items": old_value,
+                "new_items": new_value,
+            }
+        else:
+            model_instance.metadata.changes[attr_name] = {
+                "old_value": old_value,
+                "new_value": new_value,
+            }
 
 
 class ModelField(ABC):
@@ -134,7 +169,8 @@ class SimpleField(BaseModelField):  # pylint:disable=too-few-public-methods
 
     @debug_set
     def __set__(self, obj: "ModelInstance", value):  # noqa: D105
-        setattr(obj.instance, self.field_name, value)
+        with change_log(obj, self.field_name):
+            setattr(obj.instance, self.field_name, value)
 
 
 class RelationshipFieldMixin:  # pylint:disable=too-few-public-methods
@@ -183,7 +219,10 @@ class ForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
                 model_instance.save()
             else:
                 model_instance.environment.journal.log(model_instance)
-            setattr(obj.instance, self.field_name, model_instance.instance)
+
+            with change_log(obj, self.field.attname):
+                setattr(obj.instance, self.field_name, model_instance.instance)
+
             if deferred:
                 obj.instance.save(update_fields=[self.field_name])
 
@@ -204,7 +243,8 @@ class ManyToOneRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disab
         def setter():
             for value in values:
                 value = self._get_instance(obj, value, getattr(obj, self.field_name))
-                setattr(value.instance, self.field.field.name, obj.instance)
+                with change_log(value, self.field.field.attname):
+                    setattr(value.instance, self.field.field.name, obj.instance)
                 value.save()
 
         obj.connect("POST_INSTANCE_SAVE", setter)
@@ -231,7 +271,8 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
                 else:
                     value.environment.journal.log(value)
                 items.append(value.instance)
-            getattr(obj.instance, self.field_name).add(*items)
+            with change_log(obj, self.field_name):
+                getattr(obj.instance, self.field_name).add(*items)
 
         obj.connect("POST_INSTANCE_SAVE", setter)
 
@@ -251,7 +292,8 @@ class GenericRelationField(BaseModelField, RelationshipFieldMixin):  # pylint:di
             else:
                 value.environment.journal.log(value)
             items.append(value.instance)
-        getattr(obj.instance, self.field_name).add(*items)
+        with change_log(obj, self.field_name):
+            getattr(obj.instance, self.field_name).add(*items)
 
 
 class GenericForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -261,8 +303,10 @@ class GenericForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:
     def __set__(self, obj: "ModelInstance", value):  # noqa:D105
         fk_field = self.field.fk_field
         ct_field = self.field.ct_field
-        setattr(obj.instance, fk_field, value.instance.pk)
-        setattr(obj.instance, ct_field, ContentType.objects.get_for_model(value.instance))
+        ct_id_field = obj.instance._meta.get_field(ct_field).attname
+        with change_log(obj, fk_field), change_log(obj, ct_id_field):
+            setattr(obj.instance, fk_field, value.instance.pk)
+            setattr(obj.instance, ct_field, ContentType.objects.get_for_model(value.instance))
 
 
 class TagField(ManyToManyField):  # pylint:disable=too-few-public-methods
@@ -278,7 +322,8 @@ class GenericRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
 
     @debug_set
     def __set__(self, obj: "ModelInstance", value):  # noqa:D105
-        setattr(obj.instance, self.field.attname, self._get_instance(obj, value))
+        with change_log(obj, self.field.attname):
+            setattr(obj.instance, self.field.attname, self._get_instance(obj, value))
 
 
 class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: disable=too-few-public-methods
@@ -325,13 +370,18 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
 
                 source_type = ContentType.objects.get_for_model(source)
                 destination_type = ContentType.objects.get_for_model(destination)
-                RelationshipAssociation.objects.update_or_create(
-                    relationship=self.relationship,
-                    source_id=source.id,
-                    source_type=source_type,
-                    destination_id=destination.id,
-                    destination_type=destination_type,
+                relationship_association = obj.environment.model_class_index[RelationshipAssociation](
+                    environment=obj.environment,
+                    attributes={
+                        "relationship_id": self.relationship.id,
+                        "source_id": source.id,
+                        "source_type_id": source_type.id,
+                        "destination_id": destination.id,
+                        "destination_type_id": destination_type.id,
+                    },
+                    parent=obj,
                 )
+                relationship_association.save()
 
         obj.connect("POST_INSTANCE_SAVE", setter)
 

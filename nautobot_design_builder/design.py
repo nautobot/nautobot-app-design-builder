@@ -1,7 +1,7 @@
 """Provides ORM interaction for design builder."""
 
 from types import FunctionType
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
@@ -12,66 +12,12 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError, Multiple
 
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import JobResult, Relationship
-from nautobot.utilities.utils import shallow_compare_dict
-from nautobot.extras.api.serializers import StatusModelSerializerMixin
-from nautobot.extras.api.fields import StatusSerializerField
-from nautobot.core.api.exceptions import SerializerNotFound
-from nautobot.extras.models import Status
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
 from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import CustomRelationshipField, field_factory
 from nautobot_design_builder import models
-from nautobot_design_builder.util import nautobot_version
-
-
-if nautobot_version < "2.0.0":
-    # This overwrite is a workaround for a Nautobot 1.6 Serializer limitation for Status
-    # https://github.com/nautobot/nautobot/blob/ltm-1.6/nautobot/extras/api/fields.py#L22
-    from nautobot.utilities.api import get_serializer_for_model  # pylint: disable=ungrouped-imports
-    from nautobot.utilities.utils import serialize_object  # pylint: disable=ungrouped-imports
-
-    def serialize_object_v2(obj):
-        """
-        Custom Implementation. Not needed for Nautobot 2.0.
-
-        Return a JSON serialized representation of an object using obj's serializer.
-        """
-
-        class CustomStatusSerializerField(StatusSerializerField):
-            """CustomStatusSerializerField."""
-
-            def to_representation(self, obj):
-                """Make this field compatible w/ the existing API for `ChoiceField`."""
-                if obj == "":
-                    return None
-
-                return OrderedDict([("value", obj.slug), ("label", str(obj)), ("id", str(obj.id))])
-
-        class CustomStatusModelSerializerMixin(StatusModelSerializerMixin):
-            """Mixin to add `status` choice field to model serializers."""
-
-            status = CustomStatusSerializerField(queryset=Status.objects.all())
-
-        # Try serializing obj(model instance) using its API Serializer
-        try:
-            serializer_class = get_serializer_for_model(obj.__class__)
-            if issubclass(serializer_class, StatusModelSerializerMixin):
-
-                class NewSerializerClass(CustomStatusModelSerializerMixin, serializer_class):
-                    """Custom SerializerClass."""
-
-                serializer_class = NewSerializerClass
-            data = serializer_class(obj, context={"request": None, "depth": 1}).data
-        except SerializerNotFound:
-            # Fall back to generic JSON representation of obj
-            data = serialize_object(obj)
-
-        return data
-
-else:
-    from nautobot.core.models.utils import serialize_object_v2  # pylint: disable=import-error,no-name-in-module
 
 
 # TODO: Refactor this code into the Journal model
@@ -97,12 +43,12 @@ class Journal:
     will only be in each of those indices at most once.
     """
 
-    def __init__(self, design_journal: models.Journal = None):
+    def __init__(self, change_set: models.ChangeSet = None):
         """Constructor for Journal object."""
         self.index = set()
         self.created = defaultdict(set)
         self.updated = defaultdict(set)
-        self.design_journal = design_journal
+        self.change_set = change_set
 
     def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
@@ -112,8 +58,8 @@ class Journal:
         """
         instance = model.instance
         model_type = instance.__class__
-        if self.design_journal:
-            self.design_journal.log(model)
+        if self.change_set:
+            self.change_set.log(model)
 
         if instance.pk not in self.index:
             self.index.add(instance.pk)
@@ -156,54 +102,6 @@ def _map_query_values(query: Mapping) -> Mapping:
         else:
             retval[key] = value
     return retval
-
-
-def calculate_changes(current_state, initial_state=None, created=False, pre_change=False) -> Dict:
-    """Determine the differences between the original instance and the current.
-
-    This will calculate the changes between the instance's initial state
-    and its current state. If pre_change is supplied it will use this
-    dictionary as the initial state rather than the current ModelInstance
-    initial state.
-
-    Args:
-        pre_change (dict, optional): Initial state for comparison. If not supplied then the initial state from this instance is used.
-
-    Returns:
-        Return a dictionary with the changed object's serialized data compared
-        with either the model instance initial state, or the supplied pre_change
-        state. The dictionary has the following values:
-
-        dict: {
-            "pre_change": dict(),
-            "post_change": dict(),
-            "differences": {
-                "added": dict(),
-                "removed": dict(),
-            }
-        }
-    """
-    post_change = serialize_object_v2(current_state)
-
-    if not created and not pre_change:
-        pre_change = initial_state
-
-    if pre_change and post_change:
-        diff_added = shallow_compare_dict(pre_change, post_change, exclude=["last_updated"])
-        diff_removed = {x: pre_change.get(x) for x in diff_added}
-    elif pre_change and not post_change:
-        diff_added, diff_removed = None, pre_change
-    else:
-        diff_added, diff_removed = post_change, None
-
-    return {
-        "pre_change": pre_change,
-        "post_change": post_change,
-        "differences": {
-            "added": diff_added,
-            "removed": diff_removed,
-        },
-    }
 
 
 class ModelMetadata:  # pylint: disable=too-many-instance-attributes
@@ -253,6 +151,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         }
 
         self.save_args = kwargs.get("save_args", {})
+
+        self.changes = {}
 
         # The following attributes are dunder attributes
         # because they should only be set in the @attributes.setter
@@ -548,6 +448,7 @@ class ModelInstance:
 
         try:
             self._load_instance()
+            setattr(self.instance, "__design_builder_instance", self)
         except ObjectDoesNotExist as ex:
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
@@ -575,19 +476,6 @@ class ModelInstance:
     def __str__(self):
         """Get the model class name."""
         return str(self.model_class)
-
-    def get_changes(self, pre_change=None):
-        """Determine the differences between the original instance and the current.
-
-        This uses `calculate_changes` to determine the change dictionary. See that
-        method for details.
-        """
-        return calculate_changes(
-            self.instance,
-            initial_state=self._initial_state,
-            created=self.metadata.created,
-            pre_change=pre_change,
-        )
 
     def create_child(
         self,
@@ -640,14 +528,12 @@ class ModelInstance:
         # Short circuit if the instance was loaded earlier in
         # the initialization process
         if self.instance is not None:
-            self._initial_state = serialize_object_v2(self.instance)
             return
 
         query_filter = self.metadata.query_filter
         field_values = self.metadata.query_filter_values
         if self.metadata.action == ModelMetadata.GET:
             self.instance = self.model_class.objects.get(**query_filter)
-            self._initial_state = serialize_object_v2(self.instance)
             return
 
         if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
@@ -677,7 +563,6 @@ class ModelInstance:
                     field_values[query_param] = model
             try:
                 self.instance = self.relationship_manager.get(**query_filter)
-                self._initial_state = serialize_object_v2(self.instance)
                 return
             except ObjectDoesNotExist:
                 if self.metadata.action == ModelMetadata.UPDATE:
@@ -729,10 +614,6 @@ class ModelInstance:
 
         msg = "Created" if self.metadata.created else "Updated"
         try:
-            if self.environment.journal.design_journal:
-                self.instance._current_design = (  # pylint: disable=protected-access
-                    self.environment.journal.design_journal.design_instance
-                )
             self.instance.full_clean()
             self.instance.save(**self.metadata.save_args)
             self.environment.journal.log(self)
@@ -783,7 +664,7 @@ class Environment(LoggingMixin):
 
     model_map: Dict[str, Type[Model]]
     model_class_index: Dict[Type, "ModelInstance"]
-    design_instance: models.DesignInstance
+    deployment: models.Deployment
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder is initialized."""
@@ -800,7 +681,7 @@ class Environment(LoggingMixin):
         return object.__new__(cls)
 
     def __init__(
-        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
+        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, change_set: models.ChangeSet = None
     ):
         """Create a new build environment for implementing designs.
 
@@ -841,15 +722,15 @@ class Environment(LoggingMixin):
 
             self.extensions["extensions"].append(extn)
 
-        self.journal = Journal(design_journal=journal)
-        if journal:
-            self.design_instance = journal.design_instance
+        self.journal = Journal(change_set=change_set)
+        if change_set:
+            self.deployment = change_set.deployment
 
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""
-        self.journal.design_journal.design_instance.decommission(object_id, local_logger=self.logger)
+        self.journal.change_set.deployment.decommission(object_id, local_logger=self.logger)
         self.log_success(
-            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.design_instance}."
+            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.change_set.deployment}."
         )
 
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:

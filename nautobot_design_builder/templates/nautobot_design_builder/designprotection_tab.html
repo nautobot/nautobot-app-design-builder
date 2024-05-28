@@ -28,8 +28,8 @@
                 {{ key }}
             </td>
             <td>
-                {% with design_instance=value %}
-                <a href="{{ design_instance.get_absolute_url }}">{{ design_instance }}</a>
+                {% with deployment=value %}
+                <a href="{{ deployment.get_absolute_url }}">{{ deployment }}</a>
                 {% endwith %}
             </td>
         </tr>

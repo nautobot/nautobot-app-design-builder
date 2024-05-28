@@ -14,7 +14,7 @@ from django.utils import timezone
 from jinja2 import TemplateError
 
 from nautobot.extras.models import Status
-from nautobot.extras.jobs import Job, StringVar
+from nautobot.extras.jobs import Job, JobForm, StringVar
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -33,8 +33,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     a Meta class.
     """
 
-    instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
-
     @classmethod
     @abstractmethod
     def Meta(cls) -> Job.Meta:  # pylint: disable=invalid-name
@@ -51,6 +49,75 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.report = None
 
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def design_mode(cls):
+        """Determine the implementation mode for the design."""
+        return getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
+
+    @classmethod
+    def is_deployment_job(cls):
+        """Determine if a design job has been set to deployment mode."""
+        return cls.design_mode() == choices.DesignModeChoices.DEPLOYMENT
+
+    @classmethod
+    def deployment_name_field(cls):
+        """Determine what the deployment name field is.
+
+        Returns `None` if no deployment has been set in the job Meta class. In this
+        case the field will default to `deployment_name`
+        """
+        getattr(cls.Meta, "deployment_name_field", None)
+
+    @classmethod
+    def determine_deployment_name(cls, data):
+        """Determine the deployment name field, if specified."""
+        if not cls.is_deployment_job():
+            return None
+        deployment_name_field = cls.deployment_name_field()
+        if deployment_name_field is None:
+            if "deployment_name" not in data:
+                raise DesignImplementationError("No instance name was provided for the deployment.")
+            return data["deployment_name"]
+        return data[deployment_name_field]
+
+    @classmethod
+    def _get_vars(cls):
+        """Retrieve the script variables for the job.
+
+        If no deployment name field has been specified this method will
+        also add a `deployment_name` field.
+        """
+        cls_vars = {}
+        if cls.is_deployment_job():
+            if cls.deployment_name_field() is None:
+                cls_vars["deployment_name"] = StringVar(
+                    label="Deployment Name",
+                    max_length=models.DESIGN_NAME_MAX_LENGTH,
+                )
+
+        cls_vars.update(super()._get_vars())
+        return cls_vars
+
+    def as_form_class(self):
+        """Dynamically generate the job form.
+
+        This will add the deployment name field, if needed, and also provides
+        a clean method that call's the context validations methods.
+        """
+        fields = {name: var.as_field() for name, var in self._get_vars().items()}
+        old_clean = JobForm.clean
+        context_class = self.Meta.context_class
+
+        def clean(self):
+            cleaned_data = old_clean(self)
+            if self.is_valid():
+                context = context_class(cleaned_data)
+                context.validate()
+            return cleaned_data
+
+        fields["clean"] = clean
+        return type("DesignJobForm", (JobForm,), fields)
 
     def design_model(self):
         """Get the related Job."""
@@ -157,32 +224,34 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
 
-    def _setup_journal(self, instance_name: str):
+    def _setup_changeset(self, deployment_name: str):
+        if not self.is_deployment_job():
+            return None, None
+
         try:
-            instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
-            self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
+            instance = models.Deployment.objects.get(name=deployment_name, design=self.design_model())
+            self.log_info(message=f'Existing design instance of "{deployment_name}" was found, re-running design job.')
             instance.last_implemented = timezone.now()
-        except models.DesignInstance.DoesNotExist:
-            self.log_info(message=f'Implementing new design "{instance_name}".')
-            content_type = ContentType.objects.get_for_model(models.DesignInstance)
-            instance = models.DesignInstance(
-                name=instance_name,
+        except models.Deployment.DoesNotExist:
+            self.log_info(message=f'Implementing new design "{deployment_name}".')
+            content_type = ContentType.objects.get_for_model(models.Deployment)
+            instance = models.Deployment(
+                name=deployment_name,
                 design=self.design_model(),
                 last_implemented=timezone.now(),
-                status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
-                live_state=Status.objects.get(
-                    content_types=content_type, name=choices.DesignInstanceLiveStateChoices.PENDING
-                ),
+                status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
                 version=self.design_model().version,
             )
         instance.validated_save()
-        previous_journal = instance.journals.order_by("-last_updated").first()
-        journal = models.Journal(
-            design_instance=instance,
+        change_set, created = models.ChangeSet.objects.get_or_create(
+            deployment=instance,
             job_result=self.job_result,
         )
-        journal.validated_save()
-        return (journal, previous_journal)
+        if created:
+            change_set.validated_save()
+
+        previous_change_set = instance.change_sets.order_by("-last_updated").exclude(job_result=self.job_result).first()
+        return (change_set, previous_change_set)
 
     @staticmethod
     def validate_data_logic(data):
@@ -211,19 +280,20 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        journal, previous_journal = self._setup_journal(data.pop("instance_name"))
+        data["deployment_name"] = self.determine_deployment_name(data)
+        change_set, previous_change_set = self._setup_changeset(data["deployment_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
             job_result=self.job_result,
             extensions=extensions,
-            journal=journal,
+            change_set=change_set,
         )
 
         design_files = None
 
         if hasattr(self.Meta, "context_class"):
-            context = self.Meta.context_class(data=data, job_result=self.job_result, design_name=self.Meta.name)
+            context = self.Meta.context_class(data=data, job_result=self.job_result)
             context.validate()
         else:
             context = {}
@@ -243,26 +313,23 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             for design_file in design_files:
                 self.implement_design(context, design_file, commit)
 
-            if previous_journal:
-                deleted_object_ids = previous_journal - journal
+            if previous_change_set:
+                deleted_object_ids = previous_change_set - change_set
                 if deleted_object_ids:
                     self.log_info(f"Decommissioning {deleted_object_ids}")
-                    journal.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+                    change_set.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 
             if commit:
                 self.post_implementation(context, self.environment)
-                # The Journal stores the design (with Nautobot identifiers from post_implementation)
+                # The ChangeSet stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
-                journal.design_instance.status = Status.objects.get(
-                    content_types=ContentType.objects.get_for_model(models.DesignInstance),
-                    name=choices.DesignInstanceStatusChoices.ACTIVE,
-                )
-                journal.design_instance.save()
-                journal.save()
-                self.job_result.data["related_objects"] = {
-                    "journal": journal.pk,
-                    "design_instance": journal.design_instance.pk,
-                }
+                if self.is_deployment_job():
+                    change_set.deployment.status = Status.objects.get(
+                        content_types=ContentType.objects.get_for_model(models.Deployment),
+                        name=choices.DeploymentStatusChoices.ACTIVE,
+                    )
+                    change_set.deployment.save()
+                    change_set.save()
                 if hasattr(self.Meta, "report"):
                     self.report = self.render_report(context, self.environment.journal)
                     self.log_success(message=self.report)
