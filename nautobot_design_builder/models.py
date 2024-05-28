@@ -268,7 +268,7 @@ class Deployment(PrimaryModel):
         Returns:
             Queryset of matching objects.
         """
-        records = ChangeRecord.objects.filter_by_instance(self, model=model)
+        records = ChangeRecord.objects.filter_by_deployment(self, model=model)
         return model.objects.filter(pk__in=records.values_list("_design_object_id", flat=True))
 
     @property
@@ -456,7 +456,7 @@ class ChangeRecordQuerySet(RestrictedQuerySet):
             .exclude(change_set__deployment_id=entry.change_set.deployment_id)
         )
 
-    def filter_by_instance(self, deployment: "Deployment", model=None):
+    def filter_by_deployment(self, deployment: "Deployment", model=None):
         """Lookup all the records for a design instance an optional model type.
 
         Args:
