@@ -142,13 +142,7 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
             RequestConfig(request, paginate).configure(change_sets_table)
             context["change_sets_table"] = change_sets_table
 
-            design_objects = (
-                ChangeRecord.objects.restrict(request.user, "view")
-                .filter_by_deployment(instance)
-                .filter(active=True)
-                .filter(_design_object_id__isnull=False)
-                .distinct("_design_object_id")
-            )
+            design_objects = ChangeRecord.objects.restrict(request.user, "view").design_objects(instance)
             design_objects_table = DesignObjectsTable(design_objects)
             context["design_objects_table"] = design_objects_table
         return context

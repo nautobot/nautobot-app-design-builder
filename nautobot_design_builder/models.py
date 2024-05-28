@@ -471,6 +471,35 @@ class ChangeRecordQuerySet(RestrictedQuerySet):
             queryset.filter(_design_object_type=ContentType.objects.get_for_model(model))
         return queryset
 
+    def design_objects(self, deployment: "Deployment"):
+        """Get a set of change records for unique design objects.
+
+        This method returns a queryset of change records for a deployment. However, rather
+        than all of the change records, it will select only one change record for
+        each distinct design object. This is useful to get the active objects for
+        a given deployment.
+
+        Args:
+            deployment (Deployment): The deployment to get design objects.
+
+        Returns:
+            Queryset of change records with uniq design objects.
+        """
+        # This would all be much easier if we could just use a distinct on
+        # fields. Unfortunately, MySQL doesn't support distinct on columns
+        # so we have to kind of do it ourselves with the following application
+        # logic.
+        design_objects = (
+            self.filter_by_deployment(deployment)
+            .filter(active=True)
+            .values_list("id", "_design_object_id", "_design_object_type")
+        )
+        design_object_ids = {
+            f"{design_object_type}:{design_object_id}": record_id
+            for record_id, design_object_id, design_object_type in design_objects
+        }
+        return self.filter(id__in=design_object_ids.values())
+
 
 class ChangeRecord(BaseModel):
     """A single entry in the change set for exactly 1 object.
@@ -510,7 +539,10 @@ class ChangeRecord(BaseModel):
     active = models.BooleanField(editable=False, default=True)
 
     class Meta:  # noqa:D106
-        unique_together = [("change_set", "index")]
+        unique_together = [
+            ("change_set", "index"),
+            ("change_set", "_design_object_type", "_design_object_id"),
+        ]
 
     def get_absolute_url(self):
         """Return detail view for design change record."""
