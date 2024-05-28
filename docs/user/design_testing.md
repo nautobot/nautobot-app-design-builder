@@ -97,3 +97,25 @@ class DecommissioningTestBase(DesignTestCase):
         ...
 
 ```
+
+### Test Context Functions
+
+Context test functions can also be tested to validate that the logic works as expected.
+
+```python
+class TestEdgeSiteBlocksContext(DesignTestCase):
+    def test_calculate_prefix(self):
+        site = Site.objects.create(
+            name="TEST SITE",
+            status=Status.objects.get(name="Active"),
+        )
+        prefix = site.prefixes.create(
+            prefix="192.0.2.0/24",
+            status=Status.objects.get(name="Active"),
+        )
+        prefix.tags.add(Tag.objects.get(name="abc"))
+        prefix.save()
+        context = EdgeSiteBlocksContext({"site_code": "TEST SITE"})
+        prefix_str = context.calculate_prefix({"parent": "abc", "offset": "0.0.0.0/28"})
+        self.assertEqual("192.0.2.0/28", prefix_str)
+```
