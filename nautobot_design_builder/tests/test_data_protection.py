@@ -13,7 +13,7 @@ from nautobot.extras.plugins import register_custom_validators
 from nautobot.users.models import ObjectPermission
 
 from nautobot_design_builder.design import calculate_changes
-from .test_model_design_instance import BaseDesignInstanceTest
+from .test_model_deployment import BaseDeploymentTest
 from ..models import JournalEntry
 from ..custom_validators import custom_validators
 from ..signals import load_pre_delete_signals
@@ -32,7 +32,7 @@ plugin_settings_with_protection_and_superuser_bypass_disabled["nautobot_design_b
 ] = False
 
 
-class DataProtectionBaseTest(BaseDesignInstanceTest):  # pylint: disable=too-many-instance-attributes
+class DataProtectionBaseTest(BaseDeploymentTest):  # pylint: disable=too-many-instance-attributes
     """Data Protection Test."""
 
     def setUp(self):

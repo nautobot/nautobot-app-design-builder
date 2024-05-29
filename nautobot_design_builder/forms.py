@@ -6,7 +6,7 @@ from nautobot.extras.models import Job, JobResult
 from nautobot.apps.forms import TagFilterField, DynamicModelChoiceField, StaticSelect2
 from nautobot.core.forms.constants import BOOLEAN_WITH_BLANK_CHOICES
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 
 class DesignFilterForm(NautobotFilterForm):
@@ -19,10 +19,10 @@ class DesignFilterForm(NautobotFilterForm):
     version = CharField(max_length=20, required=False)
 
 
-class DesignInstanceFilterForm(NautobotFilterForm):
-    """Filter form for the design instance model."""
+class DeploymentFilterForm(NautobotFilterForm):
+    """Filter form for the Deployment model."""
 
-    model = DesignInstance
+    model = Deployment
 
     design = DynamicModelChoiceField(queryset=Design.objects.all())
     tag = TagFilterField(model)
@@ -34,7 +34,7 @@ class JournalFilterForm(NautobotFilterForm):
 
     model = Journal
 
-    design_instance = DynamicModelChoiceField(queryset=DesignInstance.objects.all())
+    design_instance = DynamicModelChoiceField(queryset=Deployment.objects.all())
     job_result = DynamicModelChoiceField(queryset=JobResult.objects.all())
     tag = TagFilterField(model)
 

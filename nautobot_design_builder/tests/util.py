@@ -4,7 +4,7 @@ from nautobot.extras.models import Status
 from nautobot.extras.models import JobResult, Job
 from nautobot.tenancy.models import Tenant
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 
 def populate_sample_data():
@@ -13,7 +13,7 @@ def populate_sample_data():
     job_result, _ = JobResult.objects.get_or_create(name="Test", job_model=job)
 
     design, _ = Design.objects.get_or_create(job=job)
-    design_instance, _ = DesignInstance.objects.get_or_create(
+    design_instance, _ = Deployment.objects.get_or_create(
         design=design,
         name="Initial Data",
         status=Status.objects.get(name="Active"),
@@ -32,7 +32,7 @@ def create_test_view_data():
 
         # Design Builder models
         design = Design.objects.create(job=job)
-        instance = DesignInstance.objects.create(
+        instance = Deployment.objects.create(
             design=design,
             name=f"Test Instance {i}",
             status=Status.objects.get(name="Active"),

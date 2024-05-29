@@ -150,17 +150,17 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
     def _setup_journal(self, instance_name: str):
         try:
-            instance = models.DesignInstance.objects.get(name=instance_name, design=self.design_model())
+            instance = models.Deployment.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
             instance.last_implemented = timezone.now()
-        except models.DesignInstance.DoesNotExist:
+        except models.Deployment.DoesNotExist:
             self.log_info(message=f'Implementing new design "{instance_name}".')
-            content_type = ContentType.objects.get_for_model(models.DesignInstance)
-            instance = models.DesignInstance(
+            content_type = ContentType.objects.get_for_model(models.Deployment)
+            instance = models.Deployment(
                 name=instance_name,
                 design=self.design_model(),
                 last_implemented=timezone.now(),
-                status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+                status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
                 version=self.design_model().version,
             )
         instance.validated_save()
@@ -254,8 +254,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 # The Journal stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
                 journal.design_instance.status = Status.objects.get(
-                    content_types=ContentType.objects.get_for_model(models.DesignInstance),
-                    name=choices.DesignInstanceStatusChoices.ACTIVE,
+                    content_types=ContentType.objects.get_for_model(models.Deployment),
+                    name=choices.DeploymentStatusChoices.ACTIVE,
                 )
                 journal.design_instance.save()
                 journal.save()

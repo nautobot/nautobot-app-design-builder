@@ -8,11 +8,11 @@ from nautobot.apps.models import serialize_object_v2
 from nautobot_design_builder.design import calculate_changes
 from nautobot_design_builder.errors import DesignValidationError
 
-from .test_model_design_instance import BaseDesignInstanceTest
+from .test_model_deployment import BaseDeploymentTest
 from ..models import JournalEntry
 
 
-class TestJournalEntry(BaseDesignInstanceTest):  # pylint: disable=too-many-instance-attributes
+class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance-attributes
     """Test JournalEntry."""
 
     def setUp(self) -> None:

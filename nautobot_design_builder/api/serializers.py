@@ -11,7 +11,7 @@ from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixi
 from nautobot.core.api import ContentTypeField
 from nautobot.core.api.utils import get_serializer_for_model
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 
 class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
@@ -24,8 +24,8 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
         fields = "__all__"
 
 
-class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
-    """Serializer for the design instance model."""
+class DeploymentSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
+    """Serializer for the Deployment model."""
 
     url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     created_by = SerializerMethodField()
@@ -34,7 +34,7 @@ class DesignInstanceSerializer(NautobotModelSerializer, TaggedModelSerializerMix
     class Meta:
         """Serializer options for the design model."""
 
-        model = DesignInstance
+        model = Deployment
         fields = "__all__"
 
     def get_created_by(self, instance):

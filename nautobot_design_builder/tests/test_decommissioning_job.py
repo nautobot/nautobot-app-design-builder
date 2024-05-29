@@ -9,7 +9,7 @@ from nautobot.extras.models import Status
 from nautobot.extras.models import Secret
 from nautobot_design_builder.errors import DesignValidationError
 
-from nautobot_design_builder.jobs import DesignInstanceDecommissioning
+from nautobot_design_builder.jobs import DeploymentDecommissioning
 from nautobot_design_builder import models, choices
 from nautobot_design_builder.tests.test_model_design import BaseDesignTest
 
@@ -27,13 +27,13 @@ def fake_ko(sender, design_instance, **kwargs):  # pylint: disable=unused-argume
 class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-instance-attributes
     """Test the DecommissionJobTestCase class."""
 
-    job_class = DesignInstanceDecommissioning
+    job_class = DeploymentDecommissioning
 
     def setUp(self):
         """Per-test setup."""
         super().setUp()
 
-        self.content_type = ContentType.objects.get_for_model(models.DesignInstance)
+        self.content_type = ContentType.objects.get_for_model(models.Deployment)
 
         # Decommissioning Job
         self.job = self.get_mocked_job(self.job_class)
@@ -43,18 +43,18 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             job_model=self.job.job_model,
         )
         self.job.job_result.log = mock.Mock()
-        self.design_instance = models.DesignInstance(
+        self.design_instance = models.Deployment(
             design=self.designs[0],
             name="My Design 1",
-            status=Status.objects.get(content_types=self.content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+            status=Status.objects.get(content_types=self.content_type, name=choices.DeploymentStatusChoices.ACTIVE),
             version=self.design1.version,
         )
         self.design_instance.validated_save()
 
-        self.design_instance_2 = models.DesignInstance(
+        self.design_instance_2 = models.Deployment(
             design=self.designs[0],
             name="My Design 2",
-            status=Status.objects.get(content_types=self.content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+            status=Status.objects.get(content_types=self.content_type, name=choices.DeploymentStatusChoices.ACTIVE),
             version=self.design1.version,
         )
         self.design_instance_2.validated_save()
@@ -106,7 +106,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         journal_entry.validated_save()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual(0, Secret.objects.count())
 
@@ -136,7 +136,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         self.assertRaises(
             ValueError,
             self.job.run,
-            {"design_instances": [self.design_instance]},
+            {"deployments": [self.design_instance]},
         )
 
         self.assertEqual(1, Secret.objects.count())
@@ -164,7 +164,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
 
         self.design_instance_2.decommission()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual(0, Secret.objects.count())
 
@@ -180,7 +180,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         journal_entry_1.validated_save()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual(1, Secret.objects.count())
 
@@ -202,7 +202,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         journal_entry.validated_save()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual(1, Secret.objects.count())
         self.assertEqual("previous description", Secret.objects.first().description)
@@ -222,7 +222,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         journal_entry.validated_save()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
@@ -244,7 +244,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         journal_entry.validated_save()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
@@ -274,12 +274,12 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         self.secret.parameters = {**self.changed_params, **new_params}
         self.secret.validated_save()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual({**self.initial_params, **new_params}, Secret.objects.first().parameters)
 
     def test_decommission_run_with_pre_hook_pass(self):
-        models.DesignInstance.pre_decommission.connect(fake_ok)
+        models.Deployment.pre_decommission.connect(fake_ok)
         self.assertEqual(1, Secret.objects.count())
 
         journal_entry_1 = models.JournalEntry.objects.create(
@@ -290,13 +290,13 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         journal_entry_1.validated_save()
 
-        self.job.run(data={"design_instances": [self.design_instance]})
+        self.job.run(data={"deployments": [self.design_instance]})
 
         self.assertEqual(0, Secret.objects.count())
-        models.DesignInstance.pre_decommission.disconnect(fake_ok)
+        models.Deployment.pre_decommission.disconnect(fake_ok)
 
     def test_decommission_run_with_pre_hook_fail(self):
-        models.DesignInstance.pre_decommission.connect(fake_ko)
+        models.Deployment.pre_decommission.connect(fake_ko)
         self.assertEqual(1, Secret.objects.count())
         journal_entry_1 = models.JournalEntry.objects.create(
             journal=self.journal1,
@@ -309,11 +309,11 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         self.assertRaises(
             DesignValidationError,
             self.job.run,
-            {"design_instances": [self.design_instance]},
+            {"deployments": [self.design_instance]},
         )
 
         self.assertEqual(1, Secret.objects.count())
-        models.DesignInstance.pre_decommission.disconnect(fake_ko)
+        models.Deployment.pre_decommission.disconnect(fake_ko)
 
     def test_decommission_run_multiple_design_instance(self):
         journal_entry = models.JournalEntry.objects.create(
@@ -341,6 +341,6 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
 
         self.assertEqual(2, Secret.objects.count())
 
-        self.job.run(data={"design_instances": [self.design_instance, self.design_instance_2]})
+        self.job.run(data={"deployments": [self.design_instance, self.design_instance_2]})
 
         self.assertEqual(0, Secret.objects.count())

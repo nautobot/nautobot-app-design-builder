@@ -2,10 +2,10 @@
 
 from nautobot.dcim.models import Manufacturer
 
-from .test_model_design_instance import BaseDesignInstanceTest
+from .test_model_deployment import BaseDeploymentTest
 
 
-class BaseJournalTest(BaseDesignInstanceTest):
+class BaseJournalTest(BaseDeploymentTest):
     """Base Journal Test."""
 
     def setUp(self):

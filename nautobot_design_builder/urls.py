@@ -6,7 +6,7 @@ from nautobot.apps.urls import NautobotUIViewSetRouter
 
 from nautobot_design_builder.views import (
     DesignUIViewSet,
-    DesignInstanceUIViewSet,
+    DeploymentUIViewSet,
     JournalUIViewSet,
     JournalEntryUIViewSet,
     DesignProtectionObjectView,
@@ -14,7 +14,7 @@ from nautobot_design_builder.views import (
 
 router = NautobotUIViewSetRouter()
 router.register("designs", DesignUIViewSet)
-router.register("design-instances", DesignInstanceUIViewSet)
+router.register("deployments", DeploymentUIViewSet)
 router.register("journals", JournalUIViewSet)
 router.register("journal-entries", JournalEntryUIViewSet)
 

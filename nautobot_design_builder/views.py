@@ -20,24 +20,24 @@ from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
 
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
-    DesignInstanceSerializer,
+    DeploymentSerializer,
     JournalSerializer,
     JournalEntrySerializer,
 )
 from nautobot_design_builder.filters import (
     DesignFilterSet,
-    DesignInstanceFilterSet,
+    DeploymentFilterSet,
     JournalFilterSet,
     JournalEntryFilterSet,
 )
 from nautobot_design_builder.forms import (
     DesignFilterForm,
-    DesignInstanceFilterForm,
+    DeploymentFilterForm,
     JournalFilterForm,
     JournalEntryFilterForm,
 )
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
-from nautobot_design_builder.tables import DesignTable, DesignInstanceTable, JournalTable, JournalEntryTable
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.tables import DesignTable, DeploymentTable, JournalTable, JournalEntryTable
 
 
 PERMISSIONS_ACTION_MAP.update(
@@ -58,7 +58,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
 
     filterset_class = DesignFilterSet
     filterset_form_class = DesignFilterForm
-    queryset = Design.objects.annotate(instance_count=count_related(DesignInstance, "design"))
+    queryset = Design.objects.annotate(deployment_count=count_related(Deployment, "design"))
     serializer_class = DesignSerializer
     table_class = DesignTable
     action_buttons = ()
@@ -68,17 +68,17 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            design_instances = DesignInstance.objects.restrict(request.user, "view").filter(design=instance)
+            deployments = Deployment.objects.restrict(request.user, "view").filter(design=instance)
 
-            instances_table = DesignInstanceTable(design_instances)
-            instances_table.columns.hide("design")
+            deployments_table = DeploymentTable(deployments)
+            deployments_table.columns.hide("design")
 
             paginate = {
                 "paginator_class": EnhancedPaginator,
                 "per_page": get_paginate_count(request),
             }
-            RequestConfig(request, paginate).configure(instances_table)
-            context["instances_table"] = instances_table
+            RequestConfig(request, paginate).configure(deployments_table)
+            context["deployments_table"] = deployments_table
         return context
 
     @action(detail=True, methods=["get"])
@@ -93,20 +93,20 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
         return render(request, "nautobot_design_builder/markdown_render.html", context)
 
 
-class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
+class DeploymentUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
     ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
     ObjectDestroyViewMixin,
 ):
-    """UI views for the design instance model."""
+    """UI views for the Deployment model."""
 
-    filterset_class = DesignInstanceFilterSet
-    filterset_form_class = DesignInstanceFilterForm
-    queryset = DesignInstance.objects.all()
-    serializer_class = DesignInstanceSerializer
-    table_class = DesignInstanceTable
+    filterset_class = DeploymentFilterSet
+    filterset_form_class = DeploymentFilterForm
+    queryset = Deployment.objects.all()
+    serializer_class = DeploymentSerializer
+    table_class = DeploymentTable
     action_buttons = ()
     lookup_field = "pk"
     verbose_name = "Design Deployment"
@@ -118,13 +118,13 @@ class DesignInstanceUIViewSet(  # pylint:disable=abstract-method
         if self.action == "retrieve":
             journals = (
                 Journal.objects.restrict(request.user, "view")
-                .filter(design_instance=instance)
+                .filter(deployment=instance)
                 .order_by("last_updated")
                 .annotate(journal_entry_count=count_related(JournalEntry, "journal"))
             )
 
             journals_table = JournalTable(journals)
-            journals_table.columns.hide("design_instance")
+            journals_table.columns.hide("deployment")
 
             paginate = {
                 "paginator_class": EnhancedPaginator,
@@ -208,7 +208,7 @@ class DesignProtectionObjectView(ObjectView):
         if journalentry_references:
             design_owner = journalentry_references.filter(full_control=True)
             if design_owner:
-                content["object"] = design_owner.first().journal.design_instance
+                content["object"] = design_owner.first().journal.deployment
             for journalentry in journalentry_references:
                 for attribute in instance._meta.fields:
                     attribute_name = attribute.name
@@ -218,6 +218,6 @@ class DesignProtectionObjectView(ObjectView):
                         attribute_name in journalentry.changes["differences"].get("added", {})
                         and journalentry.changes["differences"].get("added", {})[attribute_name]
                     ):
-                        content[attribute_name] = journalentry.journal.design_instance
+                        content[attribute_name] = journalentry.journal.deployment
 
         return {"active_tab": request.GET["tab"], "design_protection": content}

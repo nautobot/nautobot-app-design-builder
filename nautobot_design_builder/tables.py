@@ -5,7 +5,7 @@ from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
 from nautobot.apps.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
 
-from nautobot_design_builder.models import Design, DesignInstance, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
 
 DESIGNTABLE = """
 
@@ -25,7 +25,7 @@ class DesignTable(BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
-    instance_count = Column(linkify=True, accessor=Accessor("instance_count"), verbose_name="Deployments")
+    instance_count = Column(linkify=True, accessor=Accessor("deployment_count"), verbose_name="Deployments")
     actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGNTABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
 
@@ -36,9 +36,9 @@ class DesignTable(BaseTable):
         fields = ("name", "version", "job_last_synced", "description", "instance_count")
 
 
-DESIGNINSTANCETABLE = """
+DEPLOYMENT_TABLE = """
 {% load utils %}
-<a href="{% url "extras:job_run_by_class_path" class_path="nautobot_design_builder.jobs.DesignInstanceDecommissioning" %}?design_instances={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
+<a href="{% url "extras:job_run_by_class_path" class_path="nautobot_design_builder.jobs.DeploymentDecommissioning" %}?deployments={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
 <a href="{% url 'extras:job_run' pk=record.design.job.pk %}?kwargs_from_job_result={% with record|get_last_journal as last_journal %}{{ last_journal.job_result.pk }}{% endwith %}"
@@ -48,7 +48,7 @@ DESIGNINSTANCETABLE = """
 """
 
 
-class DesignInstanceTable(StatusTableMixin, BaseTable):
+class DeploymentTable(StatusTableMixin, BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
@@ -58,18 +58,18 @@ class DesignInstanceTable(StatusTableMixin, BaseTable):
     created_by = Column(verbose_name="Deployed by")
     last_updated_by = Column(verbose_name="Last Updated by")
     actions = ButtonsColumn(
-        DesignInstance,
+        Deployment,
         buttons=(
             "delete",
             "changelog",
         ),
-        prepend_template=DESIGNINSTANCETABLE,
+        prepend_template=DEPLOYMENT_TABLE,
     )
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
-        model = DesignInstance
+        model = Deployment
         fields = (
             "name",
             "design",

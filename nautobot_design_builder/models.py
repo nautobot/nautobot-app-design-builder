@@ -106,7 +106,7 @@ class DesignQuerySet(RestrictedQuerySet):
 class Design(PrimaryModel):
     """Design represents a single design job.
 
-    Design may or may not have any instances (implementations), but
+    Design may or may not have any deployments (implementations), but
     is available for execution. It is largely a one-to-one type
     relationship with Job, but will only exist if the Job has a
     DesignJob in its ancestry.
@@ -168,8 +168,8 @@ class Design(PrimaryModel):
         return ""
 
 
-class DesignInstanceQuerySet(RestrictedQuerySet):
-    """Queryset for `DesignInstance` objects."""
+class DeploymentQuerySet(RestrictedQuerySet):
+    """Queryset for `Deployment` objects."""
 
     def get_by_natural_key(self, design_name, instance_name):
         """Get Design Instance by natural key."""
@@ -180,10 +180,10 @@ DESIGN_NAME_MAX_LENGTH = 255
 
 
 @extras_features("statuses")
-class DesignInstance(PrimaryModel):
-    """Design instance represents the result of executing a design.
+class Deployment(PrimaryModel):
+    """Deployment represents the result of executing a design.
 
-    Design instance represents the collection of Nautobot objects
+    Deployment represents the collection of Nautobot objects
     that have been created or updated as part of the execution of
     a design job. In this way, we can provide "services" that can
     be updated or removed at a later time.
@@ -193,14 +193,14 @@ class DesignInstance(PrimaryModel):
 
     post_decommission = Signal()
 
-    status = StatusField(blank=False, null=False, on_delete=models.PROTECT, related_name="design_instance_statuses")
-    design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="instances")
+    status = StatusField(blank=False, null=False, on_delete=models.PROTECT, related_name="deployment_statuses")
+    design = models.ForeignKey(to=Design, on_delete=models.PROTECT, editable=False, related_name="deployments")
     name = models.CharField(max_length=DESIGN_NAME_MAX_LENGTH)
     first_implemented = models.DateTimeField(blank=True, null=True, auto_now_add=True)
     last_implemented = models.DateTimeField(blank=True, null=True)
     version = models.CharField(max_length=20, blank=True, default="")
 
-    objects = DesignInstanceQuerySet.as_manager()
+    objects = DeploymentQuerySet.as_manager()
 
     class Meta:
         """Meta class."""
@@ -208,7 +208,7 @@ class DesignInstance(PrimaryModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["design", "name"],
-                name="unique_design_instances",
+                name="unique_design_deployments",
             ),
         ]
         unique_together = [
@@ -235,23 +235,23 @@ class DesignInstance(PrimaryModel):
         """
         if not object_ids:
             local_logger.info("Decommissioning design", extra={"obj": self})
-            self.__class__.pre_decommission.send(self.__class__, design_instance=self)
+            self.__class__.pre_decommission.send(self.__class__, deployment=self)
         # Iterate the journals in reverse order (most recent first) and
         # revert each journal.
         for journal in self.journals.filter(active=True).order_by("-last_updated"):
             journal.revert(*object_ids, local_logger=local_logger)
 
         if not object_ids:
-            content_type = ContentType.objects.get_for_model(DesignInstance)
+            content_type = ContentType.objects.get_for_model(Deployment)
             self.status = Status.objects.get(
-                content_types=content_type, name=choices.DesignInstanceStatusChoices.DECOMMISSIONED
+                content_types=content_type, name=choices.DeploymentStatusChoices.DECOMMISSIONED
             )
             self.save()
-            self.__class__.post_decommission.send(self.__class__, design_instance=self)
+            self.__class__.post_decommission.send(self.__class__, deployment=self)
 
     def delete(self, *args, **kwargs):
         """Protect logic to remove Design Instance."""
-        if not self.status.name == choices.DesignInstanceStatusChoices.DECOMMISSIONED:
+        if not self.status.name == choices.DeploymentStatusChoices.DECOMMISSIONED:
             raise ValidationError("A Design Instance can only be delete if it's Decommissioned.")
         return super().delete(*args, **kwargs)
 
@@ -259,7 +259,7 @@ class DesignInstance(PrimaryModel):
         """Get all of the design objects for this design instance that are of `model` type.
 
         For instance, do get all of the `dcim.Interface` objects for this design instance call
-        `design_instance.get_design_objects(Interface)`.
+        `deployment.get_design_objects(Interface)`.
 
         Args:
             model (type): The model type to match.
@@ -267,7 +267,7 @@ class DesignInstance(PrimaryModel):
         Returns:
             Queryset of matching objects.
         """
-        entries = JournalEntry.objects.filter_by_instance(self, model=model)
+        entries = JournalEntry.objects.filter_by_deployment(self, model=model)
         return model.objects.filter(pk__in=entries.values_list("_design_object_id", flat=True))
 
     @property
@@ -299,8 +299,8 @@ class Journal(PrimaryModel):
     for every object within a design before that can happen.
     """
 
-    design_instance = models.ForeignKey(
-        to=DesignInstance,
+    deployment = models.ForeignKey(
+        to=Deployment,
         on_delete=models.CASCADE,
         editable=False,
         related_name="journals",
@@ -326,7 +326,7 @@ class Journal(PrimaryModel):
             user_input = self.job_result.job_kwargs.get("data", {}).copy()
         else:
             user_input = self.job_result.task_kwargs.copy()  # pylint: disable=no-member
-        job = self.design_instance.design.job
+        job = self.deployment.design.job
         return job.job_class.deserialize_data(user_input)
 
     def _next_index(self):
@@ -435,8 +435,8 @@ class JournalEntryQuerySet(RestrictedQuerySet):
     """Queryset for `JournalEntry` objects."""
 
     def exclude_decommissioned(self):
-        """Returns JournalEntry which the related DesignInstance is not decommissioned."""
-        return self.exclude(journal__design_instance__status__name=choices.DesignInstanceStatusChoices.DECOMMISSIONED)
+        """Returns JournalEntry which the related Deployment is not decommissioned."""
+        return self.exclude(journal__deployment__status__name=choices.DeploymentStatusChoices.DECOMMISSIONED)
 
     def filter_related(self, entry):
         """Returns other JournalEntries which have the same object ID but are in different designs.
@@ -451,20 +451,20 @@ class JournalEntryQuerySet(RestrictedQuerySet):
         return (
             self.filter(active=True)
             .filter(_design_object_id=entry._design_object_id)  # pylint:disable=protected-access
-            .exclude(journal__design_instance_id=entry.journal.design_instance_id)
+            .exclude(journal__deployment_id=entry.journal.deployment_id)
         )
 
-    def filter_by_instance(self, design_instance: "DesignInstance", model=None):
+    def filter_by_deployment(self, deployment: "Deployment", model=None):
         """Lookup all the entries for a design instance an optional model type.
 
         Args:
-            design_instance (DesignInstance): The design instance to retrieve all of the journal entries.
+            deployment (Deployment): The design instance to retrieve all of the journal entries.
             model (type, optional): An optional model type to filter by. Defaults to None.
 
         Returns:
             Query set matching the options.
         """
-        queryset = self.filter(journal__design_instance=design_instance)
+        queryset = self.filter(journal__deployment=deployment)
         if model:
             queryset.filter(_design_object_type=ContentType.objects.get_for_model(model))
         return queryset
@@ -511,7 +511,7 @@ class JournalEntry(BaseModel):
         unique_together = [["journal", "index"]]
 
     # def get_absolute_url(self, api=False):
-    #     """Return detail view for design instances."""
+    #     """Return detail view for design deployments."""
     #     if api:
     #         return reverse("plugins-api:nautobot_design_builder-api:journalentry", args=[self.pk])
     #     return reverse("plugins:nautobot_design_builder:journalentry", args=[self.pk])
@@ -574,7 +574,7 @@ class JournalEntry(BaseModel):
                 active_journal_ids = ",".join(map(str, related_entries))
                 raise DesignValidationError(f"This object is referenced by other active Journals: {active_journal_ids}")
 
-            self.design_object._current_design = self.journal.design_instance  # pylint: disable=protected-access
+            self.design_object._current_design = self.journal.deployment  # pylint: disable=protected-access
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:

@@ -3,7 +3,7 @@
 from nautobot.apps.api import OrderedDefaultRouter
 from nautobot_design_builder.api.views import (
     DesignAPIViewSet,
-    DesignInstanceAPIViewSet,
+    DeploymentAPIViewSet,
     JournalAPIViewSet,
     JournalEntryAPIViewSet,
 )
@@ -11,7 +11,7 @@ from nautobot_design_builder.api.views import (
 router = OrderedDefaultRouter()
 
 router.register("designs", DesignAPIViewSet)
-router.register("design-instances", DesignInstanceAPIViewSet)
+router.register("deployments", DeploymentAPIViewSet)
 router.register("journals", JournalAPIViewSet)
 router.register("journal-entries", JournalEntryAPIViewSet)
 

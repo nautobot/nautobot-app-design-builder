@@ -741,7 +741,7 @@ class Environment(LoggingMixin):
 
     model_map: Dict[str, Type[Model]]
     model_class_index: Dict[Type, "ModelInstance"]
-    design_instance: models.DesignInstance
+    design_instance: models.Deployment
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder is initialized."""

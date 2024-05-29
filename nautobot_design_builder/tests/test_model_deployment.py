@@ -1,4 +1,4 @@
-"""Test DesignInstance."""
+"""Test Deployment."""
 
 from unittest import mock
 from django.core.exceptions import ValidationError
@@ -11,17 +11,17 @@ from .test_model_design import BaseDesignTest
 from .. import models, choices
 
 
-class BaseDesignInstanceTest(BaseDesignTest):
-    """Base fixtures for tests using design instances."""
+class BaseDeploymentTest(BaseDesignTest):
+    """Base fixtures for tests using design deployments."""
 
     @staticmethod
-    def create_design_instance(design_name, design):
-        """Generate a DesignInstance."""
-        content_type = ContentType.objects.get_for_model(models.DesignInstance)
-        design_instance = models.DesignInstance(
+    def create_deployment(design_name, design):
+        """Generate a Deployment."""
+        content_type = ContentType.objects.get_for_model(models.Deployment)
+        design_instance = models.Deployment(
             design=design,
             name=design_name,
-            status=Status.objects.get(content_types=content_type, name=choices.DesignInstanceStatusChoices.ACTIVE),
+            status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
             version=design.version,
         )
         design_instance.validated_save()
@@ -42,14 +42,14 @@ class BaseDesignInstanceTest(BaseDesignTest):
     def setUp(self):
         super().setUp()
         self.design_name = "My Design"
-        self.design_instance = self.create_design_instance(self.design_name, self.designs[0])
+        self.design_instance = self.create_deployment(self.design_name, self.designs[0])
 
 
-class TestDesignInstance(BaseDesignInstanceTest):
-    """Test DesignInstance."""
+class TestDeployment(BaseDeploymentTest):
+    """Test Deployment."""
 
     def test_design_instance_queryset(self):
-        design = models.DesignInstance.objects.get_by_natural_key(self.jobs[0].name, self.design_name)
+        design = models.Deployment.objects.get_by_natural_key(self.jobs[0].name, self.design_name)
         self.assertIsNotNone(design)
         self.assertEqual(f"{self.jobs[0].job_class.Meta.name} - {self.design_name}", str(design))
 
@@ -64,7 +64,7 @@ class TestDesignInstance(BaseDesignInstanceTest):
 
     def test_uniqueness(self):
         with self.assertRaises(IntegrityError):
-            models.DesignInstance.objects.create(design=self.designs[0], name=self.design_name)
+            models.Deployment.objects.create(design=self.designs[0], name=self.design_name)
 
     def test_decommission_single_journal(self):
         """TODO"""

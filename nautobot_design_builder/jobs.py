@@ -3,17 +3,17 @@
 from nautobot.apps.jobs import Job, MultiObjectVar, register_jobs
 
 from .logging import get_logger
-from .models import DesignInstance
+from .models import Deployment
 
 
 name = "Design Builder"  # pylint: disable=invalid-name
 
 
-class DesignInstanceDecommissioning(Job):
-    """Job to decommission Design Instances."""
+class DeploymentDecommissioning(Job):
+    """Job to decommission Deployments."""
 
-    design_instances = MultiObjectVar(
-        model=DesignInstance,
+    deployments = MultiObjectVar(
+        model=Deployment,
         query_params={"status": "active"},
         description="Design Deployments to decommission.",
     )
@@ -26,13 +26,13 @@ class DesignInstanceDecommissioning(Job):
 
     def run(self, data):  # pylint:disable=arguments-differ
         """Execute Decommissioning job."""
-        design_instances = data["design_instances"]
+        deployments = data["deployments"]
         self.logger.info(
-            "Starting decommissioning of design instances: %s",
-            ", ".join([instance.name for instance in design_instances]),
+            "Starting decommissioning of design deployments: %s",
+            ", ".join([instance.name for instance in deployments]),
         )
 
-        for design_instance in design_instances:
+        for design_instance in deployments:
             self.logger.info(
                 "Working on resetting objects for this Design Instance...", extra={"object": design_instance}
             )
@@ -40,4 +40,4 @@ class DesignInstanceDecommissioning(Job):
             self.logger.info("%s has been successfully decommissioned from Nautobot.", design_instance)
 
 
-register_jobs(DesignInstanceDecommissioning)
+register_jobs(DeploymentDecommissioning)
