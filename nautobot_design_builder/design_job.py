@@ -17,6 +17,7 @@ from jinja2 import TemplateError
 from nautobot.extras.models import Status
 from nautobot.apps.jobs import Job, DryRunVar, StringVar
 from nautobot.extras.models import FileProxy
+from nautobot.extras.jobs import JobForm
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -37,8 +38,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
     dryrun = DryRunVar()
 
-    instance_name = StringVar(label="Instance Name", max_length=models.DESIGN_NAME_MAX_LENGTH)
-
     @classmethod
     @abstractmethod
     def Meta(cls) -> Job.Meta:  # pylint: disable=invalid-name
@@ -53,6 +52,75 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.rendered = None
 
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def design_mode(cls):
+        """Determine the implementation mode for the design."""
+        return getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
+
+    @classmethod
+    def is_deployment_job(cls):
+        """Determine if a design job has been set to deployment mode."""
+        return cls.design_mode() == choices.DesignModeChoices.DEPLOYMENT
+
+    @classmethod
+    def deployment_name_field(cls):
+        """Determine what the deployment name field is.
+
+        Returns `None` if no deployment has been set in the job Meta class. In this
+        case the field will default to `deployment_name`
+        """
+        getattr(cls.Meta, "deployment_name_field", None)
+
+    @classmethod
+    def determine_deployment_name(cls, data):
+        """Determine the deployment name field, if specified."""
+        if not cls.is_deployment_job():
+            return None
+        deployment_name_field = cls.deployment_name_field()
+        if deployment_name_field is None:
+            if "deployment_name" not in data:
+                raise DesignImplementationError("No instance name was provided for the deployment.")
+            return data["deployment_name"]
+        return data[deployment_name_field]
+
+    @classmethod
+    def _get_vars(cls):
+        """Retrieve the script variables for the job.
+
+        If no deployment name field has been specified this method will
+        also add a `deployment_name` field.
+        """
+        cls_vars = {}
+        if cls.is_deployment_job():
+            if cls.deployment_name_field() is None:
+                cls_vars["deployment_name"] = StringVar(
+                    label="Deployment Name",
+                    max_length=models.DESIGN_NAME_MAX_LENGTH,
+                )
+        cls_vars.update(super()._get_vars())
+        return cls_vars
+
+    @classmethod
+    def as_form_class(cls):
+        """Dynamically generate the job form.
+
+        This will add the deployment name field, if needed, and also provides
+        a clean method that call's the context validations methods.
+        """
+        fields = {name: var.as_field() for name, var in cls._get_vars().items()}
+        old_clean = JobForm.clean
+        context_class = cls.Meta.context_class
+
+        def clean(self):
+            cleaned_data = old_clean(self)
+            if self.is_valid():
+                context = context_class(cleaned_data)
+                context.validate()
+            return cleaned_data
+
+        fields["clean"] = clean
+        return type("DesignJobForm", (JobForm,), fields)
 
     def design_model(self):
         """Get the related Job."""
@@ -144,20 +212,21 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
     def implement_design(self, context, design_file, commit):
         """Render the design_file template using the provided render context."""
         design = self.render_design(context, design_file)
-        self.log_debug(f"New Design to be implemented: {design}")
-
         self.environment.implement_design(design, commit)
 
-    def _setup_changeset(self, instance_name: str):
+    def _setup_changeset(self, deployment_name: str):
+        if not self.is_deployment_job():
+            return None, None
+
         try:
-            instance = models.Deployment.objects.get(name=instance_name, design=self.design_model())
-            self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
+            instance = models.Deployment.objects.get(name=deployment_name, design=self.design_model())
+            self.log_info(message=f'Existing design instance of "{deployment_name}" was found, re-running design job.')
             instance.last_implemented = timezone.now()
         except models.Deployment.DoesNotExist:
-            self.log_info(message=f'Implementing new design "{instance_name}".')
+            self.log_info(message=f'Implementing new design "{deployment_name}".')
             content_type = ContentType.objects.get_for_model(models.Deployment)
             instance = models.Deployment(
-                name=instance_name,
+                name=deployment_name,
                 design=self.design_model(),
                 last_implemented=timezone.now(),
                 status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
@@ -165,7 +234,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             )
         instance.validated_save()
         change_set, created = models.ChangeSet.objects.get_or_create(
-            design_instance=instance,
+            deployment=instance,
             job_result=self.job_result,
         )
         if created:
@@ -205,14 +274,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         design_files = None
 
-        change_set, previous_change_set = self._setup_changeset(data["instance_name"])
-        data = data["data"]
-
-        self.validate_data_logic(data)
+        data["deployment_name"] = self.determine_deployment_name(data)
+        change_set, previous_change_set = self._setup_changeset(data["deployment_name"])
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        change_set, previous_change_set = self._setup_changeset(data["instance_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
@@ -247,18 +313,20 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 deleted_object_ids = previous_change_set - change_set
                 if deleted_object_ids:
                     self.log_info(f"Decommissioning {deleted_object_ids}")
-                    change_set.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+                    change_set.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 
             if not dryrun:
                 self.post_implementation(context, self.environment)
                 # The ChangeSet stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
-                change_set.design_instance.status = Status.objects.get(
-                    content_types=ContentType.objects.get_for_model(models.Deployment),
-                    name=choices.DeploymentStatusChoices.ACTIVE,
-                )
-                change_set.design_instance.save()
-                change_set.save()
+                if self.is_deployment_job():
+                    change_set.deployment.status = Status.objects.get(
+                        content_types=ContentType.objects.get_for_model(models.Deployment),
+                        name=choices.DeploymentStatusChoices.ACTIVE,
+                    )
+                    change_set.deployment.save()
+                    change_set.save()
+
                 if hasattr(self.Meta, "report"):
                     report = self.render_report(context, self.environment.journal)
                     output_filename: str = path.basename(getattr(self.Meta, "report"))

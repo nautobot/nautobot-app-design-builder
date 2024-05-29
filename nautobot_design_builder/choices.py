@@ -15,3 +15,14 @@ class DeploymentStatusChoices(ChoiceSet):
         (DISABLED, DISABLED),
         (DECOMMISSIONED, DECOMMISSIONED),
     )
+
+class DesignModeChoices(ChoiceSet):
+    """Status choices for Designs Instances."""
+
+    CLASSIC = "classic"
+    DEPLOYMENT = "deployment"
+
+    CHOICES = (
+        (CLASSIC, "Ad-Hoc"),
+        (DEPLOYMENT, "Design Deployment"),
+    )
