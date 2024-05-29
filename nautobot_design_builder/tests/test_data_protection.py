@@ -14,7 +14,7 @@ from nautobot.users.models import ObjectPermission
 
 from nautobot_design_builder.design import calculate_changes
 from .test_model_deployment import BaseDeploymentTest
-from ..models import JournalEntry
+from ..models import ChangeRecord
 from ..custom_validators import custom_validators
 from ..signals import load_pre_delete_signals
 
@@ -44,13 +44,13 @@ class DataProtectionBaseTest(BaseDeploymentTest):  # pylint: disable=too-many-in
             "instance": "my instance",
         }
 
-        self.journal = self.create_journal(self.jobs[0], self.design_instance, self.job_kwargs)
-        self.initial_entry = JournalEntry.objects.create(
+        self.change_set = self.create_change_set(self.jobs[0], self.design_instance, self.job_kwargs)
+        self.initial_entry = ChangeRecord.objects.create(
             design_object=self.manufacturer_from_design,
             full_control=True,
             changes=calculate_changes(self.manufacturer_from_design),
-            journal=self.journal,
-            index=self.journal._next_index(),  # pylint:disable=protected-access
+            change_set=self.change_set,
+            index=self.change_set._next_index(),  # pylint:disable=protected-access
         )
 
         self.client = Client()

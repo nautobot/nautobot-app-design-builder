@@ -11,7 +11,7 @@ from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixi
 from nautobot.core.api import ContentTypeField
 from nautobot.core.api.utils import get_serializer_for_model
 
-from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
 
 class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
@@ -46,26 +46,26 @@ class DeploymentSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
         return instance.last_updated_by
 
 
-class JournalSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
-    """Serializer for the journal model."""
+class ChangeSetSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
+    """Serializer for the change set model."""
 
     class Meta:
-        """Serializer options for the journal model."""
+        """Serializer options for the change set model."""
 
-        model = Journal
+        model = ChangeSet
         fields = "__all__"
 
 
-class JournalEntrySerializer(NautobotModelSerializer):
-    """Serializer for the journal entry model."""
+class ChangeRecordSerializer(NautobotModelSerializer):
+    """Serializer for the change record model."""
 
     _design_object_type = ContentTypeField(queryset=ContentType.objects.all(), label="design_object_type")
     design_object = SerializerMethodField(read_only=True)
 
     class Meta:
-        """Serializer options for the journal entry model."""
+        """Serializer options for the change record  model."""
 
-        model = JournalEntry
+        model = ChangeRecord
         fields = "__all__"
 
     @extend_schema_field(DictField())

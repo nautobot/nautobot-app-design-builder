@@ -148,7 +148,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.environment.implement_design(design, commit)
 
-    def _setup_journal(self, instance_name: str):
+    def _setup_changeset(self, instance_name: str):
         try:
             instance = models.Deployment.objects.get(name=instance_name, design=self.design_model())
             self.log_info(message=f'Existing design instance of "{instance_name}" was found, re-running design job.')
@@ -164,15 +164,15 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                 version=self.design_model().version,
             )
         instance.validated_save()
-        journal, created = models.Journal.objects.get_or_create(
+        change_set, created = models.ChangeSet.objects.get_or_create(
             design_instance=instance,
             job_result=self.job_result,
         )
         if created:
-            journal.validated_save()
+            change_set.validated_save()
 
-        previous_journal = instance.journals.order_by("-last_updated").exclude(job_result=self.job_result).first()
-        return (journal, previous_journal)
+        previous_change_set = instance.change_sets.order_by("-last_updated").exclude(job_result=self.job_result).first()
+        return (change_set, previous_change_set)
 
     def run(self, dryrun: bool, **kwargs):  # pylint: disable=arguments-differ
         """Render the design and implement it within a build Environment object."""
@@ -205,20 +205,20 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         design_files = None
 
-        journal, previous_journal = self._setup_journal(data["instance_name"])
+        change_set, previous_change_set = self._setup_changeset(data["instance_name"])
         data = data["data"]
 
         self.validate_data_logic(data)
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        journal, previous_journal = self._setup_journal(data["instance_name"])
+        change_set, previous_change_set = self._setup_changeset(data["instance_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
             job_result=self.job_result,
             extensions=extensions,
-            journal=journal,
+            change_set=change_set,
         )
 
         design_files = None
@@ -243,22 +243,22 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             for design_file in design_files:
                 self.implement_design(context, design_file, not dryrun)
 
-            if previous_journal:
-                deleted_object_ids = previous_journal - journal
+            if previous_change_set:
+                deleted_object_ids = previous_change_set - change_set
                 if deleted_object_ids:
                     self.log_info(f"Decommissioning {deleted_object_ids}")
-                    journal.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+                    change_set.design_instance.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 
             if not dryrun:
                 self.post_implementation(context, self.environment)
-                # The Journal stores the design (with Nautobot identifiers from post_implementation)
+                # The ChangeSet stores the design (with Nautobot identifiers from post_implementation)
                 # for future operations (e.g., updates)
-                journal.design_instance.status = Status.objects.get(
+                change_set.design_instance.status = Status.objects.get(
                     content_types=ContentType.objects.get_for_model(models.Deployment),
                     name=choices.DeploymentStatusChoices.ACTIVE,
                 )
-                journal.design_instance.save()
-                journal.save()
+                change_set.design_instance.save()
+                change_set.save()
                 if hasattr(self.Meta, "report"):
                     report = self.render_report(context, self.environment.journal)
                     output_filename: str = path.basename(getattr(self.Meta, "report"))

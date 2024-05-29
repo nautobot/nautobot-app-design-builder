@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
             bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
         ),
         migrations.CreateModel(
-            name='Journal',
+            name='ChangeSet',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
                 ('created', models.DateField(auto_now_add=True, null=True)),
@@ -71,7 +71,7 @@ class Migration(migrations.Migration):
             bases=(models.Model, nautobot.extras.models.mixins.DynamicGroupMixin, nautobot.extras.models.mixins.NotesMixin),
         ),
         migrations.CreateModel(
-            name='JournalEntry',
+            name='ChangeRecord',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, unique=True)),
                 ('created', models.DateField(auto_now_add=True, null=True)),

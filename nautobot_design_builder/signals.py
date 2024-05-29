@@ -15,7 +15,7 @@ from nautobot.core.signals import nautobot_database_ready
 from nautobot.extras.models import Job, Status
 from nautobot.apps.choices import ColorChoices
 from nautobot.extras.registry import registry
-from nautobot_design_builder.models import JournalEntry
+from nautobot_design_builder.models import ChangeRecord
 from nautobot_design_builder.middleware import GlobalRequestMiddleware
 
 from .design_job import DesignJob
@@ -83,17 +83,17 @@ def model_delete_design_builder(instance, **kwargs):
     ):
         return
 
-    for journal_entry in JournalEntry.objects.filter(
+    for change_record in ChangeRecord.objects.filter(
         _design_object_id=instance.id, active=True
     ).exclude_decommissioned():
         # If there is a design with full_control, only the design can delete it
         if (
             hasattr(instance, "_current_design")
-            and instance._current_design == journal_entry.journal.design_instance  # pylint: disable=protected-access
-            and journal_entry.full_control
+            and instance._current_design == change_record.change_set.design_instance  # pylint: disable=protected-access
+            and change_record.full_control
         ):
             return
-        raise ProtectedError("A design instance owns this object.", set([journal_entry.journal.design_instance]))
+        raise ProtectedError("A design instance owns this object.", set([change_record.change_set.design_instance]))
 
 
 def load_pre_delete_signals():

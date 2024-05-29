@@ -62,7 +62,7 @@ class TestDesignJob(DesignTestCase):
         environment.assert_called_once_with(
             job_result=job.job_result,
             extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
-            journal=ANY,
+            change_set=ANY,
         )
 
 

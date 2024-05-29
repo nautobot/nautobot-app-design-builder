@@ -2,7 +2,7 @@
 
 from nautobot.apps.testing import ViewTestCases
 
-from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 from nautobot_design_builder.tests.util import create_test_view_data
 
 # pylint: disable=missing-class-docstring
@@ -34,25 +34,25 @@ class TestCaseDeployment(
         create_test_view_data()
 
 
-class TestCaseJournal(
+class TestCaseChangeSet(
     ViewTestCases.GetObjectViewTestCase,
     ViewTestCases.GetObjectChangelogViewTestCase,
     ViewTestCases.GetObjectNotesViewTestCase,
     ViewTestCases.ListObjectsViewTestCase,
 ):
-    model = Journal
+    model = ChangeSet
 
     @classmethod
     def setUpTestData(cls):
         create_test_view_data()
 
 
-class TestCaseJournalEntry(
+class TestCaseChangeRecord(
     ViewTestCases.GetObjectViewTestCase,
     ViewTestCases.GetObjectChangelogViewTestCase,
     ViewTestCases.GetObjectNotesViewTestCase,
 ):
-    model = JournalEntry
+    model = ChangeRecord
 
     @classmethod
     def setUpTestData(cls):

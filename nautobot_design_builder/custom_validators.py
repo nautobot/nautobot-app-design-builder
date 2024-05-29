@@ -3,7 +3,7 @@
 from django.conf import settings
 from nautobot.extras.registry import registry
 from nautobot.extras.plugins import PluginCustomValidator
-from nautobot_design_builder.models import JournalEntry
+from nautobot_design_builder.models import ChangeRecord
 from nautobot_design_builder.middleware import GlobalRequestMiddleware
 
 
@@ -29,7 +29,7 @@ class BaseValidator(PluginCustomValidator):
             return
 
         existing_object = obj_class.objects.get(id=obj.id)
-        for journal_entry in JournalEntry.objects.filter(  # pylint: disable=too-many-nested-blocks
+        for record in ChangeRecord.objects.filter(  # pylint: disable=too-many-nested-blocks
             _design_object_id=obj.id, active=True
         ).exclude_decommissioned():
 
@@ -44,13 +44,13 @@ class BaseValidator(PluginCustomValidator):
                 current_attribute_value = getattr(existing_object, attribute_name)
 
                 if new_attribute_value != current_attribute_value and (
-                    attribute_name in journal_entry.changes["differences"].get("added", {})
-                    and journal_entry.changes["differences"]["added"][attribute_name]
+                    attribute_name in record.changes["differences"].get("added", {})
+                    and record.changes["differences"]["added"][attribute_name]
                 ):
                     error_context = ""
                     # For dict attributes (i.e., JSON fields), the design builder can own only a few keys
                     if isinstance(current_attribute_value, dict):
-                        for key, value in journal_entry.changes["differences"]["added"][attribute_name].items():
+                        for key, value in record.changes["differences"]["added"][attribute_name].items():
                             if new_attribute_value[key] != value:
                                 error_context = f"Key {key}"
                                 break
@@ -62,13 +62,13 @@ class BaseValidator(PluginCustomValidator):
                     if (
                         hasattr(obj, "_current_design")
                         and obj._current_design  # pylint: disable=protected-access
-                        == journal_entry.journal.design_instance
+                        == record.change_set.design_instance
                     ):
                         continue
 
                     self.validation_error(
                         {
-                            attribute_name: f"The attribute is managed by the Design Instance: {journal_entry.journal.design_instance}. {error_context}"
+                            attribute_name: f"The attribute is managed by the Design Instance: {record.change_set.design_instance}. {error_context}"
                         }
                     )
 

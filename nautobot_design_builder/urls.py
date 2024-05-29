@@ -7,16 +7,16 @@ from nautobot.apps.urls import NautobotUIViewSetRouter
 from nautobot_design_builder.views import (
     DesignUIViewSet,
     DeploymentUIViewSet,
-    JournalUIViewSet,
-    JournalEntryUIViewSet,
+    ChangeSetUIViewSet,
+    ChangeRecordUIViewSet,
     DesignProtectionObjectView,
 )
 
 router = NautobotUIViewSetRouter()
 router.register("designs", DesignUIViewSet)
 router.register("deployments", DeploymentUIViewSet)
-router.register("journals", JournalUIViewSet)
-router.register("journal-entries", JournalEntryUIViewSet)
+router.register("change-sets", ChangeSetUIViewSet)
+router.register("change-records", ChangeRecordUIViewSet)
 
 urlpatterns = router.urls
 

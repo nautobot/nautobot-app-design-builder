@@ -23,7 +23,7 @@ from nautobot_design_builder.fields import CustomRelationshipField, field_factor
 from nautobot_design_builder import models
 
 
-# TODO: Refactor this code into the Journal model
+# TODO: Refactor this code into the ChangeSet model
 class Journal:
     """Keep track of the objects created or updated during the course of a design's implementation.
 
@@ -46,12 +46,12 @@ class Journal:
     will only be in each of those indices at most once.
     """
 
-    def __init__(self, design_journal: models.Journal = None):
-        """Constructor for Journal object."""
+    def __init__(self, change_set: models.ChangeSet = None):
+        """Constructor for ChangeSet object."""
         self.index = set()
         self.created = defaultdict(set)
         self.updated = defaultdict(set)
-        self.design_journal = design_journal
+        self.change_set = change_set
 
     def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
@@ -61,8 +61,8 @@ class Journal:
         """
         instance = model.instance
         model_type = instance.__class__
-        if self.design_journal:
-            self.design_journal.log(model)
+        if self.change_set:
+            self.change_set.log(model)
 
         if instance.pk not in self.index:
             self.index.add(instance.pk)
@@ -678,7 +678,7 @@ class ModelInstance:
 
         This method will save the underlying model object to the database and
         will send signals (`PRE_SAVE`, `POST_INSTANCE_SAVE` and `POST_SAVE`). The
-        design journal is updated in this step.
+        change set is updated in this step.
         """
         if self.metadata.action == ModelMetadata.GET:
             return
@@ -687,9 +687,9 @@ class ModelInstance:
 
         msg = "Created" if self.metadata.created else "Updated"
         try:
-            if self.environment.journal.design_journal:
+            if self.environment.journal.change_set:
                 self.instance._current_design = (  # pylint: disable=protected-access
-                    self.environment.journal.design_journal.design_instance
+                    self.environment.journal.change_set.design_instance
                 )
             self.instance.full_clean()
             self.instance.save(**self.metadata.save_args)
@@ -758,7 +758,7 @@ class Environment(LoggingMixin):
         return object.__new__(cls)
 
     def __init__(
-        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, journal: models.Journal = None
+        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, change_set: models.ChangeSet = None
     ):
         """Create a new build environment for implementing designs.
 
@@ -770,7 +770,7 @@ class Environment(LoggingMixin):
             extensions (List[ext.Extension], optional): Any custom extensions to use
                 when implementing designs. Defaults to None.
 
-            journal: (models.Journal, optional): A journal for the design deployments current execution.
+            change_set: (models.ChangeSet, optional): A change set for the design deployments current execution.
 
         Raises:
             errors.DesignImplementationError: If a provided extension is not a subclass
@@ -802,15 +802,15 @@ class Environment(LoggingMixin):
 
             self.extensions["extensions"].append(extn)
 
-        self.journal = Journal(design_journal=journal)
-        if journal:
-            self.design_instance = journal.design_instance
+        self.journal = Journal(change_set=change_set)
+        if change_set:
+            self.design_instance = change_set.design_instance
 
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""
-        self.journal.design_journal.design_instance.decommission(object_id, local_logger=self.logger)
+        self.journal.change_set.design_instance.decommission(object_id, local_logger=self.logger)
         self.log_success(
-            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.design_journal.design_instance}."
+            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.change_set.design_instance}."
         )
 
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:

@@ -1,4 +1,4 @@
-"""Test Journal."""
+"""Test ChangeSet."""
 
 from unittest.mock import patch, Mock
 from nautobot.extras.models import Secret
@@ -9,11 +9,11 @@ from nautobot_design_builder.design import calculate_changes
 from nautobot_design_builder.errors import DesignValidationError
 
 from .test_model_deployment import BaseDeploymentTest
-from ..models import JournalEntry
+from ..models import ChangeRecord
 
 
-class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance-attributes
-    """Test JournalEntry."""
+class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance-attributes
+    """Test ChangeRecord."""
 
     def setUp(self) -> None:
         super().setUp()
@@ -26,20 +26,20 @@ class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance
         )
         self.initial_state = serialize_object_v2(self.secret)
 
-        # A JournalEntry needs a Journal
+        # A ChangeRecord needs a ChangeSet
         self.original_name = "original equipment manufacturer"
         self.manufacturer = Manufacturer.objects.create(name=self.original_name)
         self.job_kwargs = {
             "manufacturer": f"{self.manufacturer.pk}",
             "instance": "my instance",
         }
-        self.journal = self.create_journal(self.jobs[0], self.design_instance, self.job_kwargs)
+        self.change_set = self.create_change_set(self.jobs[0], self.design_instance, self.job_kwargs)
 
-        self.initial_entry = JournalEntry(
+        self.initial_entry = ChangeRecord(
             design_object=self.secret,
             full_control=True,
             changes=calculate_changes(self.secret),
-            journal=self.journal,
+            change_set=self.change_set,
             index=0,
         )
 
@@ -50,34 +50,34 @@ class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance
         self.device_type = DeviceType.objects.create(model="test device type", manufacturer=self.manufacturer)
 
         self.initial_state_device_type = serialize_object_v2(self.device_type)
-        self.initial_entry_device_type = JournalEntry(
+        self.initial_entry_device_type = ChangeRecord(
             design_object=self.device_type,
             full_control=True,
             changes=calculate_changes(self.device_type),
-            journal=self.journal,
+            change_set=self.change_set,
             index=1,
         )
 
     def get_entry(self, updated_object, design_object=None, initial_state=None):
-        """Generate a JournalEntry."""
+        """Generate a ChangeRecord."""
         if design_object is None:
             design_object = self.secret
 
         if initial_state is None:
             initial_state = self.initial_state
 
-        return JournalEntry(
+        return ChangeRecord(
             design_object=design_object,
             changes=calculate_changes(
                 updated_object,
                 initial_state=initial_state,
             ),
             full_control=False,
-            journal=self.journal,
-            index=self.journal._next_index(),  # pylint:disable=protected-access
+            change_set=self.change_set,
+            index=self.change_set._next_index(),  # pylint:disable=protected-access
         )
 
-    @patch("nautobot_design_builder.models.JournalEntry.objects")
+    @patch("nautobot_design_builder.models.ChangeRecord.objects")
     def test_revert_full_control(self, objects: Mock):
         objects.filter_related.side_effect = lambda *args, **kwargs: objects
         objects.values_list.side_effect = lambda *args, **kwargs: []
@@ -85,7 +85,7 @@ class TestJournalEntry(BaseDeploymentTest):  # pylint: disable=too-many-instance
         self.initial_entry.revert()
         self.assertEqual(0, Secret.objects.count())
 
-    @patch("nautobot_design_builder.models.JournalEntry.objects")
+    @patch("nautobot_design_builder.models.ChangeRecord.objects")
     def test_revert_with_dependencies(self, objects: Mock):
         objects.filter_related.side_effect = lambda *args, **kwargs: objects
         objects.values_list.side_effect = lambda *args, **kwargs: [12345]

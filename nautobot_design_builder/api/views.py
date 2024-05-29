@@ -5,16 +5,16 @@ from nautobot.extras.api.views import NautobotModelViewSet
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
     DeploymentSerializer,
-    JournalSerializer,
-    JournalEntrySerializer,
+    ChangeSetSerializer,
+    ChangeRecordSerializer,
 )
 from nautobot_design_builder.filters import (
     DesignFilterSet,
     DeploymentFilterSet,
-    JournalFilterSet,
-    JournalEntryFilterSet,
+    ChangeSetFilterSet,
+    ChangeRecordFilterSet,
 )
-from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
 
 class DesignAPIViewSet(NautobotModelViewSet):
@@ -33,17 +33,17 @@ class DeploymentAPIViewSet(NautobotModelViewSet):
     filterset_class = DeploymentFilterSet
 
 
-class JournalAPIViewSet(NautobotModelViewSet):
-    """API views for the journal model."""
+class ChangeSetAPIViewSet(NautobotModelViewSet):
+    """API views for the change set model."""
 
-    queryset = Journal.objects.all()
-    serializer_class = JournalSerializer
-    filterset_class = JournalFilterSet
+    queryset = ChangeSet.objects.all()
+    serializer_class = ChangeSetSerializer
+    filterset_class = ChangeSetFilterSet
 
 
-class JournalEntryAPIViewSet(NautobotModelViewSet):
-    """API views for the journal entry model."""
+class ChangeRecordAPIViewSet(NautobotModelViewSet):
+    """API views for the change record model."""
 
-    queryset = JournalEntry.objects.all()
-    serializer_class = JournalEntrySerializer
-    filterset_class = JournalEntryFilterSet
+    queryset = ChangeRecord.objects.all()
+    serializer_class = ChangeRecordSerializer
+    filterset_class = ChangeRecordFilterSet

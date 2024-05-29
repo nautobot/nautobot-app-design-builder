@@ -27,17 +27,17 @@ class BaseDeploymentTest(BaseDesignTest):
         design_instance.validated_save()
         return design_instance
 
-    def create_journal(self, job, design_instance, kwargs):
-        """Creates a Journal."""
+    def create_change_set(self, job, design_instance, kwargs):
+        """Creates a ChangeSet."""
         job_result = JobResult.objects.create(
             name=job.name,
             job_model=job,
         )
         job_result.log = mock.Mock()
         job_result.task_kwargs = kwargs
-        journal = models.Journal(design_instance=design_instance, job_result=job_result)
-        journal.validated_save()
-        return journal
+        change_set = models.ChangeSet(design_instance=design_instance, job_result=job_result)
+        change_set.validated_save()
+        return change_set
 
     def setUp(self):
         super().setUp()
@@ -66,8 +66,8 @@ class TestDeployment(BaseDeploymentTest):
         with self.assertRaises(IntegrityError):
             models.Deployment.objects.create(design=self.designs[0], name=self.design_name)
 
-    def test_decommission_single_journal(self):
+    def test_decommission_single_change_set(self):
         """TODO"""
 
-    def test_decommission_multiple_journal(self):
+    def test_decommission_multiple_change_set(self):
         """TODO"""

@@ -5,7 +5,7 @@ from nautobot.extras.models import Job, JobResult
 from nautobot.apps.filters import SearchFilter
 from nautobot.extras.filters.mixins import StatusFilter
 
-from nautobot_design_builder.models import Design, Deployment, Journal, JournalEntry
+from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
 
 class DesignFilterSet(NautobotFilterSet):
@@ -50,8 +50,8 @@ class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
         ]
 
 
-class JournalFilterSet(NautobotFilterSet):
-    """Filter set for the journal model."""
+class ChangeSetFilterSet(NautobotFilterSet):
+    """Filter set for the change record model."""
 
     q = SearchFilter(filter_predicates={})
 
@@ -68,23 +68,23 @@ class JournalFilterSet(NautobotFilterSet):
     class Meta:
         """Meta attributes for filter."""
 
-        model = Journal
+        model = ChangeSet
         fields = ["id", "design_instance", "job_result"]
 
 
-class JournalEntryFilterSet(NautobotFilterSet):
-    """Filter set for the journal entrymodel."""
+class ChangeRecordFilterSet(NautobotFilterSet):
+    """Filter set for the change record model."""
 
     q = SearchFilter(filter_predicates={})
 
-    journal = NaturalKeyOrPKMultipleChoiceFilter(
-        queryset=Journal.objects.all(),
-        label="Journal (ID)",
+    change_set = NaturalKeyOrPKMultipleChoiceFilter(
+        queryset=ChangeSet.objects.all(),
+        label="ChangeSet (ID)",
     )
 
     class Meta:
         """Meta attributes for filter."""
 
-        model = JournalEntry
+        model = ChangeRecord
         # TODO: Support design_object somehow?
-        fields = ["id", "journal", "changes", "full_control"]
+        fields = ["id", "change_set", "changes", "full_control"]
