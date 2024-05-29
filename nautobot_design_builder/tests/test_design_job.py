@@ -21,13 +21,35 @@ from nautobot_design_builder.tests.designs import test_designs
 class TestDesignJob(DesignTestCase):
     """Test running design jobs."""
 
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_simple_design_commit(self, environment: Mock):
+        job = self.get_mocked_job(test_designs.SimpleDesign)
+        job.run(data={}, dryrun=False)
+        self.assertIsNotNone(job.job_result)
+        environment.assert_called()
+        self.assertDictEqual(
+            {
+                "manufacturers": [
+                    {"name": "Test Manufacturer"},
+                    {"!create:name": "Test Manufacturer Explicit !create"},
+                ]
+            },
+            job.designs[test_designs.SimpleDesign.Meta.design_file],
+        )
+        environment.return_value.roll_back.assert_not_called()
+
     def test_simple_design_rollback(self):
-        """Confirm that database changes are rolled back when an exception is raised."""
-        self.assertEqual(0, Manufacturer.objects.all().count())
-        job = self.get_mocked_job(test_designs.MultiDesignJobWithError)
-        job.run(data=self.data, commit=True)
-        self.assertRaises(DesignValidationError, job.run, dryrun=False, **self.data)
-        self.assertEqual(0, Manufacturer.objects.all().count())
+        job1 = self.get_mocked_job(test_designs.SimpleDesign)
+        job1.run(data={}, dryrun=False)
+        self.assertEqual(2, Manufacturer.objects.all().count())
+        job2 = self.get_mocked_job(test_designs.SimpleDesign3)
+        self.assertRaises(DesignValidationError, job2.run, data={}, dryrun=False)
+        self.assertEqual(2, Manufacturer.objects.all().count())
+
+    def test_simple_design_with_post_implementation(self):
+        job = self.get_mocked_job(test_designs.SimpleDesignWithPostImplementation)
+        job.run(data={}, dryrun=False)
+        self.assertTrue(getattr(job, "post_implementation_called"))
 
     def test_simple_design_report(self):
         """Confirm that a report is generated."""
@@ -40,7 +62,12 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.MultiDesignJob)
         job.run(dryrun=False, **self.data)
         self.assertDictEqual(
-            {"manufacturers": {"name": "Test Manufacturer"}},
+            {
+                "manufacturers": [
+                    {"name": "Test Manufacturer"},
+                    {"!create:name": "Test Manufacturer Explicit !create"},
+                ]
+            },
             job.designs[test_designs.MultiDesignJob.Meta.design_files[0]],
         )
         self.assertDictEqual(

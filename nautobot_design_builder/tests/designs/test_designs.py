@@ -4,7 +4,10 @@ from nautobot.dcim.models import Manufacturer, Device, Interface
 from nautobot.extras.jobs import StringVar, ObjectVar
 
 from nautobot.apps.jobs import register_jobs
+from nautobot.dcim.models import Manufacturer
 
+from nautobot_design_builder.context import Context
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.design import ModelInstance
 from nautobot_design_builder.ext import Extension, AttributeExtension
@@ -21,6 +24,19 @@ class SimpleDesign(DesignJob):
     class Meta:  # pylint: disable=too-few-public-methods
         name = "Simple Design"
         design_file = "templates/simple_design.yaml.j2"
+
+
+class SimpleDesignWithPostImplementation(DesignJob):
+    """Simple design job."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design With Post Implementation"
+        design_file = "templates/simple_design.yaml.j2"
+
+    def post_implementation(self, context: Context, environment: Environment):
+        if Manufacturer.objects.all().count() != 2:
+            raise Exception("Invalid manufacturer count")  # pylint:disable=broad-exception-raised
+        setattr(self, "post_implementation_called", True)
 
 
 class SimpleDesign3(DesignJob):

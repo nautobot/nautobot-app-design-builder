@@ -1,0 +1,42 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.NextPrefixExtension"
+  - "nautobot_design_builder.contrib.ext.ChildPrefixExtension"
+designs:
+  - location_types:
+      - name: "Region"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+        locations:
+          - "name": "Region"
+            "location_type__name": "Region"
+            "status__name": "Active"
+    prefixes:
+      - prefix: "10.0.0.0/23"
+        type: "container"
+        status__name: "Active"
+        locations:
+          - location:
+              "!get:name": "Region"
+      - "!next_prefix":
+          locations__name: "Region"
+          type: "container"
+          length: 26
+        status__name: "Active"
+        description: "Region Parent Prefix"
+        type: "container"
+      - "!next_prefix":
+          locations__name: "Region"
+          type: "container"
+          length: 26
+        status__name: "Active"
+        description: "Region Parent Prefix"
+        type: "container"
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {prefix: "10.0.0.0/26"}
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {prefix: "10.0.0.64/26"}
