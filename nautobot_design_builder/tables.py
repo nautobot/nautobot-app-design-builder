@@ -5,9 +5,10 @@ from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
 from nautobot.apps.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
 
+from nautobot_design_builder import choices
 from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
-DESIGNTABLE = """
+DESIGN_TABLE = """
 
 <a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
     <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
@@ -25,15 +26,31 @@ class DesignTable(BaseTable):
     """Table for list view."""
 
     name = Column(linkify=True)
-    deployment_count = Column(linkify=True, accessor=Accessor("deployment_count"), verbose_name="Deployments")
-    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGNTABLE)
+    design_mode = Column(verbose_name="Mode")
+    deployment_count = Column(verbose_name="Deployments")
+    actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGN_TABLE)
     job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
+
+    def render_design_mode(self, value):
+        """Lookup the human readable design mode from the assigned mode value."""
+        return choices.DesignModeChoices.as_dict()[value]
+
+    def render_deployment_count(self, value, record):
+        """Calculate the number of deployments for a design.
+
+        If the design is a deployment then return the count of deployments for the design. If
+        the mode is `classic` then return a dash to indicate deployments aren't tracked in that
+        mode.
+        """
+        if record.design_mode != choices.DesignModeChoices.CLASSIC:
+            return value
+        return "-"
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = Design
-        fields = ("name", "version", "job_last_synced", "description", "instance_count")
+        fields = ("name", "design_mode", "version", "job_last_synced", "description")
 
 
 DEPLOYMENT_TABLE = """
@@ -82,20 +99,33 @@ class DeploymentTable(StatusTableMixin, BaseTable):
         )
 
 
+class DesignObjectsTable(BaseTable):
+    """Table of objects that belong to a design instance."""
+
+    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
+    design_object = Column(linkify=True, verbose_name="Design Object")
+
+    class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
+        """Meta attributes."""
+
+        model = ChangeRecord
+        fields = ("design_object_type", "design_object")
+
+
 class ChangeSetTable(BaseTable):
     """Table for list view."""
 
     pk = Column(linkify=True, verbose_name="ID")
-    design_instance = Column(linkify=True, verbose_name="Deployment")
+    deployment = Column(linkify=True, verbose_name="Deployment")
     job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
     record_count = Column(accessor=Accessor("record_count"), verbose_name="Change Records")
-    active = BooleanColumn(verbose_name="Active ChangeSet")
+    active = BooleanColumn(verbose_name="Active")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = ChangeSet
-        fields = ("pk", "design_instance", "job_result", "record_count", "active")
+        fields = ("pk", "deployment", "job_result", "record_count", "active")
 
 
 class ChangeRecordTable(BaseTable):
@@ -103,6 +133,7 @@ class ChangeRecordTable(BaseTable):
 
     pk = Column(linkify=True, verbose_name="ID")
     change_set = Column(linkify=True)
+    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
     design_object = Column(linkify=True, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
     active = BooleanColumn(verbose_name="Active")
@@ -111,4 +142,4 @@ class ChangeRecordTable(BaseTable):
         """Meta attributes."""
 
         model = ChangeRecord
-        fields = ("pk", "change_set", "design_object", "changes", "full_control", "active")
+        fields = ("pk", "change_set", "design_object_type", "design_object", "changes", "full_control", "active")

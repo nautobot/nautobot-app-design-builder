@@ -32,12 +32,12 @@ class DeploymentDecommissioning(Job):
             ", ".join([instance.name for instance in deployments]),
         )
 
-        for design_instance in deployments:
+        for deployment in deployments:
             self.logger.info(
-                "Working on resetting objects for this Design Instance...", extra={"object": design_instance}
+                "Working on resetting objects for this Design Instance...", extra={"object": deployment}
             )
-            design_instance.decommission(local_logger=get_logger(__name__, self.job_result))
-            self.logger.info("%s has been successfully decommissioned from Nautobot.", design_instance)
+            deployment.decommission(local_logger=get_logger(__name__, self.job_result))
+            self.logger.info("%s has been successfully decommissioned from Nautobot.", deployment)
 
 
 register_jobs(DeploymentDecommissioning)

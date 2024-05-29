@@ -20,7 +20,7 @@ class DesignFilterForm(NautobotFilterForm):
 
 
 class DeploymentFilterForm(NautobotFilterForm):
-    """Filter form for the Deployment model."""
+    """Filter form for the design instance model."""
 
     model = Deployment
 
@@ -30,17 +30,17 @@ class DeploymentFilterForm(NautobotFilterForm):
 
 
 class ChangeSetFilterForm(NautobotFilterForm):
-    """Filter form for the change record."""
+    """Filter form for the ChangeSet model."""
 
     model = ChangeSet
 
-    design_instance = DynamicModelChoiceField(queryset=Deployment.objects.all())
+    deployment = DynamicModelChoiceField(queryset=Deployment.objects.all())
     job_result = DynamicModelChoiceField(queryset=JobResult.objects.all())
     tag = TagFilterField(model)
 
 
 class ChangeRecordFilterForm(NautobotFilterForm):
-    """Filter form for the change record model."""
+    """Filter form for the ChangeRecord entry model."""
 
     model = ChangeRecord
 

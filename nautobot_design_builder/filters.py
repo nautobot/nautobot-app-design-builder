@@ -1,9 +1,7 @@
 """Filters for the design builder app."""
 
-from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, StatusModelFilterSetMixin
+from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, StatusModelFilterSetMixin, SearchFilter
 from nautobot.extras.models import Job, JobResult
-from nautobot.apps.filters import SearchFilter
-from nautobot.extras.filters.mixins import StatusFilter
 
 from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 
@@ -51,11 +49,11 @@ class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
 
 
 class ChangeSetFilterSet(NautobotFilterSet):
-    """Filter set for the change record model."""
+    """Filter set for the ChangeSet model."""
 
     q = SearchFilter(filter_predicates={})
 
-    design_instance = NaturalKeyOrPKMultipleChoiceFilter(
+    deployment = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Deployment.objects.all(),
         label="Design Deployment (ID)",
     )
@@ -69,17 +67,17 @@ class ChangeSetFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = ChangeSet
-        fields = ["id", "design_instance", "job_result"]
+        fields = ["id", "deployment", "job_result"]
 
 
 class ChangeRecordFilterSet(NautobotFilterSet):
-    """Filter set for the change record model."""
+    """Filter set for the ChangeRecord model."""
 
     q = SearchFilter(filter_predicates={})
 
     change_set = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=ChangeSet.objects.all(),
-        label="ChangeSet (ID)",
+        label="Change Set (ID)",
     )
 
     class Meta:

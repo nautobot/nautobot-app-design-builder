@@ -3,6 +3,7 @@
 from django_tables2 import RequestConfig
 from django.apps import apps as global_apps
 from django.shortcuts import render
+from django.core.exceptions import FieldDoesNotExist
 
 from rest_framework.decorators import action
 
@@ -18,6 +19,7 @@ from nautobot.apps.models import count_related
 from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
 
+from nautobot_design_builder import choices
 from nautobot_design_builder.api.serializers import (
     DesignSerializer,
     DeploymentSerializer,
@@ -36,8 +38,8 @@ from nautobot_design_builder.forms import (
     ChangeSetFilterForm,
     ChangeRecordFilterForm,
 )
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
-from nautobot_design_builder.tables import DesignTable, DeploymentTable, ChangeSetTable, ChangeRecordTable
+from nautobot_design_builder import models
+from nautobot_design_builder import tables
 
 
 PERMISSIONS_ACTION_MAP.update(
@@ -58,9 +60,9 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
 
     filterset_class = DesignFilterSet
     filterset_form_class = DesignFilterForm
-    queryset = Design.objects.annotate(deployment_count=count_related(Deployment, "design"))
+    queryset = models.Design.objects.annotate(deployment_count=count_related(models.Deployment, "design"))
     serializer_class = DesignSerializer
-    table_class = DesignTable
+    table_class = tables.DesignTable
     action_buttons = ()
     lookup_field = "pk"
 
@@ -68,9 +70,10 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            deployments = Deployment.objects.restrict(request.user, "view").filter(design=instance)
+            context["is_deployment"] = instance.design_mode == choices.DesignModeChoices.DEPLOYMENT
+            deployments = models.Deployment.objects.restrict(request.user, "view").filter(design=instance)
 
-            deployments_table = DeploymentTable(deployments)
+            deployments_table = tables.DeploymentTable(deployments)
             deployments_table.columns.hide("design")
 
             paginate = {
@@ -84,7 +87,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
     @action(detail=True, methods=["get"])
     def docs(self, request, pk, *args, **kwargs):
         """Additional action to handle docs."""
-        design = Design.objects.get(pk=pk)
+        design = models.Design.objects.get(pk=pk)
         context = {
             "design_name": design.name,
             "is_modal": request.GET.get("modal"),
@@ -104,9 +107,9 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
 
     filterset_class = DeploymentFilterSet
     filterset_form_class = DeploymentFilterForm
-    queryset = Deployment.objects.all()
+    queryset = models.Deployment.objects.all()
     serializer_class = DeploymentSerializer
-    table_class = DeploymentTable
+    table_class = tables.DeploymentTable
     action_buttons = ()
     lookup_field = "pk"
     verbose_name = "Design Deployment"
@@ -117,13 +120,13 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
             change_sets = (
-                ChangeSet.objects.restrict(request.user, "view")
+                models.ChangeSet.objects.restrict(request.user, "view")
                 .filter(deployment=instance)
                 .order_by("last_updated")
-                .annotate(record_count=count_related(ChangeRecord, "change_set"))
+                .annotate(record_count=count_related(models.ChangeRecord, "change_set"))
             )
 
-            change_sets_table = ChangeSetTable(change_sets)
+            change_sets_table = models.ChangeSetTable(change_sets)
             change_sets_table.columns.hide("deployment")
 
             paginate = {
@@ -132,6 +135,10 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
             }
             RequestConfig(request, paginate).configure(change_sets_table)
             context["change_sets_table"] = change_sets_table
+
+            design_objects = models.ChangeRecord.objects.restrict(request.user, "view").design_objects(instance)
+            design_objects_table = tables.DesignObjectsTable(design_objects)
+            context["design_objects_table"] = design_objects_table
         return context
 
 
@@ -145,9 +152,9 @@ class ChangeSetUIViewSet(  # pylint:disable=abstract-method
 
     filterset_class = ChangeSetFilterSet
     filterset_form_class = ChangeSetFilterForm
-    queryset = ChangeSet.objects.annotate(record_count=count_related(ChangeRecord, "change_set"))
+    queryset = models.ChangeSet.objects.annotate(record_count=count_related(models.ChangeRecord, "change_set"))
     serializer_class = ChangeSetSerializer
-    table_class = ChangeSetTable
+    table_class = tables.ChangeSetTable
     action_buttons = ()
     lookup_field = "pk"
 
@@ -155,17 +162,21 @@ class ChangeSetUIViewSet(  # pylint:disable=abstract-method
         """Extend UI."""
         context = super().get_extra_context(request, instance)
         if self.action == "retrieve":
-            entries = ChangeRecord.objects.restrict(request.user, "view").filter(change_set=instance).order_by("-index")
+            records = (
+                models.ChangeRecord.objects.restrict(request.user, "view")
+                .filter(active=True, change_set=instance)
+                .order_by("-index")
+            )
 
-            entries_table = ChangeRecordTable(entries)
-            entries_table.columns.hide("change_set")
+            records_table = tables.ChangeRecordTable(records)
+            records_table.columns.hide("change_set")
 
             paginate = {
                 "paginator_class": EnhancedPaginator,
                 "per_page": get_paginate_count(request),
             }
-            RequestConfig(request, paginate).configure(entries_table)
-            context["entries_table"] = entries_table
+            RequestConfig(request, paginate).configure(records_table)
+            context["records_table"] = records_table
         return context
 
 
@@ -178,9 +189,9 @@ class ChangeRecordUIViewSet(  # pylint:disable=abstract-method
 
     filterset_class = ChangeRecordFilterSet
     filterset_form_class = ChangeRecordFilterForm
-    queryset = ChangeRecord.objects.all()
+    queryset = models.ChangeRecord.objects.all()
     serializer_class = ChangeRecordSerializer
-    table_class = ChangeRecordTable
+    table_class = tables.ChangeRecordTable
     action_buttons = ()
     lookup_field = "pk"
 
@@ -201,21 +212,20 @@ class DesignProtectionObjectView(ObjectView):
         """Generate extra context for rendering the DesignProtection template."""
         content = {}
 
-        records = ChangeRecord.objects.filter(_design_object_id=instance.id, active=True).exclude_decommissioned()
+        records = models.ChangeRecord.objects.filter(_design_object_id=instance.id, active=True).exclude_decommissioned()
 
         if records:
             design_owner = records.filter(full_control=True, _design_object_id=instance.pk)
             if design_owner:
                 content["object"] = design_owner.first().change_set.deployment
             for record in records:
-                for attribute in instance._meta.fields:
-                    attribute_name = attribute.name
-                    if attribute_name.startswith("_"):
-                        continue
-                    if (
-                        attribute_name in record.changes["differences"].get("added", {})
-                        and record.changes["differences"].get("added", {})[attribute_name]
-                    ):
-                        content[attribute_name] = record.change_set.deployment
+                for attribute in record.changes:
+                    try:
+                        field = instance._meta.get_field(attribute)
+                        content[field.name] = record.change_set.deployment
+                    except FieldDoesNotExist:
+                        # TODO: should this be logged? I can't think of when we would care
+                        # that a model's fields have changed since a design was implemented
+                        pass
 
         return {"active_tab": request.GET["tab"], "design_protection": content}
