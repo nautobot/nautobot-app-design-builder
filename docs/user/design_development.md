@@ -106,6 +106,10 @@ Design file specifies the Jinja template that should be used to produce the inpu
 
 Design files specifies a list of Jinja template that should be used to produce the input for the design builder. The builder will resolve the files' locations relative to the location of the design job class. Exactly one of `design_file` or `design_files` must be present in the design's Metadata. If `design_files` is used for a list of design templates, each one is evaluated in order. The same context and builder are used for all files. Since a single builder instance is used, references can be created in one design file and then accessed in a later design file.
 
+### `design_mode`
+
+The `design_mode` indicates how this design's state will be tracked in Nautobot. By default, the design mode is set to `CLASSIC` mode, which means that objects are created in an ad-hoc fashion and no change sets are created. Classic mode is how all designs worked prior to the introduction of the design lifecycle features. If a design is intended to be tracked as a deployment, then design mode should be set to `DEPLOYMENT` in order to implement the full lifecycle.
+
 ### `context_class`
 
 The value of the `context_class` metadata attribute should be any Python class that inherits from the `nautobot_design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
@@ -350,4 +354,3 @@ class DesignJobWithExtensions(DesignJob):
         design_file = "templates/simple_design.yaml.j2"
         extensions = [ext.BGPPeeringExtension]
 ```
-

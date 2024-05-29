@@ -24,7 +24,11 @@ Example designs should be placed in the top level `examples/` directory, as appr
 
 ## Branching Policy
 
-The active branch in Design Builder is the `develop` branch. However, commits are not allowed directly to this branch. Instead, fork the code and open a pull request to `develop`.
+The branching policy includes the following tenets:
+
+- The `develop` branch is the branch of the next major and minor paired version planned.
+- PRs intended to add new features should be sourced from the `develop` branch.
+- PRs intended to fix issues in the Nautobot LTM compatible release should be sourced from the latest `ltm-<major.minor>` branch instead of `develop`.
 
 ## Release Policy
 
