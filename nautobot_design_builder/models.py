@@ -13,7 +13,7 @@ from nautobot.core.celery import NautobotKombuJSONEncoder
 from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 
-from .util import nautobot_version, get_created_and_last_updated_usernames_for_model
+from .util import get_created_and_last_updated_usernames_for_model
 from . import choices
 from .errors import DesignValidationError
 
@@ -81,7 +81,7 @@ class DesignManager(models.Manager):  # pylint:disable=too-few-public-methods
         Returns:
             models.QuerySet: A default queryset.
         """
-        return super().get_queryset().annotate(name=models.F("job__name"))
+        return super().get_queryset().annotate(job_name=models.F("job__name"))
 
 
 class DesignQuerySet(RestrictedQuerySet):
@@ -111,7 +111,7 @@ class Design(PrimaryModel):
     relationship with Job, but will only exist if the Job has a
     DesignJob in its ancestry.
 
-    Instances of the Design model are created automatically from
+    Deployments of the Design model are created automatically from
     signals.
 
     In the future this model may include a version field to indicate
@@ -140,11 +140,23 @@ class Design(PrimaryModel):
         if not self._state.adding:
             enforce_managed_fields(self, ["job"], message="is a field that cannot be changed")
 
+    @property
+    def name(self):
+        """Property for job name."""
+        if hasattr(self, "job_name"):
+            return getattr(self, "job_name")
+        return self.job.name
+
+    @property
+    def design_mode(self):
+        """Determine the implementation mode for the design."""
+        if self.job.job_class:
+            return self.job.job_class.design_mode()
+        return None
+
     def __str__(self):
         """Stringify instance."""
-        if hasattr(self, "name"):
-            return getattr(self, "name")
-        return self.job.name
+        return self.name
 
     @property
     def description(self):
@@ -171,9 +183,9 @@ class Design(PrimaryModel):
 class DeploymentQuerySet(RestrictedQuerySet):
     """Queryset for `Deployment` objects."""
 
-    def get_by_natural_key(self, design_name, instance_name):
-        """Get Design Instance by natural key."""
-        return self.get(design__job__name=design_name, name=instance_name)
+    def get_by_natural_key(self, design_name, deployment_name):
+        """Get a Deployment by its natural key."""
+        return self.get(design__job__name=design_name, name=deployment_name)
 
 
 DESIGN_NAME_MAX_LENGTH = 255
@@ -181,9 +193,9 @@ DESIGN_NAME_MAX_LENGTH = 255
 
 @extras_features("statuses")
 class Deployment(PrimaryModel):
-    """Deployment represents the result of executing a design.
+    """A Deployment represents the result of executing a design.
 
-    Deployment represents the collection of Nautobot objects
+    A Deployment represents the collection of Nautobot objects
     that have been created or updated as part of the execution of
     a design job. In this way, we can provide "services" that can
     be updated or removed at a later time.
@@ -208,7 +220,7 @@ class Deployment(PrimaryModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["design", "name"],
-                name="unique_design_deployments",
+                name="unique_deployments",
             ),
         ]
         unique_together = [
@@ -225,7 +237,7 @@ class Deployment(PrimaryModel):
 
     def __str__(self):
         """Stringify instance."""
-        return f"{self.design} - {self.name}"
+        return f"{self.design.name} - {self.name}"
 
     def decommission(self, *object_ids, local_logger=logger):
         """Decommission a design instance.
@@ -322,10 +334,7 @@ class ChangeSet(PrimaryModel):
             input values are deserialized from the job_result of the
             last run.
         """
-        if nautobot_version < "2.0":
-            user_input = self.job_result.job_kwargs.get("data", {}).copy()
-        else:
-            user_input = self.job_result.task_kwargs.copy()  # pylint: disable=no-member
+        user_input = self.job_result.task_kwargs.copy()  # pylint: disable=no-member
         job = self.deployment.design.job
         return job.job_class.deserialize_data(user_input)
 
@@ -363,13 +372,13 @@ class ChangeSet(PrimaryModel):
             )
             # Look up the pre_change state from the existing
             # record and record the differences.
-            entry.changes = model_instance.get_changes(entry.changes["pre_change"])
+            entry.changes.update(model_instance.metadata.changes)
             entry.save()
         except ChangeRecord.DoesNotExist:
             entry = self.records.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
-                changes=model_instance.get_changes(),
+                changes=model_instance.metadata.changes,
                 full_control=model_instance.metadata.created,
                 index=self._next_index(),
             )
@@ -401,14 +410,14 @@ class ChangeSet(PrimaryModel):
                 raise ValueError from ex
 
         if not object_ids:
-            # When the ChangeSet is reverted, we mark is as not active anymore
+            # When the change set is reverted, we mark is as not active anymore
             self.active = False
             self.save()
 
     def __sub__(self, other: "ChangeSet"):
         """Calculate the difference between two change sets.
 
-        This method calculates the differences between the change records of two
+        This method calculates the differences between the records of two
         change sets. This is similar to Python's `set.difference` method. The result
         is a queryset of ChangeRecords from this change set that represent objects
         that are are not in the `other` change set.
@@ -435,7 +444,7 @@ class ChangeRecordQuerySet(RestrictedQuerySet):
     """Queryset for `ChangeRecord` objects."""
 
     def exclude_decommissioned(self):
-        """Returns ChangeRecord which the related Deployment is not decommissioned."""
+        """Returns a ChangeRecord queryset which the related Deployment is not decommissioned."""
         return self.exclude(change_set__deployment__status__name=choices.DeploymentStatusChoices.DECOMMISSIONED)
 
     def filter_related(self, entry):
@@ -455,7 +464,7 @@ class ChangeRecordQuerySet(RestrictedQuerySet):
         )
 
     def filter_by_deployment(self, deployment: "Deployment", model=None):
-        """Lookup all the change records for a design instance an optional model type.
+        """Lookup all the records for a design instance an optional model type.
 
         Args:
             deployment (Deployment): The design instance to retrieve all of the change records.
@@ -468,6 +477,35 @@ class ChangeRecordQuerySet(RestrictedQuerySet):
         if model:
             queryset.filter(_design_object_type=ContentType.objects.get_for_model(model))
         return queryset
+
+    def design_objects(self, deployment: "Deployment"):
+        """Get a set of change records for unique design objects.
+
+        This method returns a queryset of change records for a deployment. However, rather
+        than all of the change records, it will select only one change record for
+        each distinct design object. This is useful to get the active objects for
+        a given deployment.
+
+        Args:
+            deployment (Deployment): The deployment to get design objects.
+
+        Returns:
+            Queryset of change records with uniq design objects.
+        """
+        # This would all be much easier if we could just use a distinct on
+        # fields. Unfortunately, MySQL doesn't support distinct on columns
+        # so we have to kind of do it ourselves with the following application
+        # logic.
+        design_objects = (
+            self.filter_by_deployment(deployment)
+            .filter(active=True)
+            .values_list("id", "_design_object_id", "_design_object_type")
+        )
+        design_object_ids = {
+            f"{design_object_type}:{design_object_id}": record_id
+            for record_id, design_object_id, design_object_type in design_objects
+        }
+        return self.filter(id__in=design_object_ids.values())
 
 
 class ChangeRecord(BaseModel):
@@ -507,14 +545,11 @@ class ChangeRecord(BaseModel):
     full_control = models.BooleanField(editable=False)
     active = models.BooleanField(editable=False, default=True)
 
-    class Meta:
-        unique_together = [["change_set", "index"]]
-
-    # def get_absolute_url(self, api=False):
-    #     """Return detail view for design deployments."""
-    #     if api:
-    #         return reverse("plugins-api:nautobot_design_builder-api:changerecord", args=[self.pk])
-    #     return reverse("plugins:nautobot_design_builder:changerecord", args=[self.pk])
+    class Meta:  # noqa:D106
+        unique_together = [
+            ("change_set", "index"),
+            ("change_set", "_design_object_type", "_design_object_id"),
+        ]
 
     @staticmethod
     def update_current_value_from_dict(current_value, added_value, removed_value):
@@ -536,7 +571,7 @@ class ChangeRecord(BaseModel):
         for key in keys_to_remove:
             del current_value[key]
 
-        # Recovering old values that the ChangeRecord deleted.
+        # Recovering old keys that the ChangeRecord deleted.
         for key in removed_value:
             if key not in added_value:
                 current_value[key] = removed_value[key]
@@ -547,10 +582,10 @@ class ChangeRecord(BaseModel):
         Raises:
             ValidationError: the error will include all of the managed fields that have
             changed.
-            DesignValidationError: when the design object is referenced by other active ChangeSets.
+            DesignValidationError: when the design object is referenced by other active change sets.
 
         """
-        if not self.design_object:
+        if self.design_object is None:
             # This is something that may happen when a design has been updated and object was deleted
             return
 
@@ -567,74 +602,44 @@ class ChangeRecord(BaseModel):
         object_str = str(self.design_object)
 
         local_logger.info("Reverting change record", extra={"obj": self.design_object})
-        # local_logger.info("Reverting change record for %s %s", object_type, object_str, extra={"obj": self})
         if self.full_control:
-            related_records = list(ChangeRecord.objects.filter_related(self).values_list("id", flat=True))
-            if related_records:
-                active_change_records = ",".join(map(str, related_records))
-                raise DesignValidationError(f"This object is referenced by other active ChangeSets: {active_change_records}")
+            related_records = ChangeRecord.objects.filter_related(self)
+            if related_records.count() > 0:
+                active_record_ids = ",".join(map(lambda entry: str(entry.id), related_records))
+                raise DesignValidationError(
+                    f"This object is referenced by other active ChangeSets: {active_record_ids}"
+                )
 
-            self.design_object._current_design = self.change_set.deployment  # pylint: disable=protected-access
+            # The _current_deployment attribute is essentially a signal to our
+            # pre-delete handler letting it know to forgo the protections for
+            # deletion since this delete operation is part of an owning design.
+            self.design_object._current_deployment = self.change_set.deployment  # pylint: disable=protected-access
             self.design_object.delete()
             local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
         else:
-            if not self.changes:
-                local_logger.info("No changes found in the ChangeSet Entry.")
-                return
-
-            if "differences" not in self.changes:
-                # TODO: We should probably change the `changes` dictionary to
-                # a concrete class so that our static analysis tools can catch
-                # problems like this.
-                local_logger.error("`differences` key not present.")
-                return
-
-            differences = self.changes["differences"]
-            for attribute in differences.get("added", {}):
-                added_value = differences["added"][attribute]
-                if differences["removed"]:
-                    removed_value = differences["removed"][attribute]
+            for attr_name, change in self.changes.items():
+                current_value = getattr(self.design_object, attr_name)
+                if "old_items" in change:
+                    old_items = set(change["old_items"])
+                    new_items = set(change["new_items"])
+                    added_items = new_items - old_items
+                    current_items = {item.pk for item in current_value.all()}
+                    current_items -= added_items
+                    current_value.set(current_value.filter(pk__in=current_items))
                 else:
-                    removed_value = None
-                if isinstance(added_value, dict) and (not removed_value or isinstance(removed_value, dict)):
-                    # If the value is a dictionary (e.g., config context), we only update the
-                    # keys changed, honouring the current value of the attribute
-                    current_value = getattr(self.design_object, attribute)
-                    current_value_type = type(current_value)
-                    if isinstance(current_value, dict):
+                    old_value = change["old_value"]
+                    new_value = change["new_value"]
+
+                    if isinstance(old_value, dict):
+                        # config-context like thing, only change the keys
+                        # that were added/changed
                         self.update_current_value_from_dict(
                             current_value=current_value,
-                            added_value=added_value,
-                            removed_value=removed_value if removed_value else {},
+                            added_value=new_value,
+                            removed_value=old_value if old_value else {},
                         )
-                    elif isinstance(current_value, models.Model):
-                        # The attribute is a Foreign Key that is represented as a dict
-                        try:
-                            current_value = current_value_type.objects.get(id=removed_value["id"])
-                        except ObjectDoesNotExist:
-                            current_value = None
-                    elif current_value is None:
-                        pass
                     else:
-                        # TODO: cover other use cases, such as M2M relationship
-                        local_logger.error(
-                            "%s can't be reverted because decommission of type %s is not supported yet.",
-                            current_value,
-                            current_value_type,
-                        )
-
-                    setattr(self.design_object, attribute, current_value)
-                else:
-                    try:
-                        setattr(self.design_object, attribute, removed_value)
-                    except AttributeError:
-                        # TODO: the current serialization (serialize_object_v2) doesn't exclude properties
-                        local_logger.debug(
-                            "Attribute %s in this object %s can't be set. It may be a 'property'.",
-                            attribute,
-                            object_str,
-                            extra={"obj": self.design_object},
-                        )
+                        setattr(self.design_object, attr_name, old_value)
 
                 self.design_object.save()
                 local_logger.info(
