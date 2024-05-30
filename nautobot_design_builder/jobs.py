@@ -24,9 +24,8 @@ class DeploymentDecommissioning(Job):
         name = "Decommission Design Deployments"
         description = """Job to decommission one or many Design Deployments from Nautobot."""
 
-    def run(self, data):  # pylint:disable=arguments-differ
+    def run(self, deployments):  # pylint:disable=arguments-differ
         """Execute Decommissioning job."""
-        deployments = data["deployments"]
         self.logger.info(
             "Starting decommissioning of design deployments: %s",
             ", ".join([instance.name for instance in deployments]),

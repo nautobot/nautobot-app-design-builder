@@ -9,6 +9,6 @@ register = template.Library()
 
 @library.filter()
 @register.filter()
-def get_last_change_set(design_instance):
+def get_last_change_set(deployment):
     """Get last run change set in a design instance."""
-    return design_instance.change_sets.order_by("last_updated").last()
+    return deployment.change_sets.order_by("last_updated").last()

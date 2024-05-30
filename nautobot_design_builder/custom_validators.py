@@ -62,13 +62,13 @@ class BaseValidator(PluginCustomValidator):
                     if (
                         hasattr(obj, "_current_design")
                         and obj._current_design  # pylint: disable=protected-access
-                        == record.change_set.design_instance
+                        == record.change_set.deployment
                     ):
                         continue
 
                     self.validation_error(
                         {
-                            attribute_name: f"The attribute is managed by the Design Instance: {record.change_set.design_instance}. {error_context}"
+                            attribute_name: f"The attribute is managed by the Design Instance: {record.change_set.deployment}. {error_context}"
                         }
                     )
 

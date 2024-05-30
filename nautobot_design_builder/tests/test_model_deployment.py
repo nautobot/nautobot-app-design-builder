@@ -18,16 +18,16 @@ class BaseDeploymentTest(BaseDesignTest):
     def create_deployment(design_name, design):
         """Generate a Deployment."""
         content_type = ContentType.objects.get_for_model(models.Deployment)
-        design_instance = models.Deployment(
+        deployment = models.Deployment(
             design=design,
             name=design_name,
             status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
             version=design.version,
         )
-        design_instance.validated_save()
-        return design_instance
+        deployment.validated_save()
+        return deployment
 
-    def create_change_set(self, job, design_instance, kwargs):
+    def create_change_set(self, job, deployment, kwargs):
         """Creates a ChangeSet."""
         job_result = JobResult.objects.create(
             name=job.name,
@@ -35,32 +35,32 @@ class BaseDeploymentTest(BaseDesignTest):
         )
         job_result.log = mock.Mock()
         job_result.task_kwargs = kwargs
-        change_set = models.ChangeSet(design_instance=design_instance, job_result=job_result)
+        change_set = models.ChangeSet(deployment=deployment, job_result=job_result)
         change_set.validated_save()
         return change_set
 
     def setUp(self):
         super().setUp()
         self.design_name = "My Design"
-        self.design_instance = self.create_deployment(self.design_name, self.designs[0])
+        self.deployment = self.create_deployment(self.design_name, self.designs[0])
 
 
 class TestDeployment(BaseDeploymentTest):
     """Test Deployment."""
 
-    def test_design_instance_queryset(self):
+    def test_deployment_queryset(self):
         design = models.Deployment.objects.get_by_natural_key(self.jobs[0].name, self.design_name)
         self.assertIsNotNone(design)
         self.assertEqual(f"{self.jobs[0].job_class.Meta.name} - {self.design_name}", str(design))
 
     def test_design_cannot_be_changed(self):
         with self.assertRaises(ValidationError):
-            self.design_instance.design = self.designs[1]
-            self.design_instance.validated_save()
+            self.deployment.design = self.designs[1]
+            self.deployment.validated_save()
 
         with self.assertRaises(ValidationError):
-            self.design_instance.design = None
-            self.design_instance.validated_save()
+            self.deployment.design = None
+            self.deployment.validated_save()
 
     def test_uniqueness(self):
         with self.assertRaises(IntegrityError):

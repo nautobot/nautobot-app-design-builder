@@ -44,7 +44,7 @@ class DataProtectionBaseTest(BaseDeploymentTest):  # pylint: disable=too-many-in
             "instance": "my instance",
         }
 
-        self.change_set = self.create_change_set(self.jobs[0], self.design_instance, self.job_kwargs)
+        self.change_set = self.create_change_set(self.jobs[0], self.deployment, self.job_kwargs)
         self.initial_entry = ChangeRecord.objects.create(
             design_object=self.manufacturer_from_design,
             full_control=True,
@@ -114,7 +114,7 @@ class DataProtectionBaseTestWithProtection(DataProtectionBaseTest):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.json()["description"][0],
-            f"The attribute is managed by the Design Instance: {self.design_instance}. ",
+            f"The attribute is managed by the Design Instance: {self.deployment}. ",
         )
 
     @override_settings(PLUGINS_CONFIG=plugin_settings_with_protection)
@@ -169,7 +169,7 @@ class DataProtectionBaseTestWithProtectionBypassDisabled(DataProtectionBaseTest)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.json()["description"][0],
-            f"The attribute is managed by the Design Instance: {self.design_instance}. ",
+            f"The attribute is managed by the Design Instance: {self.deployment}. ",
         )
 
     @unittest.skip("Issue with TransactionManagerError in tests.")

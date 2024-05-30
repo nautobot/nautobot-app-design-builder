@@ -58,7 +58,7 @@ DEPLOYMENT_TABLE = """
 <a href="{% url "extras:job_run_by_class_path" class_path="nautobot_design_builder.jobs.DeploymentDecommissioning" %}?deployments={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
-<a href="{% url 'extras:job_run' slug=record.design.job.slug %}?kwargs_from_job_result={% with record|get_last_change_set as last_change_set %}{{ last_change_set.job_result.pk }}{% endwith %}"
+<a href="{% url 'extras:job_run' pk=record.design.job.pk %}?kwargs_from_job_result={% with record|get_last_change_set as last_change_set %}{{ last_change_set.job_result.pk }}{% endwith %}"
     class="btn btn-xs btn-success" title="Re-run job with same arguments.">
     <i class="mdi mdi-repeat"></i>
 </a>
@@ -99,11 +99,22 @@ class DeploymentTable(StatusTableMixin, BaseTable):
         )
 
 
+def linkify_design_object(value):
+    """Attempt to linkify a design object.
+    
+    Some objects (through-classes for many-to-many as an example) don't
+    really have a way to linkify, so those will return None.
+    """
+    try:
+        return value.get_absolute_url()
+    except AttributeError:
+        return None
+
 class DesignObjectsTable(BaseTable):
     """Table of objects that belong to a design instance."""
 
     design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
-    design_object = Column(linkify=True, verbose_name="Design Object")
+    design_object = Column(linkify=linkify_design_object, verbose_name="Design Object")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
@@ -134,7 +145,7 @@ class ChangeRecordTable(BaseTable):
     pk = Column(linkify=True, verbose_name="ID")
     change_set = Column(linkify=True)
     design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
-    design_object = Column(linkify=True, verbose_name="Design Object")
+    design_object = Column(linkify=linkify_design_object, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
     active = BooleanColumn(verbose_name="Active")
 

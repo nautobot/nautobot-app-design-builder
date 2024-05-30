@@ -126,7 +126,7 @@ class NextInterfaceExtension(AttributeExtension):
             dict: Dictionary with the new interface name `{"!create_or_update:name": new_interface_name}
         """
         root_interface_name = "GigabitEthernet"
-        previous_interfaces = self.environment.design_instance.get_design_objects(Interface).values_list(
+        previous_interfaces = self.environment.deployment.get_design_objects(Interface).values_list(
             "id", flat=True
         )
         interfaces = model_instance.relationship_manager.filter(

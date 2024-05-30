@@ -44,6 +44,8 @@
 {% endblock content_right_page %}
 
 {% block content_full_width_page %}
+{% if is_deployment %}
 {% include 'utilities/obj_table.html' with table=deployments_table table_template='panel_table.html' heading='Design Deployments' %}
 <div class="row"></div>
+{% endif %}
 {% endblock content_full_width_page %}

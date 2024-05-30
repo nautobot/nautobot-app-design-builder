@@ -362,6 +362,9 @@ class ChangeSet(PrimaryModel):
         Args:
             model_instance: Model instance to log changes.
         """
+        # Don't need to record changes when nothing happened.
+        if len(model_instance.metadata.changes) == 0:
+            return
         instance = model_instance.instance
         content_type = ContentType.objects.get_for_model(instance)
 

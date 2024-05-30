@@ -17,7 +17,7 @@ class BaseChangeSetTest(BaseDeploymentTest):
             "instance": "my instance",
         }
 
-        self.change_set = self.create_change_set(self.jobs[0], self.design_instance, self.job_kwargs)
+        self.change_set = self.create_change_set(self.jobs[0], self.deployment, self.job_kwargs)
 
 
 class TestChangeSet(BaseChangeSetTest):

@@ -12,9 +12,6 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError, Multiple
 
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import JobResult, Relationship
-from nautobot.apps.utils import shallow_compare_dict
-from nautobot.apps.models import serialize_object_v2
-
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
@@ -23,7 +20,7 @@ from nautobot_design_builder.fields import CustomRelationshipField, field_factor
 from nautobot_design_builder import models
 
 
-# TODO: Refactor this code into the ChangeSet model
+# TODO: Refactor this code into the Journal model
 class Journal:
     """Keep track of the objects created or updated during the course of a design's implementation.
 
@@ -47,7 +44,7 @@ class Journal:
     """
 
     def __init__(self, change_set: models.ChangeSet = None):
-        """Constructor for ChangeSet object."""
+        """Constructor for Journal object."""
         self.index = set()
         self.created = defaultdict(set)
         self.updated = defaultdict(set)
@@ -107,61 +104,6 @@ def _map_query_values(query: Mapping) -> Mapping:
     return retval
 
 
-def calculate_changes(current_state, initial_state=None, created=False, pre_change=False) -> Dict:
-    """Determine the differences between the original instance and the current.
-
-    This will calculate the changes between the instance's initial state
-    and its current state. If pre_change is supplied it will use this
-    dictionary as the initial state rather than the current ModelInstance
-    initial state.
-
-    Args:
-        current_state (dict): The current state of the object being examined.
-
-        initial_state (dict, optional): Initial state for comparison. If not supplied
-            then the initial state from this instance is used.
-
-        created (bool): Whether or not the object was created.
-
-        pre_change (bool): Whether or not this is a pre-change? TODO: What is this field?
-
-    Returns:
-        Return a dictionary with the changed object's serialized data compared
-        with either the model instance initial state, or the supplied pre_change
-        state. The dictionary has the following values:
-
-        dict: {
-            "pre_change": dict(),
-            "post_change": dict(),
-            "differences": {
-                "added": dict(),
-                "removed": dict(),
-            }
-        }
-    """
-    post_change = serialize_object_v2(current_state)
-
-    if not created and not pre_change:
-        pre_change = initial_state
-
-    if pre_change and post_change:
-        diff_added = shallow_compare_dict(pre_change, post_change, exclude=["last_updated"])
-        diff_removed = {x: pre_change.get(x) for x in diff_added}
-    elif pre_change and not post_change:
-        diff_added, diff_removed = None, pre_change
-    else:
-        diff_added, diff_removed = post_change, None
-
-    return {
-        "pre_change": pre_change,
-        "post_change": post_change,
-        "differences": {
-            "added": diff_added,
-            "removed": diff_removed,
-        },
-    }
-
-
 class ModelMetadata:  # pylint: disable=too-many-instance-attributes
     """`ModelMetadata` contains all the information design builder needs to track a `ModelInstance`.
 
@@ -211,6 +153,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         }
 
         self.save_args = kwargs.get("save_args", {})
+
+        self.changes = {}
 
         # The following attributes are dunder attributes
         # because they should only be set in the @attributes.setter
@@ -506,6 +450,7 @@ class ModelInstance:
 
         try:
             self._load_instance()
+            setattr(self.instance, "__design_builder_instance", self)
         except ObjectDoesNotExist as ex:
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
@@ -533,19 +478,6 @@ class ModelInstance:
     def __str__(self):
         """Get the model class name."""
         return str(self.model_class)
-
-    def get_changes(self, pre_change=None):
-        """Determine the differences between the original instance and the current.
-
-        This uses `calculate_changes` to determine the change dictionary. See that
-        method for details.
-        """
-        return calculate_changes(
-            self.instance,
-            initial_state=self._initial_state,
-            created=self.metadata.created,
-            pre_change=pre_change,
-        )
 
     def create_child(
         self,
@@ -598,14 +530,12 @@ class ModelInstance:
         # Short circuit if the instance was loaded earlier in
         # the initialization process
         if self.instance is not None:
-            self._initial_state = serialize_object_v2(self.instance)
             return
 
         query_filter = self.metadata.query_filter
         field_values = self.metadata.query_filter_values
         if self.metadata.action == ModelMetadata.GET:
             self.instance = self.model_class.objects.get(**query_filter)
-            self._initial_state = serialize_object_v2(self.instance)
             return
 
         if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
@@ -635,7 +565,6 @@ class ModelInstance:
                     field_values[query_param] = model
             try:
                 self.instance = self.relationship_manager.get(**query_filter)
-                self._initial_state = serialize_object_v2(self.instance)
                 return
             except ObjectDoesNotExist:
                 if self.metadata.action == ModelMetadata.UPDATE:
@@ -649,7 +578,6 @@ class ModelInstance:
         self.metadata.attributes.update(field_values)
         self.metadata.created = True
         try:
-            self._initial_state = {}
             self.instance = self.model_class(**self.metadata.kwargs)
         except TypeError as ex:
             raise errors.DesignImplementationError(str(ex), self.model_class)
@@ -677,7 +605,7 @@ class ModelInstance:
 
         This method will save the underlying model object to the database and
         will send signals (`PRE_SAVE`, `POST_INSTANCE_SAVE` and `POST_SAVE`). The
-        change set is updated in this step.
+        design journal is updated in this step.
         """
         if self.metadata.action == ModelMetadata.GET:
             return
@@ -686,10 +614,6 @@ class ModelInstance:
 
         msg = "Created" if self.metadata.created else "Updated"
         try:
-            if self.environment.journal.change_set:
-                self.instance._current_design = (  # pylint: disable=protected-access
-                    self.environment.journal.change_set.deployment
-                )
             self.instance.full_clean()
             self.instance.save(**self.metadata.save_args)
             self.environment.journal.log(self)
@@ -765,11 +689,8 @@ class Environment(LoggingMixin):
             job_result (JobResult, optional): If this environment is being used by
                 a `DesignJob` then it can log to the `JobResult` for the job.
                 Defaults to None.
-
             extensions (List[ext.Extension], optional): Any custom extensions to use
                 when implementing designs. Defaults to None.
-
-            change_set: (models.ChangeSet, optional): A change set for the design deployments current execution.
 
         Raises:
             errors.DesignImplementationError: If a provided extension is not a subclass

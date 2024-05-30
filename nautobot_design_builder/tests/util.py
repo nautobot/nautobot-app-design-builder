@@ -13,13 +13,13 @@ def populate_sample_data():
     job_result, _ = JobResult.objects.get_or_create(name="Test", job_model=job)
 
     design, _ = Design.objects.get_or_create(job=job)
-    design_instance, _ = Deployment.objects.get_or_create(
+    deployment, _ = Deployment.objects.get_or_create(
         design=design,
         name="Initial Data",
         status=Status.objects.get(name="Active"),
         live_state=Status.objects.get(name="Active"),
     )
-    ChangeSet.objects.get_or_create(design_instance=design_instance, job_result=job_result)
+    ChangeSet.objects.get_or_create(deployment=deployment, job_result=job_result)
 
 
 def create_test_view_data():
@@ -38,7 +38,7 @@ def create_test_view_data():
             status=Status.objects.get(name="Active"),
             live_state=Status.objects.get(name="Active"),
         )
-        change_set = ChangeSet.objects.create(design_instance=instance, job_result=job_result)
+        change_set = ChangeSet.objects.create(deployment=instance, job_result=job_result)
         full_control = i == 1  # Have one record where full control is given, more than one where its not.
         ChangeRecord.objects.create(
             change_set=change_set, design_object=object_created_by_job, full_control=full_control, index=0

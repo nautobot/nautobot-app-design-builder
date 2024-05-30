@@ -38,7 +38,7 @@ def create_design_model_for_existing(sender, **kwargs):
 
 
 @receiver(nautobot_database_ready, sender=apps.get_app_config("nautobot_design_builder"))
-def create_design_instance_statuses(**kwargs):
+def create_deployment_statuses(**kwargs):
     """Create a default set of statuses for design deployments."""
     content_type = ContentType.objects.get_for_model(Deployment)
     color_mapping = {
@@ -89,11 +89,11 @@ def model_delete_design_builder(instance, **kwargs):
         # If there is a design with full_control, only the design can delete it
         if (
             hasattr(instance, "_current_design")
-            and instance._current_design == change_record.change_set.design_instance  # pylint: disable=protected-access
+            and instance._current_design == change_record.change_set.deployment  # pylint: disable=protected-access
             and change_record.full_control
         ):
             return
-        raise ProtectedError("A design instance owns this object.", set([change_record.change_set.design_instance]))
+        raise ProtectedError("A design instance owns this object.", set([change_record.change_set.deployment]))
 
 
 def load_pre_delete_signals():

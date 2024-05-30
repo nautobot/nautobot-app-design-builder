@@ -126,7 +126,7 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
                 .annotate(record_count=count_related(models.ChangeRecord, "change_set"))
             )
 
-            change_sets_table = models.ChangeSetTable(change_sets)
+            change_sets_table = tables.ChangeSetTable(change_sets)
             change_sets_table.columns.hide("deployment")
 
             paginate = {
