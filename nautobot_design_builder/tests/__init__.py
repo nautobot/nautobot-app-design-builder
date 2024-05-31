@@ -7,9 +7,7 @@ from os import path
 from typing import Type
 from unittest import mock
 from unittest.mock import PropertyMock, patch
-import uuid
 
-from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from nautobot.extras.utils import refresh_job_model_from_job_class
@@ -59,6 +57,7 @@ class DesignTestCase(TestCase):
                     "grouping": grouping,
                 }
             )
+
         job.job_result.log = mock.Mock()
         job.job_result.log.side_effect = record_log
         return job

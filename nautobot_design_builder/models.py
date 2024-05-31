@@ -385,7 +385,7 @@ class ChangeSet(PrimaryModel):
                 full_control=model_instance.metadata.created,
                 index=self._next_index(),
             )
-        return entry
+        return
 
     def revert(self, *object_ids, local_logger: logging.Logger = logger):
         """Revert the changes represented in this ChangeSet.

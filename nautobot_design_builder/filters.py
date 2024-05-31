@@ -2,7 +2,12 @@
 
 from django_filters import CharFilter
 
-from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, StatusModelFilterSetMixin, SearchFilter
+from nautobot.apps.filters import (
+    NautobotFilterSet,
+    NaturalKeyOrPKMultipleChoiceFilter,
+    StatusModelFilterSetMixin,
+    SearchFilter,
+)
 from nautobot.extras.models import Job, JobResult
 
 from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord

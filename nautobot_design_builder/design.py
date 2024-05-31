@@ -689,8 +689,14 @@ class Environment(LoggingMixin):
             job_result (JobResult, optional): If this environment is being used by
                 a `DesignJob` then it can log to the `JobResult` for the job.
                 Defaults to None.
+
             extensions (List[ext.Extension], optional): Any custom extensions to use
                 when implementing designs. Defaults to None.
+
+            change_set (models.ChangeSet): A change set object to use for logging changes
+                in the environment. This defaults to `None` which means the environment shouldn't
+                log any changes to the database. This behavior is used when a design is in Ad-Hoc
+                mode (classic mode) and does not represent a design lifecycle.
 
         Raises:
             errors.DesignImplementationError: If a provided extension is not a subclass

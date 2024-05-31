@@ -32,9 +32,9 @@ class BaseDeploymentTest(BaseDesignTest):
         job_result = JobResult.objects.create(
             name=job.name,
             job_model=job,
+            task_kwargs=kwargs,
         )
         job_result.log = mock.Mock()
-        job_result.task_kwargs = kwargs
         change_set = models.ChangeSet(deployment=deployment, job_result=job_result)
         change_set.validated_save()
         return change_set
@@ -54,6 +54,12 @@ class BaseDeploymentTest(BaseDesignTest):
         super().setUp()
         self.design_name = "My Design"
         self.deployment = self.create_deployment(self.design_name, self.designs[0])
+        self.customer_name = "Customer 1"
+        self.job_kwargs = {
+            "customer_name": self.customer_name,
+            "deployment_name": "my instance",
+        }
+        self.change_set = self.create_change_set(self.jobs[0], self.deployment, self.job_kwargs)
 
 
 class TestDeployment(BaseDeploymentTest):

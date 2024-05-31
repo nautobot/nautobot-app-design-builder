@@ -76,7 +76,7 @@ class CustomValidatorTest(BaseDeploymentTest):
 
         self.client = Client()
 
-        self.password = "password123"
+        self.password = User.objects.make_random_password()
         self.user = User.objects.create_user(username="test_user", email="test@example.com", password=self.password)
         self.admin = User.objects.create_user(
             username="test_user_admin", email="admin@example.com", password=self.password, is_superuser=True

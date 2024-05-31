@@ -197,9 +197,9 @@ class RelationshipFieldMixin:  # pylint:disable=too-few-public-methods
 
         Args:
             obj (ModelInstance): The parent object that the value will be ultimately assigned.
-            
+
             value (Any): The value being assigned to the parent object.
-            
+
             relationship_manager (Manager, optional): This argument can be used to restrict the
               child object lookups to a subset. For instance, the `interfaces` manager on a `Device`
               instance will restrict queries interfaces where their foreign key is set to the device.

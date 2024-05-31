@@ -3,7 +3,7 @@
 from django_tables2 import Column
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
-from nautobot.apps.tables import BooleanColumn, ColoredLabelColumn, ButtonsColumn
+from nautobot.apps.tables import BooleanColumn, ButtonsColumn
 
 from nautobot_design_builder import choices
 from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
@@ -101,7 +101,7 @@ class DeploymentTable(StatusTableMixin, BaseTable):
 
 def linkify_design_object(value):
     """Attempt to linkify a design object.
-    
+
     Some objects (through-classes for many-to-many as an example) don't
     really have a way to linkify, so those will return None.
     """
@@ -110,7 +110,8 @@ def linkify_design_object(value):
     except AttributeError:
         return None
 
-class DesignObjectsTable(BaseTable):
+
+class DesignObjectsTable(BaseTable):  # pylint:disable=nb-sub-class-name
     """Table of objects that belong to a design instance."""
 
     design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")

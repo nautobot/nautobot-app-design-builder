@@ -1,17 +1,16 @@
 """Decommissioning Tests."""
 
 from unittest import mock
-import uuid
 
 from django.contrib.contenttypes.models import ContentType
 
-from nautobot.extras.models import JobResult, Status, Secret, Job as JobModel
+from nautobot.extras.models import JobResult, Status, Secret
 from nautobot_design_builder.errors import DesignValidationError
 
 from nautobot_design_builder.jobs import DeploymentDecommissioning
 from nautobot_design_builder import models, choices
 from nautobot_design_builder.tests.test_model_design import BaseDesignTest
-from nautobot_design_builder.tests.designs import test_designs
+
 
 def fake_ok(sender, deployment, **kwargs):  # pylint: disable=unused-argument
     """Fake function to return a pass for a hook."""

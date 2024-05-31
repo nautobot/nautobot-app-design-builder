@@ -21,7 +21,7 @@ class BaseDesignTest(DesignTestCase):
         settings.JOBS_ROOT = path.dirname(test_designs.__file__)
         self.jobs = []
         self.designs = []
-        for cls in [test_designs.SimpleDesign, test_designs.SimpleDesignReport]:
+        for cls in [test_designs.IntegrationDesign, test_designs.SimpleDesignReport]:
             job = JobModel.objects.get(name=cls.Meta.name)
             self.jobs.append(job)
             self.designs.append(models.Design.objects.get(job=job))

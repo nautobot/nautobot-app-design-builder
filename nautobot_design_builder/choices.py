@@ -11,10 +11,12 @@ class DeploymentStatusChoices(ChoiceSet):
     DECOMMISSIONED = "Decommissioned"
 
     CHOICES = (
+        (None, "Unknown"),
         (ACTIVE, ACTIVE),
         (DISABLED, DISABLED),
         (DECOMMISSIONED, DECOMMISSIONED),
     )
+
 
 class DesignModeChoices(ChoiceSet):
     """Status choices for Designs Instances."""

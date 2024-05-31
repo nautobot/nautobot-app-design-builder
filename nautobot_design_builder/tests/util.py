@@ -1,7 +1,5 @@
 """Utilities for setting up tests and test data."""
 
-from django.contrib.contenttypes.models import ContentType
-
 from nautobot.extras.models import Status
 from nautobot.extras.utils import refresh_job_model_from_job_class
 from nautobot.extras.models import JobResult, Job
@@ -9,6 +7,7 @@ from nautobot.tenancy.models import Tenant
 
 from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
 from nautobot_design_builder.tests.designs import test_designs
+
 
 def populate_sample_data():
     """Populate the database with some sample data."""
