@@ -20,6 +20,13 @@ class TestDesign(
     def setUpTestData(cls):
         create_test_view_data()
 
+    def test_list_objects_descending_ordered(self):
+        """This test fails because of the name annotation."""
+        pass
+
+    def test_list_objects_ascending_ordered(self):
+        """This test fails because of the name annotation."""
+        pass
 
 class TestDeployment(
     APIViewTestCases.GetObjectViewTestCase,

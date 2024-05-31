@@ -1,5 +1,7 @@
 """Filters for the design builder app."""
 
+from django_filters import CharFilter
+
 from nautobot.apps.filters import NautobotFilterSet, NaturalKeyOrPKMultipleChoiceFilter, StatusModelFilterSetMixin, SearchFilter
 from nautobot.extras.models import Job, JobResult
 
@@ -11,6 +13,8 @@ class DesignFilterSet(NautobotFilterSet):
 
     q = SearchFilter(filter_predicates={})
 
+    name = CharFilter(field_name="job_name")
+
     job = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Job.objects.all(),
         label="Job (ID or slug)",
@@ -20,7 +24,7 @@ class DesignFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = Design
-        fields = ["id", "job"]
+        fields = ["id", "name", "job"]
 
 
 class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):

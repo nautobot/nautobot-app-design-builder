@@ -13,7 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from nautobot.extras.utils import refresh_job_model_from_job_class
-from nautobot.extras.models import Job, JobResult
+from nautobot.extras.models import Job
 from nautobot_design_builder.design_job import DesignJob
 
 logging.disable(logging.INFO)
@@ -39,7 +39,7 @@ class DesignTestCase(TestCase):
 
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
-        job_model, _ = refresh_job_model_from_job_class(Job, "plugins", design_class)
+        refresh_job_model_from_job_class(Job, design_class)
         job = design_class()
         job.job_result = mock.Mock()
         job.saved_files = {}

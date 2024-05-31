@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from nautobot.extras.models import Job as JobModel
-
+from nautobot.extras.utils import refresh_job_model_from_job_class
 from nautobot_design_builder.tests import DesignTestCase
 
 from .designs import test_designs
@@ -31,12 +31,25 @@ class TestDesign(BaseDesignTest):
     """Test Design."""
 
     def test_create_from_signal(self):
-        # TODO: move back to 2 when the designs are outside of the repo
+        # The test designs should be registered upon import. The registration process
+        # would include creating the job models, which would also create the designs
+        # via signals.
+        designs = [
+            test_designs.SimpleDesign,
+            test_designs.SimpleDesign3,
+            test_designs.SimpleDesignReport,
+            test_designs.MultiDesignJob,
+            test_designs.MultiDesignJobWithError,
+            test_designs.DesignJobWithExtensions,
+            test_designs.DesignWithRefError,
+            test_designs.DesignWithValidationError,
+            test_designs.IntegrationDesign,
+        ]
+        for design in designs:
+            job, _ = refresh_job_model_from_job_class(JobModel, design)
+            design = models.Design.objects.get(job_id=job.id)
+            self.assertEqual(job.name, design.name)
 
-        self.assertEqual(
-            [job.name for job in JobModel.objects.filter(grouping=test_designs.name).order_by("name")],
-            [design.name for design in models.Design.objects.filter(job__grouping=test_designs.name).order_by("name")],
-        )
         self.assertEqual(self.designs[0].job_id, self.jobs[0].id)
         self.assertEqual(self.designs[1].job_id, self.jobs[1].id)
         self.assertEqual(str(self.designs[0]), self.designs[0].name)

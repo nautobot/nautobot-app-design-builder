@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.utils import extend_schema_field
 
 from rest_framework.fields import SerializerMethodField, DictField
-from rest_framework.serializers import HyperlinkedIdentityField
+from rest_framework.serializers import ReadOnlyField
 
 from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
 from nautobot.core.api import ContentTypeField
@@ -17,6 +17,8 @@ from nautobot_design_builder.models import Design, Deployment, ChangeSet, Change
 class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the design model."""
 
+    name = ReadOnlyField()
+
     class Meta:
         """Serializer options for the design model."""
 
@@ -27,7 +29,6 @@ class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
 class DeploymentSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):
     """Serializer for the Deployment model."""
 
-    url = HyperlinkedIdentityField(view_name="plugins-api:nautobot_design_builder-api:design-detail")
     created_by = SerializerMethodField()
     last_updated_by = SerializerMethodField()
 

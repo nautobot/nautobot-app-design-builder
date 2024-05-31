@@ -151,7 +151,7 @@ PLUGINS_CONFIG = {
     "nautobot_design_builder": {
         "context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None),
         "pre_decommission_hook": pre_decommission_hook_example,
-        "protected_models": [("dcim", "region"), ("dcim", "device")],
+        "protected_models": [("dcim", "region"), ("dcim", "device"), ("dcim", "interface")],
         "protected_superuser_bypass": False,
     }
 }

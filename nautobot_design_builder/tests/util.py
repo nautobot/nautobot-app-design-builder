@@ -1,11 +1,14 @@
 """Utilities for setting up tests and test data."""
 
+from django.contrib.contenttypes.models import ContentType
+
 from nautobot.extras.models import Status
+from nautobot.extras.utils import refresh_job_model_from_job_class
 from nautobot.extras.models import JobResult, Job
 from nautobot.tenancy.models import Tenant
 
 from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
-
+from nautobot_design_builder.tests.designs import test_designs
 
 def populate_sample_data():
     """Populate the database with some sample data."""
@@ -24,19 +27,23 @@ def populate_sample_data():
 
 def create_test_view_data():
     """Creates test data for view and API view test cases."""
-    for i in range(1, 4):
+    job_classes = [
+        test_designs.SimpleDesign,
+        test_designs.SimpleDesign3,
+        test_designs.SimpleDesignReport,
+        test_designs.IntegrationDesign,
+    ]
+    for i, job_class in enumerate(job_classes, 1):
         # Core models
-        job = Job.objects.create(name=f"Fake Design Job {i}", job_class_name=f"FakeDesignJob{i}")
+        job, _ = refresh_job_model_from_job_class(Job, job_class)
         job_result = JobResult.objects.create(name=f"Test Result {i}", job_model=job)
         object_created_by_job = Tenant.objects.create(name=f"Tenant {i}")
 
         # Design Builder models
-        design = Design.objects.create(job=job)
         instance = Deployment.objects.create(
-            design=design,
+            design=Design.objects.get(job_id=job.id),
             name=f"Test Instance {i}",
             status=Status.objects.get(name="Active"),
-            live_state=Status.objects.get(name="Active"),
         )
         change_set = ChangeSet.objects.create(deployment=instance, job_result=job_result)
         full_control = i == 1  # Have one record where full control is given, more than one where its not.

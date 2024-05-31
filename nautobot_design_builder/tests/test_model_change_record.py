@@ -31,7 +31,7 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
             "manufacturer": f"{self.manufacturer.pk}",
             "instance": "my instance",
         }
-        self.change_set = self.create_change_set(self.job, self.deployment, self.job_kwargs)
+        self.change_set = self.create_change_set(self.jobs[0], self.deployment, self.job_kwargs)
 
         self.initial_entry = ChangeRecord(
             design_object=self.secret,

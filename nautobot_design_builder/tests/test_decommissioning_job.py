@@ -46,7 +46,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             design=self.designs[0],
             name="My Design 1",
             status=Status.objects.get(content_types=self.content_type, name=choices.DeploymentStatusChoices.ACTIVE),
-            version=self.design1.version,
+            version=self.designs[0].version,
         )
         self.deployment.validated_save()
 
@@ -54,40 +54,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             design=self.designs[0],
             name="My Design 2",
             status=Status.objects.get(content_types=self.content_type, name=choices.DeploymentStatusChoices.ACTIVE),
-            version=self.design1.version,
-        )
-        self.deployment_2.validated_save()
-
-        # Design Builder Job
-        defaults = {
-            "grouping": "Designs",
-            "source": "local",
-            "installed": True,
-            "module_name": test_designs.__name__.split(".")[-1],  # pylint: disable=use-maxsplit-arg
-        }
-
-        self.job1 = JobModel(
-            **defaults.copy(),
-            name="Simple Design",
-            job_class_name=test_designs.SimpleDesign.__name__,
-        )
-        self.job1.validated_save()
-
-        self.design1, _ = models.Design.objects.get_or_create(job=self.job1)
-        self.content_type = ContentType.objects.get_for_model(models.Deployment)
-        self.deployment = models.Deployment(
-            design=self.design1,
-            name="My Design 1",
-            status=Status.objects.get(content_types=self.content_type, name=choices.DeploymentStatusChoices.ACTIVE),
-            version=self.design1.version,
-        )
-        self.deployment.validated_save()
-
-        self.deployment_2 = models.Deployment(
-            design=self.design1,
-            name="My Design 2",
-            status=Status.objects.get(content_types=self.content_type, name=choices.DeploymentStatusChoices.ACTIVE),
-            version=self.design1.version,
+            version=self.designs[0].version,
         )
         self.deployment_2.validated_save()
 
@@ -106,21 +73,19 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
             "instance": "my instance",
         }
 
-        self.job_result1 = JobResult(
-            job_model=self.job1,
-            name=self.job1.class_path,
-            job_id=uuid.uuid4(),
-            obj_type=ContentType.objects.get_for_model(JobModel),
+        self.job_result1 = JobResult.objects.create(
+            name=self.jobs[0].name,
+            job_model=self.jobs[0],
         )
         self.job_result1.job_kwargs = {"data": kwargs}
-        self.job_result1.validated_save()
+        self.job_result1.save()
 
         self.change_set1 = models.ChangeSet(deployment=self.deployment, job_result=self.job_result1)
         self.change_set1.validated_save()
 
         self.job_result2 = JobResult.objects.create(
+            name=self.jobs[0].name,
             job_model=self.jobs[0],
-            name=self.jobs[0].class_path,
             task_kwargs=kwargs,
         )
 
@@ -138,37 +103,35 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         change_record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual(0, Secret.objects.count())
 
     def test_decommission_run_with_dependencies(self):
         self.assertEqual(1, Secret.objects.count())
 
-        change_record_1 = models.ChangeRecord.objects.create(
+        record_1 = models.ChangeRecord.objects.create(
             change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
             index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
 
-        change_record_1.validated_save()
+        record_1.validated_save()
 
-        change_record_2 = models.ChangeRecord.objects.create(
+        record_2 = models.ChangeRecord.objects.create(
             change_set=self.change_set2,
             design_object=self.secret,
             full_control=False,
-            changes={
-                "differences": {},
-            },
+            changes={},
             index=self.change_set2._next_index(),  # pylint:disable=protected-access
         )
-        change_record_2.validated_save()
+        record_2.validated_save()
 
         self.assertRaises(
             ValueError,
             self.job.run,
-            {"deployments": [self.deployment]},
+            deployments=[self.deployment],
         )
 
         self.assertEqual(1, Secret.objects.count())
@@ -176,43 +139,43 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
     def test_decommission_run_with_dependencies_but_decommissioned(self):
         self.assertEqual(1, Secret.objects.count())
 
-        change_record_1 = models.ChangeRecord.objects.create(
+        record_1 = models.ChangeRecord.objects.create(
             change_set=self.change_set1,
             design_object=self.secret,
             full_control=True,
             index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
 
-        change_record_1.validated_save()
+        record_1.validated_save()
 
-        change_record_2 = models.ChangeRecord.objects.create(
+        record_2 = models.ChangeRecord.objects.create(
             change_set=self.change_set2,
             design_object=self.secret,
             full_control=False,
-            changes={"differences": {}},
+            changes={},
             index=self.change_set2._next_index(),  # pylint:disable=protected-access
         )
-        change_record_2.validated_save()
+        record_2.validated_save()
 
         self.deployment_2.decommission()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual(0, Secret.objects.count())
 
     def test_basic_decommission_run_without_full_control(self):
         self.assertEqual(1, Secret.objects.count())
 
-        change_record_1 = models.ChangeRecord.objects.create(
+        record_1 = models.ChangeRecord.objects.create(
             change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
-            changes={"differences": {}},
+            changes={},
             index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        change_record_1.validated_save()
+        record_1.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual(1, Secret.objects.count())
 
@@ -220,41 +183,35 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         self.assertEqual(1, Secret.objects.count())
         self.assertEqual("test description", Secret.objects.first().description)
 
-        change_record = models.ChangeRecord.objects.create(
+        record = models.ChangeRecord.objects.create(
             change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"description": "test description"},
-                    "removed": {"description": "previous description"},
-                }
+                "description": {"old_value": "previous description", "new_value": "test description"},
             },
             index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        change_record.validated_save()
+        record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual(1, Secret.objects.count())
         self.assertEqual("previous description", Secret.objects.first().description)
 
     def test_decommission_run_without_full_control_dict_value_with_overlap(self):
-        change_record = models.ChangeRecord.objects.create(
+        record = models.ChangeRecord.objects.create(
             change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"parameters": self.changed_params},
-                    "removed": {"parameters": self.initial_params},
-                }
+                "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
             index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        change_record.validated_save()
+        record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
@@ -262,21 +219,18 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         self.secret.parameters = {**self.initial_params, **self.changed_params}
         self.secret.validated_save()
 
-        change_record = models.ChangeRecord.objects.create(
+        record = models.ChangeRecord.objects.create(
             change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"parameters": self.changed_params},
-                    "removed": {"parameters": self.initial_params},
-                }
+                "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
             index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        change_record.validated_save()
+        record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
@@ -287,26 +241,23 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         new values, and later another `new_value` out of control, and removing the `initial_params`
         works as expected.
         """
-        change_record = models.ChangeRecord.objects.create(
+        record = models.ChangeRecord.objects.create(
             change_set=self.change_set1,
             design_object=self.secret,
             full_control=False,
             changes={
-                "differences": {
-                    "added": {"parameters": self.changed_params},
-                    "removed": {"parameters": self.initial_params},
-                }
+                "parameters": {"old_value": self.initial_params, "new_value": self.changed_params},
             },
             index=self.change_set1._next_index(),  # pylint:disable=protected-access
         )
-        change_record.validated_save()
+        record.validated_save()
 
         # After the initial data, a new key value is added to the dictionary
         new_params = {"key3": "value3"}
         self.secret.parameters = {**self.changed_params, **new_params}
         self.secret.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual({**self.initial_params, **new_params}, Secret.objects.first().parameters)
 
@@ -322,7 +273,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         )
         change_record_1.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment]})
+        self.job.run(deployments=[self.deployment])
 
         self.assertEqual(0, Secret.objects.count())
         models.Deployment.pre_decommission.disconnect(fake_ok)
@@ -341,7 +292,7 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
         self.assertRaises(
             DesignValidationError,
             self.job.run,
-            {"deployments": [self.deployment]},
+            deployments=[self.deployment],
         )
 
         self.assertEqual(1, Secret.objects.count())
@@ -373,6 +324,6 @@ class DecommissionJobTestCase(BaseDesignTest):  # pylint: disable=too-many-insta
 
         self.assertEqual(2, Secret.objects.count())
 
-        self.job.run(data={"deployments": [self.deployment, self.deployment_2]})
+        self.job.run(deployments=[self.deployment, self.deployment_2])
 
         self.assertEqual(0, Secret.objects.count())

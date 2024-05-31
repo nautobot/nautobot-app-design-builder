@@ -48,15 +48,14 @@ class TestDesignJob(DesignTestCase):
 
     def test_simple_design_with_post_implementation(self):
         job = self.get_mocked_job(test_designs.SimpleDesignWithPostImplementation)
-        job.run(data={}, dryrun=False)
+        job.run(dryrun=False, **self.data)
         self.assertTrue(getattr(job, "post_implementation_called"))
 
     def test_simple_design_report(self):
-        """Confirm that a report is generated."""
         job = self.get_mocked_job(test_designs.SimpleDesignReport)
-        job.run(data=self.data, commit=True)
-        self.assertJobSuccess(job)
-        self.assertEqual("Report output", job.report)
+        job.run(data={}, dryrun=False)
+        self.assertIn("simple_report.md", job.saved_files)  # pylint:disable=no-member
+        self.assertEqual("Report output", job.saved_files["simple_report.md"])  # pylint:disable=no-member
 
     def test_multiple_design_files(self):
         job = self.get_mocked_job(test_designs.MultiDesignJob)
@@ -166,7 +165,7 @@ class TestDesignJobIntegration(DesignTestCase):
         self.data["customer_name"] = "customer 1"
 
         job = self.get_mocked_job(test_designs.IntegrationDesign)
-        job.run(data=self.data, commit=True)
+        job.run(dryrun=False, **self.data)
 
         self.assertEqual(VRF.objects.first().name, "64501:1")
         self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
@@ -194,7 +193,7 @@ class TestDesignJobIntegration(DesignTestCase):
         self.data["customer_name"] = "customer 1"
 
         job = self.get_mocked_job(test_designs.IntegrationDesign)
-        job.run(data=self.data, commit=True)
+        job.run(dryrun=False, **self.data)
 
         self.assertEqual(VRF.objects.first().name, "64501:1")
         self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
@@ -219,7 +218,7 @@ class TestDesignJobIntegration(DesignTestCase):
         self.data["customer_name"] = "customer 1"
 
         job = self.get_mocked_job(test_designs.IntegrationDesign)
-        job.run(data=self.data, commit=True)
+        job.run(dryrun=False, **self.data)
 
         self.assertEqual(VRF.objects.first().name, "64501:1")
         Prefix.objects.get(prefix="192.0.2.4/30")
@@ -233,7 +232,7 @@ class TestDesignJobIntegration(DesignTestCase):
         self.data["pe"] = self.device2
         self.data["customer_name"] = "customer 1"
         job = self.get_mocked_job(test_designs.IntegrationDesign)
-        job.run(data=self.data, commit=True)
+        job.run(dryrun=False, **self.data)
 
         # This is a second, and third run with new input to update the deployment
         for _ in range(2):
@@ -243,7 +242,7 @@ class TestDesignJobIntegration(DesignTestCase):
             data["customer_name"] = "customer 2"
 
             job = self.get_mocked_job(test_designs.IntegrationDesign)
-            job.run(data=data, commit=True)
+            job.run(dryrun=False, **self.data)
 
             self.assertEqual(VRF.objects.first().name, "64501:2")
             self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
