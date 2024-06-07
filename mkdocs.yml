@@ -107,6 +107,8 @@ nav:
       - Getting Started: "user/app_getting_started.md"
       - Design Quick Start: "user/design_quickstart.md"
       - Design Development: "user/design_development.md"
+      - Design LifeCycle: "user/design_lifecycle.md"
+      - Design Testing: "user/design_testing.md"
       - Frequently Asked Questions: "user/faq.md"
       - Git-based Config Context: "user/git_config_context.md"
   - Administrator Guide:

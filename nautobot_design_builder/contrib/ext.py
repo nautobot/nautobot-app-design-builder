@@ -117,6 +117,12 @@ class LookupMixin:
             Any: The object matching the query.
         """
         query = self.environment.resolve_values(query)
+        # it's possible an extension actually returned the instance we need, in
+        # that case, no need to look it up. This is especially true for the
+        # !ref extension used as a value.
+        if isinstance(query, ModelInstance):
+            return query
+
         query = self.flatten_query(query)
         try:
             model_class = self.environment.model_class_index[queryset.model]
@@ -143,6 +149,7 @@ class LookupExtension(AttributeExtension, LookupMixin):
         assign it to an attribute of another object.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
             value: A filter describing the object to get. Keys should map to lookup
             parameters equivalent to Django's `filter()` syntax for the given model.
             The special `type` parameter will override the relationship's model class
@@ -230,10 +237,12 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
 
         return query_managers
 
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """Connect a cable termination to another cable termination.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: Dictionary with details about the cable. At a minimum
             the dictionary must have a `to` key which includes a query
             dictionary that will return exactly one object to be added to the
@@ -292,10 +301,28 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                     remote_instance.instance
                 ).id,
                 "!create_or_update:termination_b_id": remote_instance.instance.id,
-                "deferred": True,
             }
         )
-        return ("cable", cable_attributes)
+
+        def connect():
+            existing_cable = dcim.Cable.objects.filter(
+                Q(termination_a_id=model_instance.instance.id) | Q(termination_b_id=remote_instance.instance.id)
+            ).first()
+            if existing_cable:
+                if (
+                    existing_cable.termination_a_id == model_instance.instance.id
+                    and existing_cable.termination_b_id == remote_instance.instance.id
+                ) or (
+                    existing_cable.termination_b_id == model_instance.instance.id
+                    and existing_cable.termination_a_id == remote_instance.instance.id
+                ):
+                    return
+                self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
+            Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name
+            cable = Cable(self.environment, cable_attributes)
+            cable.save()
+
+        model_instance.connect("POST_INSTANCE_SAVE", connect)
 
 
 class NextPrefixExtension(AttributeExtension):
@@ -303,10 +330,12 @@ class NextPrefixExtension(AttributeExtension):
 
     tag = "next_prefix"
 
-    def attribute(self, value: dict, model_instance) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: A filter describing the parent prefix to provision from. If `prefix`
                 is one of the query keys then the network and prefix length will be
                 split and used as query arguments for the underlying Prefix object. The
@@ -329,12 +358,20 @@ class NextPrefixExtension(AttributeExtension):
                     - "10.0.0.0/23"
                     - "10.0.2.0/23"
                     length: 24
+                    identified_by:
+                        tag__name: "some tag name"
                 status__name: "Active"
             ```
         """
         if not isinstance(value, dict):
             raise DesignImplementationError("the next_prefix tag requires a dictionary of arguments")
-
+        identified_by = value.pop("identified_by", None)
+        if identified_by:
+            try:
+                model_instance.instance = model_instance.relationship_manager.get(**identified_by)
+                return None
+            except ObjectDoesNotExist:
+                pass
         length = value.pop("length", None)
         if length is None:
             raise DesignImplementationError("the next_prefix tag requires a prefix length")
@@ -364,7 +401,8 @@ class NextPrefixExtension(AttributeExtension):
             query = Q(**value) & reduce(operator.or_, prefix_q)
 
         prefixes = Prefix.objects.filter(query)
-        return "prefix", self._get_next(prefixes, length)
+        attr = args[0] if args else "prefix"
+        return attr, self._get_next(prefixes, length)
 
     @staticmethod
     def _get_next(prefixes, length) -> str:
@@ -390,7 +428,7 @@ class ChildPrefixExtension(AttributeExtension):
 
     tag = "child_prefix"
 
-    def attribute(self, value: dict, model_instance) -> None:
+    def attribute(self, *args, value: dict = None, model_instance=None) -> None:
         """Provides the `!child_prefix` attribute.
 
         !child_prefix calculates a child prefix using a parent prefix
@@ -399,6 +437,7 @@ class ChildPrefixExtension(AttributeExtension):
         object.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
             value: a dictionary containing the `parent` prefix (string or
             `Prefix` instance) and the `offset` in the form of a CIDR
             string. The length of the child prefix will match the length
@@ -446,8 +485,8 @@ class ChildPrefixExtension(AttributeExtension):
             raise DesignImplementationError("the child_prefix tag requires an offset")
         if not isinstance(offset, str):
             raise DesignImplementationError("offset must be string")
-
-        return "prefix", network_offset(parent, offset)
+        attr = args[0] if args else "prefix"
+        return attr, network_offset(parent, offset)
 
 
 class BGPPeeringExtension(AttributeExtension):
@@ -476,7 +515,7 @@ class BGPPeeringExtension(AttributeExtension):
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
 
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """This attribute tag creates or updates a BGP peering for two endpoints.
 
         !bgp_peering will take an `endpoint_a` and `endpoint_z` argument to correctly
@@ -484,6 +523,8 @@ class BGPPeeringExtension(AttributeExtension):
         Design Builder syntax.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value (dict): dictionary containing the keys `endpoint_a`
             and `endpoint_z`. Both of these keys must be dictionaries
             specifying a way to either lookup or create the appropriate

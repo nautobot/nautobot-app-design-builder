@@ -1,0 +1,29 @@
+{% extends 'generic/object_retrieve.html' %}
+{% load helpers %}
+
+{% block content_left_page %}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>Change Set</strong>
+            </div>
+            <table class="table table-hover panel-body attr-table">
+                <tr>
+                    <td>Job Result</td>
+                    <td>{{ object.job_result|hyperlinked_object }}</td>
+                </tr>
+                <tr>
+                    <td>Design Deployment</td>
+                    <td>{{ object.deployment|hyperlinked_object }}</td>
+                </tr>
+                <tr>
+                    <td>Active</td>
+                    <td>{{ object.active }}</td>
+                </tr>
+            </table>
+        </div>
+{% endblock content_left_page %}
+
+{% block content_full_width_page %}
+{% include 'utilities/obj_table.html' with table=records_table table_template='panel_table.html' heading='Entries' %}
+<div class="row"></div>
+{% endblock content_full_width_page %}

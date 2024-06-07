@@ -1,0 +1,34 @@
+{% extends 'generic/object_retrieve.html' %}
+{% load helpers %}
+
+
+{% block content_left_page %}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>Change Record</strong>
+            </div>
+            <table class="table table-hover panel-body attr-table">
+                <tr>
+                    <td>Design Object</td>
+                    <td>{{ object.design_object|hyperlinked_object  }}</td>
+                </tr>
+                <tr>
+                    <td>Change Set</td>
+                    <td>{{ object.change_set|hyperlinked_object  }}</td>
+                </tr>
+                <tr>
+                    <td>Full Control</td>
+                    <td>{{ object.full_control|render_boolean}}</td>
+                </tr>
+                <tr>
+                    <td>Changes</td>
+                    <td>{{ object.changes|render_json|linebreaks }}</td>
+                </tr>
+                <tr>
+                    <td>Last Updated</td>
+                    <td>{{ object.last_updated|placeholder }}</td>
+                </tr>
+
+            </table>
+        </div>
+{% endblock content_left_page %}

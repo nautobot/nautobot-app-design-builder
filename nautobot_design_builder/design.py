@@ -1,6 +1,7 @@
 """Provides ORM interaction for design builder."""
 
 from types import FunctionType
+from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
@@ -14,10 +15,12 @@ from nautobot.extras.models import JobResult, Relationship
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
-from nautobot_design_builder.logging import LoggingMixin
+from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import CustomRelationshipField, field_factory
+from nautobot_design_builder import models
 
 
+# TODO: Refactor this code into the Journal model
 class Journal:
     """Keep track of the objects created or updated during the course of a design's implementation.
 
@@ -40,11 +43,12 @@ class Journal:
     will only be in each of those indices at most once.
     """
 
-    def __init__(self):
+    def __init__(self, change_set: models.ChangeSet = None):
         """Constructor for Journal object."""
         self.index = set()
-        self.created = {}
-        self.updated = {}
+        self.created = defaultdict(set)
+        self.updated = defaultdict(set)
+        self.change_set = change_set
 
     def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
@@ -54,6 +58,9 @@ class Journal:
         """
         instance = model.instance
         model_type = instance.__class__
+        if self.change_set:
+            self.change_set.log(model)
+
         if instance.pk not in self.index:
             self.index.add(instance.pk)
 
@@ -145,6 +152,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
 
         self.save_args = kwargs.get("save_args", {})
 
+        self.changes = {}
+
         # The following attributes are dunder attributes
         # because they should only be set in the @attributes.setter
         # method
@@ -229,8 +238,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         while attribute_names:
             key = attribute_names.pop(0)
             self._attributes[key] = self.environment.resolve_values(self._attributes[key])
-            if key == "deferred":
-                self._deferred = self._attributes.pop(key)
+            if hasattr(self, key):
+                setattr(self, f"_{key}", self._attributes.pop(key))
             elif key.startswith("!"):
                 value = self._attributes.pop(key)
                 args = key.lstrip("!").split(":")
@@ -439,6 +448,7 @@ class ModelInstance:
 
         try:
             self._load_instance()
+            setattr(self.instance, "__design_builder_instance", self)
         except ObjectDoesNotExist as ex:
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
@@ -514,7 +524,12 @@ class ModelInstance:
     def _send(self, signal: str):
         self.metadata.send(signal)
 
-    def _load_instance(self):
+    def _load_instance(self):  # pylint: disable=too-many-branches
+        # Short circuit if the instance was loaded earlier in
+        # the initialization process
+        if self.instance is not None:
+            return
+
         query_filter = self.metadata.query_filter
         field_values = self.metadata.query_filter_values
         if self.metadata.action == ModelMetadata.GET:
@@ -561,6 +576,7 @@ class ModelInstance:
         elif self.metadata.action != ModelMetadata.CREATE:
             raise errors.DesignImplementationError(f"Unknown database action {self.metadata.action}", self.model_class)
         try:
+            self._initial_state = {}
             self.instance = self.model_class(**self.metadata.kwargs)
             self.metadata.created = True
         except TypeError as ex:
@@ -648,6 +664,7 @@ class Environment(LoggingMixin):
 
     model_map: Dict[str, Type[Model]]
     model_class_index: Dict[Type, "ModelInstance"]
+    deployment: models.Deployment
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder is initialized."""
@@ -663,7 +680,9 @@ class Environment(LoggingMixin):
                 cls.model_class_index[model_class] = cls.model_map[plural_name]
         return object.__new__(cls)
 
-    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None):
+    def __init__(
+        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, change_set: models.ChangeSet = None
+    ):
         """Create a new build environment for implementing designs.
 
         Args:
@@ -678,6 +697,7 @@ class Environment(LoggingMixin):
                 of `ext.Extension`.
         """
         self.job_result = job_result
+        self.logger = get_logger(__name__, self.job_result)
 
         self.extensions = {
             "extensions": [],
@@ -702,7 +722,16 @@ class Environment(LoggingMixin):
 
             self.extensions["extensions"].append(extn)
 
-        self.journal = Journal()
+        self.journal = Journal(change_set=change_set)
+        if change_set:
+            self.deployment = change_set.deployment
+
+    def decommission_object(self, object_id, object_name):
+        """This method decommissions an specific object_id from the design instance."""
+        self.journal.change_set.deployment.decommission(object_id, local_logger=self.logger)
+        self.log_success(
+            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.change_set.deployment}."
+        )
 
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:
         """Look up an extension based on its tag name and return an instance of that Extension type.
@@ -723,12 +752,12 @@ class Environment(LoggingMixin):
         return extn["object"]
 
     def implement_design(self, design: Dict, commit: bool = False):
-        """Iterates through items in the design and create them.
+        """Iterates through items in the design and creates them.
 
-        If either commit=False (default) or an exception is raised, then any extensions
-        with rollback functionality are called to revert their state. If commit=True
-        and no exceptions are raised then the extensions with commit functionality are
-        called to finalize changes.
+        This process is wrapped in a transaction. If either commit=False (default) or
+        an exception is raised, then the transaction is rolled back and no database
+        changes will be present. If commit=True and no exceptions are raised then the
+        database state should represent the changes provided in the design.
 
         Args:
             design (Dict): An iterable mapping of design changes.
@@ -744,8 +773,9 @@ class Environment(LoggingMixin):
             for key, value in design.items():
                 if key in self.model_map and value:
                     self._create_objects(self.model_map[key], value)
-                else:
+                elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
+
             # TODO: The way this works now the commit happens on a per-design file
             #       basis. If a design job has multiple design files and the first
             #       one completes, but the second one fails, the first will still
@@ -817,8 +847,8 @@ class Environment(LoggingMixin):
             model = model_class(self, objects)
             model.save()
         elif isinstance(objects, list):
-            for model_attributes in objects:
-                model = model_class(self, model_attributes)
+            for model_instance in objects:
+                model = model_class(self, model_instance)
                 model.save()
 
     def commit(self):

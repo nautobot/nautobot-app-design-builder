@@ -1,18 +1,19 @@
 """Unit tests for nautobot_design_builder plugin."""
 
-import logging
 import shutil
 import tempfile
 from os import path
 from typing import Type
 from unittest import mock
 from unittest.mock import PropertyMock, patch
+import uuid
 
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
+from nautobot.extras.utils import refresh_job_model_from_job_class
+from nautobot.extras.models import Job, JobResult
 from nautobot_design_builder.design_job import DesignJob
-
-logging.disable(logging.CRITICAL)
 
 
 class DesignTestCase(TestCase):
@@ -21,6 +22,7 @@ class DesignTestCase(TestCase):
     def setUp(self):
         """Setup a mock git repo to watch for config context creation."""
         super().setUp()
+        self.data = {}
         self.logged_messages = []
         self.git_patcher = patch("nautobot_design_builder.ext.GitRepo")
         self.git_mock = self.git_patcher.start()
@@ -32,8 +34,14 @@ class DesignTestCase(TestCase):
 
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
+        job_model, _ = refresh_job_model_from_job_class(Job, "plugins", design_class)
         job = design_class()
-        job.job_result = mock.Mock()
+        job.job_result = JobResult.objects.create(
+            name="Fake Job Result",
+            obj_type=ContentType.objects.get_for_model(job_model),
+            job_model=job_model,
+            job_id=uuid.uuid4(),
+        )
         job.save_design_file = lambda filename, content: None
         job.request = mock.Mock()
         self.logged_messages = []
@@ -48,6 +56,7 @@ class DesignTestCase(TestCase):
                 }
             )
 
+        job.job_result.log = mock.Mock()
         job.job_result.log.side_effect = record_log
         return job
 

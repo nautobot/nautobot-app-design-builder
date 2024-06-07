@@ -652,6 +652,7 @@ def unittest(
         command += " --verbosity 2"
 
     run_command(context, command)
+    run_command(context, "coverage lcov --include 'nautobot_design_builder/*' -o lcov.info")
 
 
 @task

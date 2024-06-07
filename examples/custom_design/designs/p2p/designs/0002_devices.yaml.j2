@@ -1,0 +1,33 @@
+---
+
+
+
+{% macro device_edit(device, other_device, offset) -%}
+  - "!update:name": "{{ device.name }}"
+    local_context_data: {
+      "mpls_router": true,
+    }
+    interfaces:
+      - "!next_interface": {}
+        status__name: "Planned"
+        type: "other"
+        {% if offset == 2 %}
+        "!connect_cable":
+          status__name: "Planned"
+          to: "!ref:other_interface"
+        {% else %}
+        "!ref": "other_interface"
+        {% endif %}
+        tags:
+          - {"!get:name": "VRF Interface"}
+        ip_addresses:
+        - "!child_prefix:address":
+            parent: "!ref:p2p_prefix"
+            offset: "0.0.0.{{ offset }}/30"
+          status__name: "Reserved"
+
+{% endmacro %}
+
+devices:
+  {{ device_edit(device_b, device_a, 1) }}
+  {{ device_edit(device_a, device_b, 2) }}

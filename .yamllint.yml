@@ -10,4 +10,5 @@ rules:
     quote-type: "double"
 ignore: |
   .venv/
+  .vscode/
   compose.yaml

@@ -1,5 +1,6 @@
 """Main design builder app module, contains DesignJob and base methods and functions."""
 
+# pylint: disable=import-outside-toplevel
 import functools
 import importlib
 import inspect
@@ -14,12 +15,12 @@ from packaging.version import Version
 from packaging.specifiers import Specifier
 import yaml
 
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model
 from django.conf import settings
 import nautobot
 from nautobot.extras.models import GitRepository
 
-
-from nautobot_design_builder import metadata
 
 if TYPE_CHECKING:
     from nautobot_design_builder.design_job import DesignJob
@@ -324,12 +325,60 @@ def get_design_class(path: str, module_name: str, class_name: str) -> Type["Desi
     return getattr(module, class_name)
 
 
+# TODO: this is only available in Nautobot 2.x, recreating it here to reuse for Nautobot 1.x
+def get_changes_for_model(model):
+    """Return a queryset of ObjectChanges for a model or instance.
+
+    The queryset will be filtered by the model class. If an instance is provided,
+    the queryset will also be filtered by the instance id.
+    """
+    from nautobot.extras.models import ObjectChange  # prevent circular import
+
+    if isinstance(model, Model):
+        return ObjectChange.objects.filter(
+            changed_object_type=ContentType.objects.get_for_model(model._meta.model),
+            changed_object_id=model.pk,
+        )
+    if issubclass(model, Model):
+        return ObjectChange.objects.filter(changed_object_type=ContentType.objects.get_for_model(model._meta.model))
+    raise TypeError(f"{model!r} is not a Django Model class or instance")
+
+
+def get_created_and_last_updated_usernames_for_model(instance):
+    """Get the user who created and last updated an instance.
+
+    Args:
+        instance (Model): A model class instance
+
+    Returns:
+        created_by (str): Username of the user that created the instance
+        last_updated_by (str): Username of the user that last modified the instance
+    """
+    from nautobot.extras.choices import ObjectChangeActionChoices
+    from nautobot.extras.models import ObjectChange
+
+    object_records = get_changes_for_model(instance)
+    created_by = None
+    last_updated_by = None
+    try:
+        created_by_record = object_records.get(action=ObjectChangeActionChoices.ACTION_CREATE)
+        created_by = created_by_record.user_name
+    except ObjectChange.DoesNotExist:
+        pass
+
+    last_updated_by_record = object_records.order_by("time").last()
+    if last_updated_by_record:
+        last_updated_by = last_updated_by_record.user_name
+
+    return created_by, last_updated_by
+
+
 @functools.total_ordering
 class _NautobotVersion:
     """Utility for comparing Nautobot versions."""
 
     def __init__(self):
-        self.version = Version(metadata.version(nautobot.__name__))
+        self.version = Version(importlib.metadata.version(nautobot.__name__))
         # This includes alpha/beta as version numbers
         self.version = Version(self.version.base_version)
 
