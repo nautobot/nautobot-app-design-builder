@@ -26,6 +26,17 @@ In the next figure, the Designs table view exposes the previous information. Not
 
 From the `Design`, the user can manage the associated `Job` configuration (yellow edit icon), check the docs (doc icon), and trigger its execution (run blue icon).
 
+In order to select the new **mode** (by default, the classic/ad hoc is selected), you have to set it in the `Meta` class of the `DesignJob`:
+
+```py
+from nautobot_design_builder.choices import DesignModeChoices
+
+class ExampleDesign(DesignJob):
+    ...
+    class Meta:
+        design_mode = DesignModeChoices.DEPLOYMENT
+```
+
 ## Design Deployment or `DesignDeployment`
 
 Once a design (with the `DEPLOYMENT` mode) is deployed in Nautobot, a Design Deployment is created with the report of the changes implemented (i.e. `ChangeSets`), and with actions to update or decommission it (see next subsections).
