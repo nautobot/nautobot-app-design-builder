@@ -9,6 +9,7 @@ from nautobot.dcim.models import Manufacturer, DeviceType, Device, Site, DeviceR
 from nautobot.ipam.models import VRF, Prefix, IPAddress
 
 from nautobot.extras.models import Status
+from nautobot_design_builder.models import Deployment
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
@@ -26,6 +27,14 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.MultiDesignJobWithError)
         job.run(data=self.data, commit=True)
         self.assertEqual(0, Manufacturer.objects.all().count())
+
+    def test_simple_design_rollback_deployment_mode(self):
+        """Confirm that database changes are rolled back when an exception is raised and no Design Deployment is created."""
+        self.assertEqual(0, Manufacturer.objects.all().count())
+        job = self.get_mocked_job(test_designs.DesignJobModeDeploymentWithError)
+        job.run(data={**self.data, **{"deployment_name": "whatever"}}, commit=True)
+        self.assertEqual(0, Manufacturer.objects.all().count())
+        self.assertEqual(0, Deployment.objects.all().count())
 
     def test_simple_design_report(self):
         """Confirm that a report is generated."""
