@@ -67,8 +67,19 @@ class MultiDesignJob(DesignJob):
         ]
 
 
-class MultiDesignJobWithError(DesignJob):
+class DesignJobModeDeploymentWithError(DesignJob):
     """Design job that includes an error (for unit testing)."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "File Design with Error"
+        design_files = [
+            "templates/simple_design_with_error.yaml.j2",
+        ]
+        design_mode = DesignModeChoices.DEPLOYMENT
+
+
+class MultiDesignJobWithError(DesignJob):
+    """Multi Design job that includes an error (for unit testing)."""
 
     class Meta:  # pylint: disable=too-few-public-methods
         name = "Multi File Design with Error"

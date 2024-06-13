@@ -269,6 +269,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         This version of `run` is wrapped in a transaction and will roll back database changes
         on error. In general, this method should only be called by the `run` method.
         """
+        sid = transaction.savepoint()
+
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
 
@@ -302,8 +304,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         else:
             self.log_failure(message="No design template specified for design.")
             raise DesignImplementationError("No design template specified for design.")
-
-        sid = transaction.savepoint()
 
         try:
             for design_file in design_files:
