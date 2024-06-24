@@ -14,7 +14,7 @@ For the remainder of this tutorial we will focus solely on the Design Job, Desig
 
 ## Design Components
 
-Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. Since, fundamentally, all designs are Nautobot Jobs, everything must be in a top level `jobs` python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `jobs` module or be imported to it. The following directory layout is from the [demo designs repository](hhttps://github.com/nautobot/demo-designs):
+Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. Since, fundamentally, all designs are Nautobot Jobs, everything must be in a top level `jobs` python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `jobs` module or be imported to it. The following directory layout is from the [demo designs repository](https://github.com/nautobot/demo-designs):
 
 ``` bash
 jobs
