@@ -13,7 +13,7 @@ on: # yamllint disable-line rule:truthy rule:comments
   pull_request: ~
 
 env:
-  PLUGIN_NAME: "nautobot-app-design-builder"
+  APP_NAME: "nautobot-app-design-builder"
 
 jobs:
   black:
@@ -247,7 +247,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     if: "startsWith(github.ref, 'refs/tags/v')"
     env:
-      INVOKE_{{ cookiecutter.app_name.upper() }}_LOCAL: "True"
+      INVOKE_NAUTOBOT_DESIGN_BUILDER_LOCAL: "True"
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
