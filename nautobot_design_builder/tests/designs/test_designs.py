@@ -194,6 +194,7 @@ register_jobs(
     SimpleDesign3,
     SimpleDesignReport,
     MultiDesignJob,
+    DesignJobModeDeploymentWithError,
     MultiDesignJobWithError,
     DesignJobWithExtensions,
     DesignWithRefError,

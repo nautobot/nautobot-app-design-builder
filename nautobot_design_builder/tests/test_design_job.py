@@ -56,7 +56,7 @@ class TestDesignJob(DesignTestCase):
         """Confirm that database changes are rolled back when an exception is raised and no Design Deployment is created."""
         self.assertEqual(0, Manufacturer.objects.all().count())
         job = self.get_mocked_job(test_designs.DesignJobModeDeploymentWithError)
-        job.run(data={**self.data, **{"deployment_name": "whatever"}}, dryrun=False)
+        self.assertRaises(DesignImplementationError, job.run, dryrun=False, **self.data)
         self.assertEqual(0, Manufacturer.objects.all().count())
         self.assertEqual(0, Deployment.objects.all().count())
 
