@@ -7,9 +7,7 @@ from os import path
 from typing import Type
 from unittest import mock
 from unittest.mock import PropertyMock, patch
-import uuid
 
-from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from nautobot.extras.utils import refresh_job_model_from_job_class
