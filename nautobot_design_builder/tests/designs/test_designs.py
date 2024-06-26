@@ -168,7 +168,7 @@ class IntegrationDesign(DesignJob):
         model=Device,
     )
 
-    class Meta:
+    class Meta:  # pylint: disable=too-few-public-methods
         """Metadata needed to implement the P2P design."""
 
         design_mode = DesignModeChoices.DEPLOYMENT
