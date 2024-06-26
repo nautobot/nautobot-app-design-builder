@@ -1,7 +1,4 @@
 ---
-
-
-
 {% macro device_edit(device, other_device, offset) -%}
   - "!update:name": "{{ device.name }}"
     local_context_data: {
@@ -20,16 +17,15 @@
         {% endif %}
         tags:
           - {"!get:name": "VRF Interface"}
-        ip_addresses:
-          ip_address_assignments:
-            - ip_address:
-                "!child_prefix:address":
-                  parent: "!ref:l3vpn_p2p_prefix"
-                  offset: "0.0.0.{{ offset }}/30"
-                parent: "!ref:l3vpn_p2p_prefix"
-                status__name: "Reserved"
+        ip_address_assignments:
+          - ip_address:
+              "!child_prefix:address":
+                parent: "!ref:p2p_prefix"
+                offset: "0.0.0.{{ offset }}/30"
+              parent: "!ref:p2p_prefix"
+              status__name: "Reserved"
 {% endmacro %}
 
 devices:
-  {{ device_edit(ce, pe, 1) }}
-  {{ device_edit(pe, ce, 2) }}
+  {{ device_edit(device_b, device_a, 1) }}
+  {{ device_edit(device_a, device_b, 2) }}

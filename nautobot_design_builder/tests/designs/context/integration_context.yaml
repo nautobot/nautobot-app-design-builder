@@ -1,4 +1,4 @@
 ---
-l3vpn_prefix: "192.0.2.0/24"
-l3vpn_prefix_length: 30
-l3vpn_asn: 64501
+p2p_prefix: "192.0.2.0/24"
+p2p_prefix_length: 30
+p2p_asn: 64501

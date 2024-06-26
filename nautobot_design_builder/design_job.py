@@ -312,6 +312,12 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if previous_change_set:
                 deleted_object_ids = previous_change_set - change_set
                 if deleted_object_ids:
+                    change_sets = change_set.deployment.change_sets.filter(active=True).order_by("-last_updated")
+                    records = models.ChangeRecord.objects.filter(
+                        change_set_id__in=change_sets, _design_object_id__in=deleted_object_ids
+                    )
+                    for record in records:
+                        print("Deleting", type(record.design_object).__name__, record.design_object)
                     self.log_info(f"Decommissioning {deleted_object_ids}")
                     change_set.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
 

@@ -445,7 +445,7 @@ class ChildPrefixExtension(AttributeExtension):
 
     tag = "child_prefix"
 
-    def attribute(self, *args, value: dict = None, model_instance=None) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: "ModelInstance" = None) -> None:
         """Provides the `!child_prefix` attribute.
 
         !child_prefix calculates a child prefix using a parent prefix
@@ -512,8 +512,10 @@ class ChildPrefixExtension(AttributeExtension):
         attr = args[0] if args else "prefix"
 
         if action:
-            attr = f"!{action}:{attr}"
-        return attr, network_offset(parent, offset)
+            model_instance.metadata.action = action
+            model_instance.metadata.filter[attr] = str(network_offset(parent, offset))
+            return None
+        return attr, str(network_offset(parent, offset))
 
 
 class BGPPeeringExtension(AttributeExtension):

@@ -311,20 +311,27 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
                 attributes.add(attribute)
             through_fields = set(field.name for field in self.through._meta.fields)
             if self.auto_through is False and attributes.issubset(through_fields):
-                return self.through
-        return self.related_model
+                return self.through, attributes.intersection(through_fields)
+        return self.related_model, set()
 
     @debug_set
     def __set__(self, obj: "ModelInstance", values):  # noqa:D105
         def setter():
             items = []
             for value in values:
-                related_model = self._get_related_model(value)
-                value = self._get_instance(obj, value, getattr(obj.instance, self.field_name), related_model)
+                related_model, through_fields = self._get_related_model(value)
+                relationship_manager = getattr(obj.instance, self.field_name)
+                if through_fields:
+                    value[f"!create_or_update:{self.link_field}_id"] = str(obj.instance.id)
+                    relationship_manager = self.through.objects
+
+                for field in through_fields:
+                    value[f"!create_or_update:{field}"] = value.pop(field)
+                value = self._get_instance(obj, value, relationship_manager, related_model)
                 if related_model is not self.through:
                     items.append(value.instance)
-                else:
-                    setattr(value.instance, self.link_field, obj.instance)
+                # else:
+                #     setattr(value.instance, self.link_field, obj.instance)
                 if value.metadata.created:
                     value.save()
             if items:

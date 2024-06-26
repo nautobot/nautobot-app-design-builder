@@ -152,26 +152,27 @@ class NextInterfaceExtension(AttributeExtension):
 
 
 class IntegrationDesign(DesignJob):
-    """Create a l3vpn connection."""
+    """Create a p2p connection."""
 
     customer_name = StringVar()
 
-    pe = ObjectVar(
-        label="PE device",
-        description="PE device for l3vpn",
+    device_a = ObjectVar(
+        label="Device A",
+        description="Device A for P2P connection",
         model=Device,
     )
 
-    ce = ObjectVar(
-        label="CE device",
-        description="CE device for l3vpn",
+    device_b = ObjectVar(
+        label="Device B",
+        description="Device B for P2P connection",
         model=Device,
     )
 
-    class Meta:  # pylint:disable=too-few-public-methods
-        """Metadata needed to implement the l3vpn design."""
+    class Meta:
+        """Metadata needed to implement the P2P design."""
 
-        name = "L3VPN Design"
+        design_mode = DesignModeChoices.DEPLOYMENT
+        name = "P2P Connection Design"
         commit_default = False
         design_files = [
             "templates/integration_design_ipam.yaml.j2",
@@ -184,7 +185,8 @@ class IntegrationDesign(DesignJob):
             NextInterfaceExtension,
             ext.ChildPrefixExtension,
         ]
-        design_mode = DesignModeChoices.DEPLOYMENT
+        version = "0.5.1"
+        description = "Connect via a direct cable two network devices using a P2P network."
 
 
 name = "Test Designs"  # pylint:disable=invalid-name
