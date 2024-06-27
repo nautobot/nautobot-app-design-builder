@@ -1,7 +1,6 @@
 """Unit tests related to template extensions."""
 
 import sys
-
 from django.test import TestCase
 
 from nautobot_design_builder import ext
@@ -14,7 +13,7 @@ class Extension(ext.AttributeExtension):
 
     tag = "custom_extension"
 
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance=None) -> None:
         pass
 
 
@@ -69,7 +68,7 @@ class TestExtensionCommitRollback(TestCase):
 
             tag = "extension"
 
-            def attribute(self, value, model_instance) -> None:
+            def attribute(self, *args, value=None, model_instance=None) -> None:
                 pass
 
             def commit(self) -> None:
@@ -91,7 +90,7 @@ class TestExtensionCommitRollback(TestCase):
         design = {
             "manufacturers": [
                 {
-                    "name": "Test Manufacturer",
+                    "!create_or_update:name": "Test Manufacturer",
                     "!extension": True,
                 }
             ]
@@ -105,7 +104,7 @@ class TestExtensionCommitRollback(TestCase):
             "manufacturers": [
                 {
                     "!extension": True,
-                    "name": "!ref:noref",
+                    "!create_or_update:name": "!ref:noref",
                 }
             ]
         }
@@ -117,7 +116,7 @@ class TestExtensionCommitRollback(TestCase):
         design = {
             "manufacturers": [
                 {
-                    "name": "Test Manufacturer",
+                    "!create_or_update:name": "Test Manufacturer",
                     "!extension": True,
                 }
             ]

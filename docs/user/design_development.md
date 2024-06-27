@@ -16,7 +16,7 @@ For the remainder of this tutorial we will focus solely on the Design Job, Desig
 
 Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. Since, fundamentally, all designs are Nautobot Jobs, everything must be in a top level `jobs` python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `jobs` module or be imported to it. The following directory layout is from the [demo designs repository](https://github.com/nautobot/demo-designs):
 
-``` bash
+```bash
 jobs
 ├── __init__.py
 ├── core_site
@@ -78,7 +78,7 @@ Primary Purpose:
 - Provide the user inputs
 - Define the Design Context and Design Templates
 
-As previously stated, the entry point for all designs is the `DesignJob` class.  New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
+As previously stated, the entry point for all designs is the `DesignJob` class. New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
 --8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/initial_data/__init__.py"
@@ -114,6 +114,18 @@ The value of the `context_class` metadata attribute should be any Python class t
 
 This attribute is optional. A report is a Jinja template that is rendered once the design has been implemented. Like `design_file` the design builder will look for this template relative to the filename that defines the design job. This is helpful to generate a custom view of the data that was built during the design build.
 
+### `version`
+
+It's an optional string attribute that is used to define the versioning reference of a design job. This will enable in the future the versioning lifecycle of design deployments. For example, one a design evolves from one version to another, the design deployment will be able to accommodate the new changes.
+
+### `description`
+
+This optional attribute that is a string that provides a high-level overview of the intend of the design job. This description is displayed int the design detail view.
+
+### `docs`
+
+This attribute is also displayed on the design detail view. The `docs` attribute can utilize markdown format and should provide more detailed information than the description. This should help the users of the `Design` to understand the goal of the design and the impact of the input data.
+
 ## Design Context
 
 Primary Purpose:
@@ -140,6 +152,8 @@ Now let's inspect the context YAML file:
 ```
 
 This context YAML creates two variables that will be added to the design context: `core_1_loopback` and `core_2_loopback`. The values of both of these variables are computed using a jinja template. The template uses a jinja filter from the `netutils` project to compute the address using the user-supplied `site_prefix`. When the design context is created, the variables will be added to the context. The values (from the jinja template) are rendered when the variables are looked up during the design template rendering process.
+
+> Note: The `Context` class also contains a property to retrieve the `Tag` associated with the design and attached to all the objects with full_control. With this tag you can check for data in objects already created when the design is updated, for example: `.filter(tags__in=[self.design_instance_tag]`.
 
 ### Context Validations
 
@@ -178,8 +192,8 @@ Double underscores between a `field` and a `relatedfield` cause design builder t
 
 ```yaml
 devices:
-- name: "switch1"
-  platform__name: "Arista EOS"
+  - name: "switch1"
+    platform__name: "Arista EOS"
 ```
 
 This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`. The value for query fields can be a scalar or a dictionary. In the case above (`platform__name`) the scalar value `"Arista EOS"` expands the the equivalent ORM query: `Platform.objects.get(name="Arista EOS")` with the returned object being assigned to the `platform` attribute of the device.
@@ -188,10 +202,10 @@ If a query field's value is a dictionary, then more complex lookups can be perfo
 
 ```yaml
 devices:
-- name: "switch1"
-  platform: 
-    name: "Arista EOS"
-    napalm_driver: "eos"
+  - name: "switch1"
+    platform:
+      name: "Arista EOS"
+      napalm_driver: "eos"
 ```
 
 The above query expands to the following ORM code: `Platform.objects.get(name="Arista EOS", napalm_driver="eos")` with the returned value being assigned to the `platform` attribute of the device.
@@ -255,7 +269,7 @@ When used as a YAML mapping key, `!ref` will store a reference to the current Na
 ```jinja
 # Creating a reference to spine interfaces.
 #
-# In the rendered YAML this ends up being something like 
+# In the rendered YAML this ends up being something like
 # "spine_switch1:Ethernet1", "spine_switch1:Ethernet2", etc
 #
 #
@@ -275,7 +289,7 @@ When used as the value for a key `!ref:<reference_name>` will return the the pre
 
 ```jinja
 # Looking up a reference to previously created spine interfaces.
-# 
+#
 # In the rendered YAML "!ref:{{ spine.name }}:{{ interface }}" will become something like
 # "!ref:spine_switch1:Ethernet1", "!ref:spine_switch1:Ethernet2", etc
 # ObjectCreator will be able to assign the cable termination A side to the previously created objects.
@@ -336,3 +350,4 @@ class DesignJobWithExtensions(DesignJob):
         design_file = "templates/simple_design.yaml.j2"
         extensions = [ext.BGPPeeringExtension]
 ```
+

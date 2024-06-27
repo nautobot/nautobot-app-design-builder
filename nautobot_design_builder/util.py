@@ -1,5 +1,6 @@
 """Main design builder app module, contains DesignJob and base methods and functions."""
 
+# pylint: disable=import-outside-toplevel
 import functools
 import importlib
 import inspect
@@ -18,10 +19,8 @@ from django.conf import settings
 
 import nautobot
 
-from nautobot.apps.jobs import register_jobs
+from nautobot.apps.utils import get_changes_for_model
 from nautobot.extras.models import GitRepository
-
-from nautobot_design_builder import metadata
 
 if TYPE_CHECKING:
     from nautobot_design_builder.design_job import DesignJob
@@ -45,6 +44,8 @@ def load_design_yaml(cls, resource) -> "List | Dict":
     """Loads data from a YAML design file.
 
     Args:
+        cls (type): The class to use to determine the path to find the resource.
+
         resource (str): name of the YAML design file without the path
 
     Returns:
@@ -57,6 +58,8 @@ def load_design_file(cls, resource) -> str:
     """Reads data from a file and returns it as string.
 
     Args:
+        cls (type): The class to use to determine the path to find the resource.
+
         resource (str): name of the YAML design file without the path
 
     Returns:
@@ -142,11 +145,21 @@ def designs_in_directory(
     reload_modules=False,
 ) -> Iterator[Tuple[str, Type["DesignJob"]]]:
     """
-    Walk the available Python modules in the given directory, and for each module, walk its DesignJob class members.
+    Find all the designs in a directory.
+
+    Walk the available Python modules in the given directory, and for each module,
+    walk its DesignJob class members.
 
     Args:
         path (str): Directory to import modules from, outside of sys.path
+
+        package_name (str): The package to which discovered modules will belong.
+
+        local_logger (logging.Logger): The logging instance to use. This is especially useful when a
+            logger includes a JobResult.
+
         module_name (str): Specific module name to select; if unspecified, all modules will be inspected
+
         reload_modules (bool): Whether to force reloading of modules even if previously loaded into Python.
 
     Yields:
@@ -291,6 +304,8 @@ def load_jobs(module_name=None):
             return
 
     frame.f_globals["jobs"] = []
+    from nautobot.apps.jobs import register_jobs
+
     for class_name, cls in designs.items():
         new_cls = type(class_name, (cls,), {})
         new_cls.__module__ = frame.f_globals["__name__"]
@@ -320,12 +335,41 @@ def get_design_class(path: str, module_name: str, class_name: str) -> Type["Desi
     return getattr(module, class_name)
 
 
+def get_created_and_last_updated_usernames_for_model(instance):
+    """Get the user who created and last updated an instance.
+
+    Args:
+        instance (Model): A model class instance
+
+    Returns:
+        created_by (str): Username of the user that created the instance
+        last_updated_by (str): Username of the user that last modified the instance
+    """
+    from nautobot.extras.choices import ObjectChangeActionChoices
+    from nautobot.extras.models import ObjectChange
+
+    object_change_records = get_changes_for_model(instance)
+    created_by = None
+    last_updated_by = None
+    try:
+        created_by_record = object_change_records.get(action=ObjectChangeActionChoices.ACTION_CREATE)
+        created_by = created_by_record.user_name
+    except ObjectChange.DoesNotExist:
+        pass
+
+    last_updated_by_record = object_change_records.order_by("time").last()
+    if last_updated_by_record:
+        last_updated_by = last_updated_by_record.user_name
+
+    return created_by, last_updated_by
+
+
 @functools.total_ordering
 class _NautobotVersion:
     """Utility for comparing Nautobot versions."""
 
     def __init__(self):
-        self.version = Version(metadata.version(nautobot.__name__))
+        self.version = Version(importlib.metadata.version(nautobot.__name__))
         # This includes alpha/beta as version numbers
         self.version = Version(self.version.base_version)
 

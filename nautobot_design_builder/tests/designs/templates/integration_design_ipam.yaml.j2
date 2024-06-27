@@ -1,0 +1,32 @@
+---
+
+tags:
+    - "!create_or_update:name": "{{ vrf_prefix_tag_name() }}"
+      "content_types":
+        - "!get:app_label": "ipam"
+          "!get:model": "prefix"
+    - "!create_or_update:name": "VRF Interface"
+      "content_types":
+        - "!get:app_label": "dcim"
+          "!get:model": "interface"
+
+prefixes:
+    - "!create_or_update:prefix": "{{ p2p_prefix }}"
+      type: "container"
+      status__name: "Active"
+
+vrfs:
+  - "!create_or_update:rd": "{{ p2p_asn }}:{{ get_customer_id(customer_name, p2p_asn) }}"
+    "name": "{{ customer_name }}"
+    description: "VRF for customer {{ customer_name }}"
+    prefixes:
+      - "prefix":
+          "!next_prefix":
+            identified_by:
+              tags__name: "{{ vrf_prefix_tag_name() }}"
+            prefix: "{{ p2p_prefix }}"
+            length: 30
+          status__name: "Reserved"
+          tags:
+            - {"!get:name": "{{ vrf_prefix_tag_name() }}"}
+          "!ref": "p2p_prefix"

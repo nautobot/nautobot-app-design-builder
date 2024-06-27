@@ -23,8 +23,16 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     required_settings = []
     min_version = "1.6.0"
     max_version = "2.9999"
-    default_settings = {}
+    default_settings = {
+        "protected_models": [],
+        "protected_superuser_bypass": True,
+    }
     caching_config = {}
+
+    def ready(self):
+        """Callback after design builder is loaded."""
+        super().ready()
+        from . import signals  # noqa:F401 pylint:disable=import-outside-toplevel,unused-import,cyclic-import
 
     # pylint: disable=no-self-argument
     @classproperty

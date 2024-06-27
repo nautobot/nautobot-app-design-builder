@@ -7,19 +7,25 @@ from os import path
 from typing import Dict
 import yaml
 
-from django.db import transaction
 from django.core.files.base import ContentFile
+from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
+from django.utils import timezone
 
 from jinja2 import TemplateError
 
-from nautobot.apps.jobs import Job, DryRunVar
+from nautobot.extras.models import Status
+from nautobot.apps.jobs import Job, DryRunVar, StringVar
 from nautobot.extras.models import FileProxy
+from nautobot.extras.jobs import JobForm
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
 from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.design import Environment
 from nautobot_design_builder.context import Context
+from nautobot_design_builder import models
+from nautobot_design_builder import choices
 
 
 class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-attributes
@@ -46,6 +52,79 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         self.rendered = None
 
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def design_mode(cls):
+        """Determine the implementation mode for the design."""
+        return getattr(cls.Meta, "design_mode", choices.DesignModeChoices.CLASSIC)
+
+    @classmethod
+    def is_deployment_job(cls):
+        """Determine if a design job has been set to deployment mode."""
+        return cls.design_mode() == choices.DesignModeChoices.DEPLOYMENT
+
+    @classmethod
+    def deployment_name_field(cls):
+        """Determine what the deployment name field is.
+
+        Returns `None` if no deployment has been set in the job Meta class. In this
+        case the field will default to `deployment_name`
+        """
+        getattr(cls.Meta, "deployment_name_field", None)
+
+    @classmethod
+    def determine_deployment_name(cls, data):
+        """Determine the deployment name field, if specified."""
+        if not cls.is_deployment_job():
+            return None
+        deployment_name_field = cls.deployment_name_field()
+        if deployment_name_field is None:
+            if "deployment_name" not in data:
+                raise DesignImplementationError("No instance name was provided for the deployment.")
+            return data["deployment_name"]
+        return data[deployment_name_field]
+
+    @classmethod
+    def _get_vars(cls):
+        """Retrieve the script variables for the job.
+
+        If no deployment name field has been specified this method will
+        also add a `deployment_name` field.
+        """
+        cls_vars = {}
+        if cls.is_deployment_job():
+            if cls.deployment_name_field() is None:
+                cls_vars["deployment_name"] = StringVar(
+                    label="Deployment Name",
+                    max_length=models.DESIGN_NAME_MAX_LENGTH,
+                )
+        cls_vars.update(super()._get_vars())
+        return cls_vars
+
+    @classmethod
+    def as_form_class(cls):
+        """Dynamically generate the job form.
+
+        This will add the deployment name field, if needed, and also provides
+        a clean method that call's the context validations methods.
+        """
+        fields = {name: var.as_field() for name, var in cls._get_vars().items()}
+        old_clean = JobForm.clean
+        context_class = cls.Meta.context_class
+
+        def clean(self):
+            cleaned_data = old_clean(self)
+            if self.is_valid():
+                context = context_class(cleaned_data)
+                context.validate()
+            return cleaned_data
+
+        fields["clean"] = clean
+        return type("DesignJobForm", (JobForm,), fields)
+
+    def design_model(self):
+        """Get the related Job."""
+        return models.Design.objects.for_design_job(self.job_result.job_model)
 
     def post_implementation(self, context: Context, environment: Environment):
         """Similar to Nautobot job's `post_run` method, but will be called after a design is implemented.
@@ -103,14 +182,12 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             context (Context object): a tree of variables that can include templates for values
             design_file (str): Filename of the design file to render.
         """
-        self.rendered_design = design_file
         self.rendered = self.render(context, design_file)
         design = yaml.safe_load(self.rendered)
         self.designs[design_file] = design
 
         # no need to save the rendered content if yaml loaded
         # it okay
-        self.rendered_design = None
         self.rendered = None
         return design
 
@@ -136,6 +213,35 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """Render the design_file template using the provided render context."""
         design = self.render_design(context, design_file)
         self.environment.implement_design(design, commit)
+
+    def _setup_changeset(self, deployment_name: str):
+        if not self.is_deployment_job():
+            return None, None
+
+        try:
+            instance = models.Deployment.objects.get(name=deployment_name, design=self.design_model())
+            self.log_info(message=f'Existing design instance of "{deployment_name}" was found, re-running design job.')
+            instance.last_implemented = timezone.now()
+        except models.Deployment.DoesNotExist:
+            self.log_info(message=f'Implementing new design "{deployment_name}".')
+            content_type = ContentType.objects.get_for_model(models.Deployment)
+            instance = models.Deployment(
+                name=deployment_name,
+                design=self.design_model(),
+                last_implemented=timezone.now(),
+                status=Status.objects.get(content_types=content_type, name=choices.DeploymentStatusChoices.ACTIVE),
+                version=self.design_model().version,
+            )
+        instance.validated_save()
+        change_set, created = models.ChangeSet.objects.get_or_create(
+            deployment=instance,
+            job_result=self.job_result,
+        )
+        if created:
+            change_set.validated_save()
+
+        previous_change_set = instance.change_sets.order_by("-last_updated").exclude(job_result=self.job_result).first()
+        return (change_set, previous_change_set)
 
     def run(self, dryrun: bool, **kwargs):  # pylint: disable=arguments-differ
         """Render the design and implement it within a build Environment object."""
@@ -163,9 +269,25 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         This version of `run` is wrapped in a transaction and will roll back database changes
         on error. In general, this method should only be called by the `run` method.
         """
+        sid = transaction.savepoint()
+
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
-        self.environment = Environment(job_result=self.job_result, extensions=extensions)
+
+        design_files = None
+
+        data["deployment_name"] = self.determine_deployment_name(data)
+        change_set, previous_change_set = self._setup_changeset(data["deployment_name"])
+
+        self.job_result.job_kwargs = {"data": self.serialize_data(data)}
+
+        self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
+        extensions = getattr(self.Meta, "extensions", [])
+        self.environment = Environment(
+            job_result=self.job_result,
+            extensions=extensions,
+            change_set=change_set,
+        )
 
         design_files = None
 
@@ -183,13 +305,28 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             self.log_failure(message="No design template specified for design.")
             raise DesignImplementationError("No design template specified for design.")
 
-        sid = transaction.savepoint()
-
         try:
             for design_file in design_files:
                 self.implement_design(context, design_file, not dryrun)
+
+            if previous_change_set:
+                deleted_object_ids = previous_change_set - change_set
+                if deleted_object_ids:
+                    self.log_info(f"Decommissioning {deleted_object_ids}")
+                    change_set.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+
             if not dryrun:
                 self.post_implementation(context, self.environment)
+                # The ChangeSet stores the design (with Nautobot identifiers from post_implementation)
+                # for future operations (e.g., updates)
+                if self.is_deployment_job():
+                    change_set.deployment.status = Status.objects.get(
+                        content_types=ContentType.objects.get_for_model(models.Deployment),
+                        name=choices.DeploymentStatusChoices.ACTIVE,
+                    )
+                    change_set.deployment.save()
+                    change_set.save()
+
                 if hasattr(self.Meta, "report"):
                     report = self.render_report(context, self.environment.journal)
                     output_filename: str = path.basename(getattr(self.Meta, "report"))

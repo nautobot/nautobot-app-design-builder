@@ -12,6 +12,8 @@ The easiest way to experience Design Builder is to either add the [demo-designs]
 
 ## What are the next steps?
 
+<!-- TODO: update with the new Design Navigation and new screenshoots -->
+
 The Design Builder demo designs ship with some sample designs to demonstrate capabilities. Once the application stack is ready, you should have several jobs listed under the "Jobs" -> "Jobs" menu item.
 
 ![Jobs list](../images/screenshots/sample-design-jobs-list.png)
