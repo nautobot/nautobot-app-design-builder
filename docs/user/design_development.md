@@ -49,7 +49,7 @@ The `jobs` directory contains everything that is needed for implementing a desig
 
 Within the `jobs` directory, the naming of modules and files is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there is are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
 
-Designs are just specialized Nautobot jobs. Any design must inherit from `DesignJob`, and just like any other job, design jobs must be registered using `register_jbos`. An example design follows:
+Designs are just specialized Nautobot jobs. Any design must inherit from `DesignJob`, and just like any other job, design jobs must be registered using `register_jobs`. An example design follows:
 
 ```python
 from nautobot.apps.jobs import register_jobs
