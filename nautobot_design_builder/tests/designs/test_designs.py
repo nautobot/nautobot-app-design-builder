@@ -103,6 +103,15 @@ class DesignWithValidationError(DesignJob):
         design_file = "templates/design_with_validation_error.yaml.j2"
 
 
+class SimpleDesignDeploymentMode(DesignJob):
+    """Simple design job in deployment mode."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design in deployment mode"
+        design_file = "templates/simple_design_1.yaml.j2"
+        design_mode = DesignModeChoices.DEPLOYMENT
+
+
 class NextInterfaceExtension(AttributeExtension):
     """Attribute extension to calculate the next available interface name."""
 

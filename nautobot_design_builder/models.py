@@ -343,7 +343,7 @@ class ChangeSet(PrimaryModel):
         setattr(self, "_index", index)
         return index
 
-    def log(self, model_instance):
+    def log(self, model_instance, import_mode: bool):
         """Log changes to a model instance.
 
         This will log the differences between a model instance's
@@ -354,6 +354,7 @@ class ChangeSet(PrimaryModel):
 
         Args:
             model_instance: Model instance to log changes.
+            import_mode: Boolean used to import design objects already present in the database.
         """
         instance = model_instance.instance
         content_type = ContentType.objects.get_for_model(instance)
@@ -368,11 +369,46 @@ class ChangeSet(PrimaryModel):
             entry.changes.update(model_instance.metadata.changes)
             entry.save()
         except ChangeRecord.DoesNotExist:
+            # Default full_control for created objects
+            full_control = model_instance.metadata.created
+
+            # This boolean signals the intention to claim existing data because
+            # the action is "create_or_update" and is running in import_mode
+            # It assumes that we will "try" to own all the objects, if are not owned
+            intention_to_own_by_importing = model_instance.metadata.action == "create_or_update" and import_mode
+
+            # When we have intention to claim ownership, the first try is to get a full_control
+            # of the object, in fact, assume that we would have created it.
+            # If the object was already owned with full_control by another Design Deployment,
+            # we acknowledge it and set it to full_control=False, if not, True.
+            if (
+                intention_to_own_by_importing
+                and ChangeRecord.objects.filter(_design_object_id=instance.id, active=True, full_control=True)
+                .exclude_decommissioned()
+                .first()
+                # TODO: replace this by a proper queryset
+            ):
+                full_control = False
+            elif intention_to_own_by_importing:
+                full_control = True
+
+            # Independently of having full_control or not, we check that all the attributes
+            # we claim as ours are not tracked by another design
+            if intention_to_own_by_importing:
+                for record in ChangeRecord.objects.filter(  # pylint: disable=too-many-nested-blocks
+                    _design_object_id=instance.id, active=True
+                ).exclude_decommissioned():
+                    for attribute in record.changes:
+                        if attribute in model_instance.metadata.changes:
+                            raise ValueError(  # pylint: disable=raise-missing-from
+                                f"The {attribute} attribute for {instance} is already owned by Design Deployment {record.change_set.deployment}"
+                            )
+
             entry = self.records.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
                 changes=model_instance.metadata.changes,
-                full_control=model_instance.metadata.created,
+                full_control=full_control,
                 index=self._next_index(),
             )
         return entry

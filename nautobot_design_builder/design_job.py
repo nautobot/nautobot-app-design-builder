@@ -14,7 +14,7 @@ from django.utils import timezone
 from jinja2 import TemplateError
 
 from nautobot.extras.models import Status
-from nautobot.extras.jobs import Job, JobForm, StringVar
+from nautobot.extras.jobs import Job, JobForm, StringVar, BooleanVar
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
@@ -77,9 +77,21 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         deployment_name_field = cls.deployment_name_field()
         if deployment_name_field is None:
             if "deployment_name" not in data:
-                raise DesignImplementationError("No instance name was provided for the deployment.")
+                raise DesignImplementationError("No Deployment name was provided for the deployment.")
             return data["deployment_name"]
         return data[deployment_name_field]
+
+    @classmethod
+    def determine_import_mode(cls, data):
+        """Determine the import mode, if specified."""
+        if not cls.is_deployment_job():
+            return None
+
+        if "import_mode" not in data:
+            return False
+            # TODO: not sure why not got the default to False from _get_vars
+            # raise DesignImplementationError("No import mode was provided for the deployment.")
+        return data["import_mode"]
 
     @classmethod
     def _get_vars(cls):
@@ -95,6 +107,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     label="Deployment Name",
                     max_length=models.DESIGN_NAME_MAX_LENGTH,
                 )
+            cls_vars["import_mode"] = BooleanVar(label="Import Mode", default=False)
 
         cls_vars.update(super()._get_vars())
         return cls_vars
@@ -270,7 +283,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """
         sid = transaction.savepoint()
 
-        self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
         extensions = getattr(self.Meta, "extensions", [])
 
         design_files = None
@@ -282,6 +294,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
+        data["import_mode"] = self.determine_import_mode(data)
         data["deployment_name"] = self.determine_deployment_name(data)
         change_set, previous_change_set = self._setup_changeset(data["deployment_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -290,7 +303,11 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             job_result=self.job_result,
             extensions=extensions,
             change_set=change_set,
+            import_mode=data["import_mode"],
         )
+
+        if data["import_mode"] and data["deployment_name"]:
+            self.log_info(message=f'Running in import mode for {data["deployment_name"]}.')
 
         design_files = None
 

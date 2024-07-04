@@ -9,7 +9,7 @@ from nautobot.dcim.models import Manufacturer, DeviceType, Device, Site, DeviceR
 from nautobot.ipam.models import VRF, Prefix, IPAddress
 
 from nautobot.extras.models import Status
-from nautobot_design_builder.models import Deployment
+from nautobot_design_builder.models import Deployment, ChangeRecord
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
@@ -70,7 +70,21 @@ class TestDesignJob(DesignTestCase):
             job_result=job.job_result,
             extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
             change_set=ANY,
+            import_mode=None,
         )
+
+    def test_import_design(self):
+        """Confirm that existing data can be imported."""
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentMode)
+
+        # The object to be imported by the design deployment already exists
+        manufacturer = Manufacturer.objects.create(name="Test Manufacturer")
+        self.data["import_mode"] = True
+        self.data["deployment_name"] = "deployment name example"
+        job.run(data=self.data, commit=True)
+        self.assertJobSuccess(job)
+        self.assertEqual(Deployment.objects.first().name, "deployment name example")
+        self.assertEqual(ChangeRecord.objects.first().design_object, manufacturer)
 
 
 class TestDesignJobLogging(DesignTestCase):
