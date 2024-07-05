@@ -1,7 +1,8 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
 
 import logging
-from typing import List
+from typing import List, Optional
+from uuid import UUID
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -383,10 +384,9 @@ class ChangeSet(PrimaryModel):
             # we acknowledge it and set it to full_control=False, if not, True.
             if (
                 intention_to_own_by_importing
-                and ChangeRecord.objects.filter(_design_object_id=instance.id, active=True, full_control=True)
-                .exclude_decommissioned()
-                .first()
-                # TODO: replace this by a proper queryset
+                and ChangeRecord.objects.filter_by_design_object_id(
+                    _design_object_id=instance.id, full_control=True
+                ).first()
             ):
                 full_control = False
             elif intention_to_own_by_importing:
@@ -395,9 +395,7 @@ class ChangeSet(PrimaryModel):
             # Independently of having full_control or not, we check that all the attributes
             # we claim as ours are not tracked by another design
             if intention_to_own_by_importing:
-                for record in ChangeRecord.objects.filter(  # pylint: disable=too-many-nested-blocks
-                    _design_object_id=instance.id, active=True
-                ).exclude_decommissioned():
+                for record in ChangeRecord.objects.filter_by_design_object_id(_design_object_id=instance.id):
                     for attribute in record.changes:
                         if attribute in model_instance.metadata.changes:
                             raise ValueError(  # pylint: disable=raise-missing-from
@@ -535,6 +533,22 @@ class ChangeRecordQuerySet(RestrictedQuerySet):
             for record_id, design_object_id, design_object_type in design_objects
         }
         return self.filter(id__in=design_object_ids.values())
+
+    def filter_by_design_object_id(self, _design_object_id: UUID, full_control: Optional[bool] = None):
+        """Lookup all the active records for a design object ID and an full_control.
+
+        Args:
+            _design_object_id (UUID): The design object UUID.
+            full_control (type, optional): Include the full_control filter. Defaults to None.
+
+        Returns:
+            Query set matching the options.
+        """
+        if full_control is not None:
+            queryset = self.filter(_design_object_id=_design_object_id, active=True, full_control=full_control)
+        else:
+            queryset = self.filter(_design_object_id=_design_object_id, active=True)
+        return queryset.exclude_decommissioned()
 
 
 class ChangeRecord(BaseModel):
