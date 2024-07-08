@@ -537,7 +537,9 @@ class ModelInstance:
             self.instance = self.model_class.objects.get(**query_filter)
             return
 
-        if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
+        if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE] or (
+            self.metadata.action is ModelMetadata.CREATE and self.environment.import_mode
+        ):
             # perform nested lookups. First collect all the
             # query params for top-level relationships, then
             # perform the actual lookup
@@ -564,6 +566,9 @@ class ModelInstance:
                     field_values[query_param] = model
             try:
                 self.instance = self.relationship_manager.get(**query_filter)
+                if self.environment.import_mode and self.metadata.action != ModelMetadata.UPDATE:
+                    self.metadata.attributes.update(field_values)
+
                 return
             except ObjectDoesNotExist:
                 if self.metadata.action == ModelMetadata.UPDATE:

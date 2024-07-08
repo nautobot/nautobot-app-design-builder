@@ -107,8 +107,26 @@ class SimpleDesignDeploymentMode(DesignJob):
     """Simple design job in deployment mode."""
 
     class Meta:  # pylint: disable=too-few-public-methods
-        name = "Simple Design in deployment mode"
+        name = "Simple Design in deployment mode with create_or_update"
         design_file = "templates/simple_design_1.yaml.j2"
+        design_mode = DesignModeChoices.DEPLOYMENT
+
+
+class SimpleDesignDeploymentModeCreate(DesignJob):
+    """Simple design job in deployment mode for 'create'."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design in deployment mode with create"
+        design_file = "templates/simple_design_4.yaml.j2"
+        design_mode = DesignModeChoices.DEPLOYMENT
+
+
+class SimpleDesignDeploymentModeUpdate(DesignJob):
+    """Simple design job in deployment mode for 'update'."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design in deployment mode with update"
+        design_file = "templates/simple_design_5.yaml.j2"
         design_mode = DesignModeChoices.DEPLOYMENT
 
 

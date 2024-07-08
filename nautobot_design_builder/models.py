@@ -376,25 +376,38 @@ class ChangeSet(PrimaryModel):
             # This boolean signals the intention to claim existing data because
             # the action is "create_or_update" and is running in import_mode
             # It assumes that we will "try" to own all the objects, if are not owned
-            intention_to_own_by_importing = model_instance.metadata.action == "create_or_update" and import_mode
+            intention_to_full_control_by_importing = (
+                model_instance.metadata.action in ["create_or_update", "create"] and import_mode
+            )
+            intention_to_import = (
+                model_instance.metadata.action in ["create_or_update", "create", "update"] and import_mode
+            )
 
             # When we have intention to claim ownership, the first try is to get a full_control
             # of the object, in fact, assume that we would have created it.
             # If the object was already owned with full_control by another Design Deployment,
             # we acknowledge it and set it to full_control=False, if not, True.
-            if (
-                intention_to_own_by_importing
-                and ChangeRecord.objects.filter_by_design_object_id(
-                    _design_object_id=instance.id, full_control=True
-                ).first()
-            ):
+
+            change_record = ChangeRecord.objects.filter_by_design_object_id(
+                _design_object_id=instance.id, full_control=True
+            ).first()
+            if intention_to_full_control_by_importing and change_record:
+                if model_instance.metadata.action == "create":
+                    raise ValueError(  # pylint: disable=raise-missing-from
+                        f"The design requires importing {instance} but is already owned by Design Deployment {change_record.change_set.deployment}"
+                    )
                 full_control = False
-            elif intention_to_own_by_importing:
+            elif intention_to_full_control_by_importing:
                 full_control = True
 
             # Independently of having full_control or not, we check that all the attributes
             # we claim as ours are not tracked by another design
-            if intention_to_own_by_importing:
+            if intention_to_import:
+                if not full_control:
+                    for attribute in model_instance.metadata.query_filter_values:
+                        if attribute in model_instance.metadata.changes:
+                            del model_instance.metadata.changes[attribute]
+
                 for record in ChangeRecord.objects.filter_by_design_object_id(_design_object_id=instance.id):
                     for attribute in record.changes:
                         if attribute in model_instance.metadata.changes:

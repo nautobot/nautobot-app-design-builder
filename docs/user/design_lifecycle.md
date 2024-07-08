@@ -93,11 +93,20 @@ Design Builder helps in greenfield use cases (i.e., creating a new data from a d
 
 The import logic works like this:
 
-1. If the object that we reference doens't exist, normal design creation logic applies.
+1. If the object that we reference doesn't exist, normal design creation logic applies.
 
 2. If an object that we want to "create" already exists
-   2.1. If it's not owned by another design deployment, we get "full_control" of it.
-   2.2. If it has already an owner, we don't claim ownership of the object, but we still may claim some attributes.
-   2.3 In both cases, the attributes that this design is trying to update are claimed. These attributes can't be claimed by any other design. If so, the import fails pointing to the conflict dependency.
+   2.1. If it's not owned by another design deployment, we get "full_control" of it, and of all the attributes that we define (including the identifiers).
+   2.2. If it's owned, the process fails with an exception because the intention of "create" is to have ownership.
 
-3. The imported changes (attributes) show the same old and new value because we can't infer which was the previous value (in most cases, it would be `null` but we can't be sure).
+3. If an object that we want to "create_or_update" already exists
+   3.1. If it's not owned by another design deployment, we get "full_control" of it, and of all the attributes that we define (including the identifiers).
+   3.2. If it has already an owner, we don't claim ownership of the object, but we still may claim the attributes, except the identifiers.
+
+4. If an object that we want to "update" already exists
+   3.1. There is no claim for full_control ownership.
+   3.2. There is claim for the attributes, except the identifiers.
+
+5. In all cases, the attributes that a design is trying to update are claimed. These attributes can't be claimed by any other design. If so, the import fails pointing to the conflict dependency.
+
+6. The imported changes (attributes) show the same old and new value because we can't infer which was the previous value (in most cases, it would be `null` but we can't be sure).

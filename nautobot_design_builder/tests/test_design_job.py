@@ -73,8 +73,8 @@ class TestDesignJob(DesignTestCase):
             import_mode=None,
         )
 
-    def test_import_design(self):
-        """Confirm that existing data can be imported."""
+    def test_import_design_create_or_update(self):
+        """Confirm that existing data can be imported with 'create_or_update'."""
         job = self.get_mocked_job(test_designs.SimpleDesignDeploymentMode)
 
         # The object to be imported by the design deployment already exists
@@ -85,6 +85,64 @@ class TestDesignJob(DesignTestCase):
         self.assertJobSuccess(job)
         self.assertEqual(Deployment.objects.first().name, "deployment name example")
         self.assertEqual(ChangeRecord.objects.first().design_object, manufacturer)
+        self.assertEqual(ChangeRecord.objects.first().design_object.description, "Test description")
+
+        # Running the import twice for a 'create_or_update' operation should raise an exception
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentMode)
+        self.data["deployment_name"] = "another deployment name example"
+        with self.assertRaises(ValueError) as error:
+            job.run(data=self.data, commit=True)
+        self.assertEqual(
+            str(error.exception),
+            "The description attribute for Test Manufacturer is already owned by Design Deployment Simple Design in deployment mode with create_or_update - deployment name example",
+        )
+
+    def test_import_design_update(self):
+        """Confirm that existing data can be imported with 'update'."""
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeUpdate)
+
+        # The object to be imported by the design deployment already exists
+        manufacturer = Manufacturer.objects.create(name="Test Manufacturer", description="old description")
+        self.data["import_mode"] = True
+        self.data["deployment_name"] = "deployment name example"
+        job.run(data=self.data, commit=True)
+        self.assertJobSuccess(job)
+        self.assertEqual(Deployment.objects.first().name, "deployment name example")
+        self.assertEqual(ChangeRecord.objects.first().design_object, manufacturer)
+        self.assertEqual(ChangeRecord.objects.first().design_object.description, "Test description")
+
+        # Running the import twice for a 'update' operation should raise an exception when attribute conflict
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeUpdate)
+        self.data["deployment_name"] = "another deployment name example"
+        with self.assertRaises(ValueError) as error:
+            job.run(data=self.data, commit=True)
+        self.assertEqual(
+            str(error.exception),
+            "The description attribute for Test Manufacturer is already owned by Design Deployment Simple Design in deployment mode with update - deployment name example",
+        )
+
+    def test_import_design_create(self):
+        """Confirm that existing data can be imported with 'create'."""
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeCreate)
+
+        # The object to be imported by the design deployment already exists
+        manufacturer = Manufacturer.objects.create(name="Test Manufacturer")
+        self.data["import_mode"] = True
+        self.data["deployment_name"] = "deployment name example"
+        job.run(data=self.data, commit=True)
+        self.assertJobSuccess(job)
+        self.assertEqual(Deployment.objects.first().name, "deployment name example")
+        self.assertEqual(ChangeRecord.objects.first().design_object, manufacturer)
+
+        # Running the import twice for a 'create' operation should raise an exception
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeCreate)
+        self.data["deployment_name"] = "another deployment name example"
+        with self.assertRaises(ValueError) as error:
+            job.run(data=self.data, commit=True)
+        self.assertEqual(
+            str(error.exception),
+            "The design requires importing Test Manufacturer but is already owned by Design Deployment Simple Design in deployment mode with create - deployment name example",
+        )
 
 
 class TestDesignJobLogging(DesignTestCase):
