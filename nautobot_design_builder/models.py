@@ -229,7 +229,7 @@ class Deployment(PrimaryModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
-    def decommission(self, *object_ids, local_logger=logger):
+    def decommission(self, *object_ids, local_logger=logger, only_traceability=False):
         """Decommission a design instance.
 
         This will reverse the change records for the design instance and
@@ -241,7 +241,10 @@ class Deployment(PrimaryModel):
         # Iterate the change sets in reverse order (most recent first) and
         # revert each change set.
         for change_set in self.change_sets.filter(active=True).order_by("-last_updated"):
-            change_set.revert(*object_ids, local_logger=local_logger)
+            if only_traceability:
+                change_set.deactivate()
+            else:
+                change_set.revert(*object_ids, local_logger=local_logger)
 
         if not object_ids:
             content_type = ContentType.objects.get_for_model(Deployment)
@@ -478,6 +481,14 @@ class ChangeSet(PrimaryModel):
             .exclude(_design_object_id__in=other_ids)
             .values_list("_design_object_id", flat=True)
         )
+
+    def deactivate(self):
+        """Mark the change_set and its records as not active."""
+        self.active = False
+        for change_set_record in self.records.all():
+            change_set_record.active = False
+            change_set_record.save()
+        self.save()
 
 
 class ChangeRecordQuerySet(RestrictedQuerySet):

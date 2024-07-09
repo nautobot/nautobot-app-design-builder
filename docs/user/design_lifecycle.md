@@ -83,6 +83,8 @@ The decommissioning feature takes into account potential dependencies between de
 
 Once a design deployment is decommissioned, it's still visible in the API/UI to check the history of changes but without any active relationship with Nautobot objects (in a "Decommissioned" status). Once decommissioned, the design deployment can be deleted completely from Nautobot.
 
+There is a decommissioning mode to only remove the design traceability of a design deployment, without actually reverting the state of the objects. Decommissioning, with the `only_traceability` checkbox, is only removing the references but keeping the data.
+
 The decommissioning job outputs a log with all the detailed operation reverting to previous state (i.e., deleting or recovering original data):
 
 ![design-deployment-decommissioning](../images/screenshots/design-deployment-decommissioning.png)
