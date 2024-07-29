@@ -17,9 +17,9 @@ class DeploymentDecommissioning(Job):
         query_params={"status": "active"},
         description="Design Deployments to decommission.",
     )
-    only_traceability = BooleanVar(
-        description="Only remove the objects traceability, not decommissioning the actual data.",
-        default=False,
+    delete = BooleanVar(
+        description="Actually delete the objects, not just their link to the design delpoyment.",
+        default=True,
     )
 
     class Meta:  # pylint: disable=too-few-public-methods
@@ -31,27 +31,25 @@ class DeploymentDecommissioning(Job):
     def run(self, data, commit):
         """Execute Decommissioning job."""
         deployments = data["deployments"]
-        only_traceability = data["only_traceability"]
+        delete = data["delete"]
 
         self.log_info(
             message=f"Starting decommissioning of design deployments: {', '.join([instance.name for instance in deployments])}",
         )
 
         for deployment in deployments:
-            if only_traceability:
-                message = "Working on resetting traceability for this Design Deployment..."
+            if delete:
+                message = "Working on deleting objects for this Design Deployment."
             else:
-                message = "Working on resetting objects for this Design Deployment..."
+                message = "Working on unlinking objects from this Design Deployment."
             self.log_info(obj=deployment, message=message)
 
-            deployment.decommission(
-                local_logger=get_logger(__name__, self.job_result), only_traceability=only_traceability
-            )
+            deployment.decommission(local_logger=get_logger(__name__, self.job_result), delete=delete)
 
-            if only_traceability:
-                message = f"Traceability for {deployment} has been successfully removed from Nautobot."
-            else:
+            if delete:
                 message = f"{deployment} has been successfully decommissioned from Nautobot."
+            else:
+                message = f"Objects have been successfully unlinked from {deployment}."
 
             self.log_success(message)
 

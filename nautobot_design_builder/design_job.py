@@ -82,18 +82,6 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         return data[deployment_name_field]
 
     @classmethod
-    def determine_import_mode(cls, data):
-        """Determine the import mode, if specified."""
-        if not cls.is_deployment_job():
-            return None
-
-        if "import_mode" not in data:
-            return False
-            # TODO: not sure why not got the default to False from _get_vars
-            # raise DesignImplementationError("No import mode was provided for the deployment.")
-        return data["import_mode"]
-
-    @classmethod
     def _get_vars(cls):
         """Retrieve the script variables for the job.
 
@@ -294,7 +282,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        data["import_mode"] = self.determine_import_mode(data)
+        data["import_mode"] = self.is_deployment_job() and data.get("import_mode", False)
         data["deployment_name"] = self.determine_deployment_name(data)
         change_set, previous_change_set = self._setup_changeset(data["deployment_name"])
         self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
@@ -306,7 +294,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             import_mode=data["import_mode"],
         )
 
-        if data["import_mode"] and data["deployment_name"]:
+        if data["import_mode"]:
             self.log_info(message=f'Running in import mode for {data["deployment_name"]}.')
 
         design_files = None

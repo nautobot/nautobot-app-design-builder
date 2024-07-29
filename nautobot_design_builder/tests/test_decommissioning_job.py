@@ -131,7 +131,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual(0, Secret.objects.count())
 
@@ -159,7 +159,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertRaises(
             ValueError,
             self.job.run,
-            {"deployments": [self.deployment], "only_traceability": False},
+            {"deployments": [self.deployment], "delete": True},
             True,
         )
 
@@ -188,7 +188,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
 
         self.deployment_2.decommission()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual(0, Secret.objects.count())
 
@@ -204,7 +204,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         record_1.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual(1, Secret.objects.count())
 
@@ -223,7 +223,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual(1, Secret.objects.count())
         self.assertEqual("previous description", Secret.objects.first().description)
@@ -240,7 +240,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
@@ -259,7 +259,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual(self.initial_params, Secret.objects.first().parameters)
 
@@ -283,7 +283,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.secret.parameters = {**self.changed_params, **new_params}
         self.secret.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual({**self.initial_params, **new_params}, Secret.objects.first().parameters)
 
@@ -299,7 +299,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         record_1.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": False}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": True}, commit=True)
 
         self.assertEqual(0, Secret.objects.count())
         models.Deployment.pre_decommission.disconnect(fake_ok)
@@ -318,7 +318,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         self.assertRaises(
             DesignValidationError,
             self.job.run,
-            {"deployments": [self.deployment], "only_traceability": False},
+            {"deployments": [self.deployment], "delete": True},
             True,
         )
 
@@ -351,13 +351,11 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
 
         self.assertEqual(2, Secret.objects.count())
 
-        self.job.run(
-            data={"deployments": [self.deployment, self.deployment_2], "only_traceability": False}, commit=True
-        )
+        self.job.run(data={"deployments": [self.deployment, self.deployment_2], "delete": True}, commit=True)
 
         self.assertEqual(0, Secret.objects.count())
 
-    def test_decommission_run_with_only_traceability(self):
+    def test_decommission_run_without_delete(self):
         self.assertEqual(1, Secret.objects.count())
 
         record = models.ChangeRecord.objects.create(
@@ -368,7 +366,7 @@ class DecommissionJobTestCase(DesignTestCase):  # pylint: disable=too-many-insta
         )
         record.validated_save()
 
-        self.job.run(data={"deployments": [self.deployment], "only_traceability": True}, commit=True)
+        self.job.run(data={"deployments": [self.deployment], "delete": False}, commit=True)
 
         self.assertEqual(1, Secret.objects.count())
         record.refresh_from_db()

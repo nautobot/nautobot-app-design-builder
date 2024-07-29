@@ -112,11 +112,11 @@ class SimpleDesignDeploymentMode(DesignJob):
         design_mode = DesignModeChoices.DEPLOYMENT
 
 
-class SimpleDesignDeploymentModeCreate(DesignJob):
-    """Simple design job in deployment mode for 'create'."""
+class SimpleDesignDeploymentModeMultipleObjects(DesignJob):
+    """Simple design job in deployment mode with multiple objects."""
 
     class Meta:  # pylint: disable=too-few-public-methods
-        name = "Simple Design in deployment mode with create"
+        name = "Simple Design in deployment mode with multiple objects." ""
         design_file = "templates/simple_design_4.yaml.j2"
         design_mode = DesignModeChoices.DEPLOYMENT
 

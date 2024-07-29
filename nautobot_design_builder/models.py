@@ -229,7 +229,7 @@ class Deployment(PrimaryModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
-    def decommission(self, *object_ids, local_logger=logger, only_traceability=False):
+    def decommission(self, *object_ids, local_logger=logger, delete=True):
         """Decommission a design instance.
 
         This will reverse the change records for the design instance and
@@ -241,10 +241,10 @@ class Deployment(PrimaryModel):
         # Iterate the change sets in reverse order (most recent first) and
         # revert each change set.
         for change_set in self.change_sets.filter(active=True).order_by("-last_updated"):
-            if only_traceability:
-                change_set.deactivate()
-            else:
+            if delete:
                 change_set.revert(*object_ids, local_logger=local_logger)
+            else:
+                change_set.deactivate()
 
         if not object_ids:
             content_type = ContentType.objects.get_for_model(Deployment)
@@ -373,58 +373,50 @@ class ChangeSet(PrimaryModel):
             entry.changes.update(model_instance.metadata.changes)
             entry.save()
         except ChangeRecord.DoesNotExist:
-            # Default full_control for created objects
-            full_control = model_instance.metadata.created
+            entry_parameters = {
+                "_design_object_type": content_type,
+                "_design_object_id": instance.id,
+                "changes": model_instance.metadata.changes,
+                "full_control": model_instance.metadata.created,
+                "index": self._next_index(),
+            }
+            # Deferred import as otherwise Nautobot doesn't start
+            from .design import ModelMetadata  # pylint: disable=import-outside-toplevel,cyclic-import
 
-            # This boolean signals the intention to claim existing data because
-            # the action is "create_or_update" and is running in import_mode
-            # It assumes that we will "try" to own all the objects, if are not owned
-            intention_to_full_control_by_importing = (
-                model_instance.metadata.action in ["create_or_update", "create"] and import_mode
-            )
-            intention_to_import = (
-                model_instance.metadata.action in ["create_or_update", "create", "update"] and import_mode
-            )
+            # Path when not importing, either because it's not enabled or the action is not supported for importing.
+            if not import_mode or model_instance.metadata.action not in ModelMetadata.IMPORTABLE_ACTION_CHOICES:
+                entry = self.records.create(**entry_parameters)
+                return entry
 
-            # When we have intention to claim ownership, the first try is to get a full_control
-            # of the object, in fact, assume that we would have created it.
-            # If the object was already owned with full_control by another Design Deployment,
-            # we acknowledge it and set it to full_control=False, if not, True.
+            # When we have intention to claim ownership (i.e. the action is CREATE_OR_UPDATE) we first try to obtain
+            # `full_control` over the object, thus pretending that we have created it.
+            # If the object is already owned with full_control by another Design Deployment,
+            # we acknowledge it and set `full_control` to `False`.
+            # TODO: Shouldn't this change record object also need to be active?
+            change_records_for_instance = ChangeRecord.objects.filter_by_design_object_id(_design_object_id=instance.id)
+            if model_instance.metadata.action == ModelMetadata.CREATE_OR_UPDATE:
+                entry_parameters["full_control"] = not change_records_for_instance.filter(full_control=True).exists()
 
-            change_record = ChangeRecord.objects.filter_by_design_object_id(
-                _design_object_id=instance.id, full_control=True
-            ).first()
-            if intention_to_full_control_by_importing and change_record:
-                if model_instance.metadata.action == "create":
-                    raise ValueError(  # pylint: disable=raise-missing-from
-                        f"The design requires importing {instance} but is already owned by Design Deployment {change_record.change_set.deployment}"
-                    )
-                full_control = False
-            elif intention_to_full_control_by_importing:
-                full_control = True
+            # When we don't want to assume full control, make sure we don't try to own any of the query filter values.
+            # We do this by removing any query filter values from the `changes` dictionary, which is the structure that
+            # defines which attributes are owned by the deployment.
+            if not entry_parameters["full_control"]:
+                for attribute in model_instance.metadata.query_filter_values:
+                    entry_parameters["changes"].pop(attribute, None)
 
-            # Independently of having full_control or not, we check that all the attributes
-            # we claim as ours are not tracked by another design
-            if intention_to_import:
-                if not full_control:
-                    for attribute in model_instance.metadata.query_filter_values:
-                        if attribute in model_instance.metadata.changes:
-                            del model_instance.metadata.changes[attribute]
+            # Check if any owned attributes exist that conflict with the changes for this instance.
+            # We do this by iterating over all change records that exist for this instance, ...
+            for record in change_records_for_instance:
+                # ...iterating over all attributes in those instances changes...
+                for attribute in record.changes:
+                    # ...and, finally, by raising an error if any of those overlap with those attributes that we are
+                    # trying to own by importing the object.
+                    if attribute in entry_parameters["changes"]:
+                        raise ValueError(  # pylint: disable=raise-missing-from
+                            f"The {attribute} attribute for {instance} is already owned by Design Deployment {record.change_set.deployment}"
+                        )
 
-                for record in ChangeRecord.objects.filter_by_design_object_id(_design_object_id=instance.id):
-                    for attribute in record.changes:
-                        if attribute in model_instance.metadata.changes:
-                            raise ValueError(  # pylint: disable=raise-missing-from
-                                f"The {attribute} attribute for {instance} is already owned by Design Deployment {record.change_set.deployment}"
-                            )
-
-            entry = self.records.create(
-                _design_object_type=content_type,
-                _design_object_id=instance.id,
-                changes=model_instance.metadata.changes,
-                full_control=full_control,
-                index=self._next_index(),
-            )
+            entry = self.records.create(**entry_parameters)
         return entry
 
     def revert(self, *object_ids, local_logger: logging.Logger = logger):

@@ -62,7 +62,6 @@ class Journal:
         if self.change_set:
             self.change_set.log(model, self.import_mode)
 
-        # TODO: CA - I don't understand this
         if instance.pk not in self.index:
             self.index.add(instance.pk)
 
@@ -130,6 +129,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
     CREATE_OR_UPDATE = "create_or_update"
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
+    # Actions that work with import mode
+    IMPORTABLE_ACTION_CHOICES = [UPDATE, CREATE_OR_UPDATE]
 
     def __init__(self, model_instance: "ModelInstance", **kwargs):
         """Initialize the metadata object for a given model instance.
@@ -537,9 +538,7 @@ class ModelInstance:
             self.instance = self.model_class.objects.get(**query_filter)
             return
 
-        if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE] or (
-            self.metadata.action is ModelMetadata.CREATE and self.environment.import_mode
-        ):
+        if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
             # perform nested lookups. First collect all the
             # query params for top-level relationships, then
             # perform the actual lookup
@@ -566,9 +565,6 @@ class ModelInstance:
                     field_values[query_param] = model
             try:
                 self.instance = self.relationship_manager.get(**query_filter)
-                if self.environment.import_mode and self.metadata.action != ModelMetadata.UPDATE:
-                    self.metadata.attributes.update(field_values)
-
                 return
             except ObjectDoesNotExist:
                 if self.metadata.action == ModelMetadata.UPDATE:
@@ -782,7 +778,7 @@ class Environment(LoggingMixin):
         try:
             for key, value in design.items():
                 if key in self.model_map and value:
-                    self._create_or_import_objects(self.model_map[key], value)
+                    self._create_objects(self.model_map[key], value)
                 elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
 
@@ -852,7 +848,8 @@ class Environment(LoggingMixin):
                 value[k] = self.resolve_value(item)
         return value
 
-    def _create_or_import_objects(self, model_class: Type[ModelInstance], objects: Union[List[Any], Dict[str, Any]]):
+    # TODO(2.x): Rename to `_create_or_import-objects`
+    def _create_objects(self, model_class: Type[ModelInstance], objects: Union[List[Any], Dict[str, Any]]):
         if isinstance(objects, dict):
             model = model_class(self, objects)
             model.save()
