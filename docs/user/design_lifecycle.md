@@ -83,6 +83,30 @@ The decommissioning feature takes into account potential dependencies between de
 
 Once a design deployment is decommissioned, it's still visible in the API/UI to check the history of changes but without any active relationship with Nautobot objects (in a "Decommissioned" status). Once decommissioned, the design deployment can be deleted completely from Nautobot.
 
+There is a decommissioning mode to only remove the link between the design objects and the design deployment without actually reverting the state of the objects. Decommissioning, with the `delete` checkbox _not_ set, is only removing the references but keeping the data.
+
 The decommissioning job outputs a log with all the detailed operation reverting to previous state (i.e., deleting or recovering original data):
 
 ![design-deployment-decommissioning](../images/screenshots/design-deployment-decommissioning.png)
+
+### Design Deployment Import
+
+Design Builder addresses
+
+- greenfield use cases by creating new data from a design
+- brownfield use cases by importing existing data related to a new design deployment
+
+In the "deployment" mode, a design deployment tracks all the objects and attributes that are "owned" by it. With the import functionality, orphan objects and attributes will be incorporated into a new design deployment as if they have been set by it.
+
+The import logic works like this:
+
+1. If the object that we reference doesn't exist, normal design creation logic applies
+2. If an object that we want to "create" already exists, normal design creation logic _also_ applies
+3. If an object that we want to "create_or_update" already exists
+    - If it's not owned by another design deployment, we get "full_control" of it and of all the attributes that we define (including the identifiers)
+    - If it already has an owner, we don't claim ownership of the object, but we still may claim the attributes, except the identifiers
+4. If an object that we want to "update" already exists
+    - There is no claim for "full_control" ownership
+    - There is a claim for the attributes, except the identifiers
+5. In all cases, the attributes that a design is trying to update are claimed. These attributes can't be claimed by any other design. If so, the import fails pointing to the conflict dependency.
+6. The imported changes (attributes) show the same old and new value because we can't infer which was the previous value (in most cases, it would be `null` but we can't be sure)

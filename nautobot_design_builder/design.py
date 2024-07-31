@@ -43,12 +43,13 @@ class Journal:
     will only be in each of those indices at most once.
     """
 
-    def __init__(self, change_set: models.ChangeSet = None):
+    def __init__(self, change_set: models.ChangeSet = None, import_mode=False):
         """Constructor for Journal object."""
         self.index = set()
         self.created = defaultdict(set)
         self.updated = defaultdict(set)
         self.change_set = change_set
+        self.import_mode = import_mode
 
     def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
@@ -59,7 +60,7 @@ class Journal:
         instance = model.instance
         model_type = instance.__class__
         if self.change_set:
-            self.change_set.log(model)
+            self.change_set.log(model, self.import_mode)
 
         if instance.pk not in self.index:
             self.index.add(instance.pk)
@@ -128,6 +129,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
     CREATE_OR_UPDATE = "create_or_update"
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
+    # Actions that work with import mode
+    IMPORTABLE_ACTION_CHOICES = [UPDATE, CREATE_OR_UPDATE]
 
     def __init__(self, model_instance: "ModelInstance", **kwargs):
         """Initialize the metadata object for a given model instance.
@@ -437,7 +440,6 @@ class ModelInstance:
         self.environment = environment
         self.instance: Model = None
         self.metadata = ModelMetadata(self, **attributes.pop("model_metadata", {}))
-
         self._parent = parent
         self.refresh_custom_relationships()
         self.relationship_manager = relationship_manager
@@ -681,7 +683,11 @@ class Environment(LoggingMixin):
         return object.__new__(cls)
 
     def __init__(
-        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, change_set: models.ChangeSet = None
+        self,
+        job_result: JobResult = None,
+        extensions: List[ext.Extension] = None,
+        change_set: models.ChangeSet = None,
+        import_mode=False,
     ):
         """Create a new build environment for implementing designs.
 
@@ -698,7 +704,7 @@ class Environment(LoggingMixin):
         """
         self.job_result = job_result
         self.logger = get_logger(__name__, self.job_result)
-
+        self.import_mode = import_mode
         self.extensions = {
             "extensions": [],
             "attribute": {},
@@ -722,7 +728,7 @@ class Environment(LoggingMixin):
 
             self.extensions["extensions"].append(extn)
 
-        self.journal = Journal(change_set=change_set)
+        self.journal = Journal(change_set=change_set, import_mode=import_mode)
         if change_set:
             self.deployment = change_set.deployment
 
@@ -842,6 +848,7 @@ class Environment(LoggingMixin):
                 value[k] = self.resolve_value(item)
         return value
 
+    # TODO(2.x): Rename to `_create_or_import-objects`
     def _create_objects(self, model_class: Type[ModelInstance], objects: Union[List[Any], Dict[str, Any]]):
         if isinstance(objects, dict):
             model = model_class(self, objects)
