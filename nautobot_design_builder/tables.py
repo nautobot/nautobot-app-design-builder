@@ -1,6 +1,7 @@
 """Tables for design builder."""
 
-from django_tables2 import Column
+from django.conf import settings
+import django_tables2 as tables
 from django_tables2.utils import Accessor
 from nautobot.apps.tables import StatusTableMixin, BaseTable
 from nautobot.apps.tables import BooleanColumn, ButtonsColumn
@@ -25,11 +26,11 @@ DESIGN_TABLE = """
 class DesignTable(BaseTable):
     """Table for list view."""
 
-    name = Column(linkify=True)
-    design_mode = Column(verbose_name="Mode")
-    deployment_count = Column(verbose_name="Deployments")
+    name = tables.Column(linkify=True)
+    design_mode = tables.Column(verbose_name="Mode")
+    deployment_count = tables.Column(verbose_name="Deployments")
     actions = ButtonsColumn(Design, buttons=("changelog", "delete"), prepend_template=DESIGN_TABLE)
-    job_last_synced = Column(accessor="job.last_updated", verbose_name="Last Synced Time")
+    job_last_synced = tables.Column(accessor="job.last_updated", verbose_name="Last Synced Time")
 
     def render_design_mode(self, value):
         """Lookup the human readable design mode from the assigned mode value."""
@@ -68,12 +69,12 @@ DEPLOYMENT_TABLE = """
 class DeploymentTable(StatusTableMixin, BaseTable):
     """Table for list view."""
 
-    name = Column(linkify=True)
-    design = Column(linkify=True)
-    first_implemented = Column(verbose_name="Deployment Time")
-    last_implemented = Column(verbose_name="Last Update Time")
-    created_by = Column(verbose_name="Deployed by")
-    last_updated_by = Column(verbose_name="Last Updated by")
+    name = tables.Column(linkify=True)
+    design = tables.Column(linkify=True)
+    first_implemented = tables.Column(verbose_name="Deployment Time")
+    last_implemented = tables.Column(verbose_name="Last Update Time")
+    created_by = tables.Column(verbose_name="Deployed by")
+    last_updated_by = tables.Column(verbose_name="Last Updated by")
     actions = ButtonsColumn(
         Deployment,
         buttons=(
@@ -114,8 +115,8 @@ def linkify_design_object(value):
 class DesignObjectsTable(BaseTable):  # pylint:disable=nb-sub-class-name
     """Table of objects that belong to a design instance."""
 
-    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
-    design_object = Column(linkify=linkify_design_object, verbose_name="Design Object")
+    design_object_type = tables.Column(verbose_name="Design Object Type", accessor="_design_object_type")
+    design_object = tables.Column(linkify=linkify_design_object, verbose_name="Design Object")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
@@ -127,26 +128,26 @@ class DesignObjectsTable(BaseTable):  # pylint:disable=nb-sub-class-name
 class ChangeSetTable(BaseTable):
     """Table for list view."""
 
-    pk = Column(linkify=True, verbose_name="ID")
-    deployment = Column(linkify=True, verbose_name="Deployment")
-    job_result = Column(accessor=Accessor("job_result.created"), linkify=True, verbose_name="Design Job Result")
-    record_count = Column(accessor=Accessor("record_count"), verbose_name="Change Records")
+    created  = tables.DateTimeColumn(linkify=True, format=settings.SHORT_DATETIME_FORMAT)
+    deployment = tables.Column(linkify=True, verbose_name="Deployment")
+    job_result = tables.Column(accessor=Accessor("job_result.name"), linkify=lambda record: record.job_result.get_absolute_url(), verbose_name="Job Result")
+    record_count = tables.Column(accessor=Accessor("record_count"), verbose_name="Change Records")
     active = BooleanColumn(verbose_name="Active")
 
     class Meta(BaseTable.Meta):  # pylint: disable=too-few-public-methods
         """Meta attributes."""
 
         model = ChangeSet
-        fields = ("pk", "deployment", "job_result", "record_count", "active")
+        fields = ("created", "deployment", "job_result", "record_count", "active")
 
 
 class ChangeRecordTable(BaseTable):
     """Table for list view."""
 
-    pk = Column(linkify=True, verbose_name="ID")
-    change_set = Column(linkify=True)
-    design_object_type = Column(verbose_name="Design Object Type", accessor="_design_object_type")
-    design_object = Column(linkify=linkify_design_object, verbose_name="Design Object")
+    pk = tables.Column(linkify=True, verbose_name="ID")
+    change_set = tables.Column(linkify=True)
+    design_object_type = tables.Column(verbose_name="Design Object Type", accessor="_design_object_type")
+    design_object = tables.Column(linkify=linkify_design_object, verbose_name="Design Object")
     full_control = BooleanColumn(verbose_name="Full Control")
     active = BooleanColumn(verbose_name="Active")
 
