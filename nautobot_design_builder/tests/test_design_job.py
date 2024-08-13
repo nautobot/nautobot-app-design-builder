@@ -96,7 +96,7 @@ class TestDesignJob(DesignTestCase):
         job = self.get_mocked_job(test_designs.DesignJobWithExtensions)
         job.run(dryrun=False, **self.data)
         environment.assert_called_once_with(
-            job_result=job.job_result,
+            logger=job.logger,
             extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
             change_set=ANY,
         )
@@ -110,7 +110,7 @@ class TestDesignJobLogging(DesignTestCase):
         environment.return_value.implement_design.side_effect = DesignImplementationError("Broken")
         job = self.get_mocked_job(test_designs.SimpleDesign)
         self.assertRaises(DesignImplementationError, job.run, dryrun=False, **self.data)
-        job.job_result.log.assert_called()
+        self.assertTrue(bool(self.logged_messages))
         self.assertEqual("Broken", self.logged_messages[-1]["message"])
 
     def test_invalid_ref(self):

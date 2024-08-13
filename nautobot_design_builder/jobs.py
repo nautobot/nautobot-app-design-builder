@@ -2,7 +2,6 @@
 
 from nautobot.apps.jobs import Job, MultiObjectVar, register_jobs
 
-from .logging import get_logger
 from .models import Deployment
 
 
@@ -33,7 +32,7 @@ class DeploymentDecommissioning(Job):
 
         for deployment in deployments:
             self.logger.info("Working on resetting objects for this Design Instance...", extra={"object": deployment})
-            deployment.decommission(local_logger=get_logger(__name__, self.job_result))
+            deployment.decommission(local_logger=self.logger)
             self.logger.info("%s has been successfully decommissioned from Nautobot.", deployment)
 
 

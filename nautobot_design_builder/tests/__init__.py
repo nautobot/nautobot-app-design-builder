@@ -51,18 +51,20 @@ class DesignTestCase(TestCase):
         job.save_design_file = save_design_file
         self.logged_messages = []
 
-        def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument
-            self.logged_messages.append(
-                {
-                    "message": message,
-                    "obj": obj,
-                    "level_choice": level_choice,
-                    "grouping": grouping,
-                }
-            )
+        class _CaptureLogHandler(logging.Handler):
+            def emit(handler, record: logging.LogRecord) -> None:
+                message = handler.format(record)
+                obj = getattr(record, "object", None)
+                self.logged_messages.append(
+                    {
+                        "message": message,
+                        "obj": obj,
+                        "level_choice": record.levelname,
+                        "grouping": getattr(record, "grouping", record.funcName),
+                    }
+                )
 
-        job.job_result.log = mock.Mock()
-        job.job_result.log.side_effect = record_log
+        job.logger.addHandler(_CaptureLogHandler())
         return job
 
     def assert_context_files_created(self, *filenames):

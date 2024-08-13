@@ -246,7 +246,7 @@ class Deployment(PrimaryModel):
         reset associated objects to their pre-design state.
         """
         if not object_ids:
-            local_logger.info("Decommissioning design", extra={"obj": self})
+            local_logger.info("Decommissioning design", extra={"object": self})
             self.__class__.pre_decommission.send(self.__class__, deployment=self)
         # Iterate the change sets in reverse order (most recent first) and
         # revert each change set.
@@ -401,7 +401,7 @@ class ChangeSet(PrimaryModel):
         # but I think we need to discuss the implications of this further.
         records = self.records.order_by("-index").exclude(_design_object_id=None).exclude(active=False)
         if not object_ids:
-            local_logger.info("Reverting change set", extra={"obj": self})
+            local_logger.info("Reverting change set", extra={"object": self})
         else:
             records = records.filter(_design_object_id__in=object_ids)
 
@@ -409,7 +409,7 @@ class ChangeSet(PrimaryModel):
             try:
                 record.revert(local_logger=local_logger)
             except (ValidationError, DesignValidationError) as ex:
-                local_logger.error(str(ex), extra={"obj": record.design_object})
+                local_logger.error(str(ex), extra={"object": record.design_object})
                 raise ValueError from ex
 
         if not object_ids:
@@ -604,11 +604,11 @@ class ChangeRecord(BaseModel):
         object_type = self.design_object._meta.verbose_name.title()
         object_str = str(self.design_object)
 
-        local_logger.info("Reverting change record", extra={"obj": self.design_object})
         if self.full_control:
             related_records = ChangeRecord.objects.filter_related(self)
             if related_records.count() > 0:
                 active_record_ids = ",".join(map(lambda entry: str(entry.id), related_records))
+                local_logger.fatal("Could not revert change record.", extra={"object": self})
                 raise DesignValidationError(
                     f"This object is referenced by other active ChangeSets: {active_record_ids}"
                 )
@@ -618,8 +618,9 @@ class ChangeRecord(BaseModel):
             # deletion since this delete operation is part of an owning design.
             self.design_object._current_deployment = self.change_set.deployment  # pylint: disable=protected-access
             self.design_object.delete()
-            local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str)
+            local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str, extra={"object": self})
         else:
+            local_logger.info("Reverting change record", extra={"object": self.design_object})
             for attr_name, change in self.changes.items():
                 current_value = getattr(self.design_object, attr_name)
                 if "old_items" in change:
@@ -649,7 +650,7 @@ class ChangeRecord(BaseModel):
                     "%s %s has been reverted to its previous state.",
                     object_type,
                     object_str,
-                    extra={"obj": self.design_object},
+                    extra={"object": self.design_object},
                 )
 
         self.active = False

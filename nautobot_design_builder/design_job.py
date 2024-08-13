@@ -21,14 +21,13 @@ from nautobot.extras.jobs import JobForm
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
-from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.design import Environment
 from nautobot_design_builder.context import Context
 from nautobot_design_builder import models
 from nautobot_design_builder import choices
 
 
-class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-attributes
+class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
     """The base Design Job class that all specific Design Builder jobs inherit from.
 
     DesignJob is an abstract base class that all design implementations must implement.
@@ -172,7 +171,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         except TemplateError as ex:
             info = sys.exc_info()[2]
             summary = traceback.extract_tb(info, -1)[0]
-            self.log_failure(message=f"{filename}:{summary.lineno}")
+            self.logger.fatal("%s:%d", filename, summary.lineno)
             raise ex
 
     def render_design(self, context, design_file):
@@ -220,10 +219,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         try:
             instance = models.Deployment.objects.get(name=deployment_name, design=self.design_model())
-            self.log_info(message=f'Existing design instance of "{deployment_name}" was found, re-running design job.')
+            self.logger.info('Existing design instance of "%s" was found, re-running design job.', deployment_name)
             instance.last_implemented = timezone.now()
         except models.Deployment.DoesNotExist:
-            self.log_info(message=f'Implementing new design "{deployment_name}".')
+            self.logger.info('Implementing new design "%s".', deployment_name)
             content_type = ContentType.objects.get_for_model(models.Deployment)
             instance = models.Deployment(
                 name=deployment_name,
@@ -271,7 +270,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         """
         sid = transaction.savepoint()
 
-        self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
+        self.logger.info("Building %s", getattr(self.Meta, 'name'))
         extensions = getattr(self.Meta, "extensions", [])
 
         design_files = None
@@ -281,10 +280,10 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        self.log_info(message=f"Building {getattr(self.Meta, 'name')}")
+        self.logger.info("Building %s", getattr(self.Meta, 'name'))
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
-            job_result=self.job_result,
+            logger=self.logger,
             extensions=extensions,
             change_set=change_set,
         )
@@ -302,7 +301,7 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
         elif hasattr(self.Meta, "design_files"):
             design_files = self.Meta.design_files
         else:
-            self.log_failure(message="No design template specified for design.")
+            self.logger.fatal("No design template specified for design.")
             raise DesignImplementationError("No design template specified for design.")
 
         try:
@@ -312,8 +311,8 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
             if previous_change_set:
                 deleted_object_ids = previous_change_set - change_set
                 if deleted_object_ids:
-                    self.log_info(f"Decommissioning {deleted_object_ids}")
-                    change_set.deployment.decommission(*deleted_object_ids, local_logger=self.environment.logger)
+                    self.logger.info("Decommissioning %d objects that are no longer part of this design.", deleted_object_ids.count())
+                    change_set.deployment.decommission(*deleted_object_ids, local_logger=self.logger)
 
             if not dryrun:
                 self.post_implementation(context, self.environment)
@@ -332,17 +331,15 @@ class DesignJob(Job, ABC, LoggingMixin):  # pylint: disable=too-many-instance-at
                     output_filename: str = path.basename(getattr(self.Meta, "report"))
                     if output_filename.endswith(".j2"):
                         output_filename = output_filename[0:-3]
-                    self.log_success(message=report)
+                    self.logger.info(report)
                     self.save_design_file(output_filename, report)
             else:
                 transaction.savepoint_rollback(sid)
-                self.log_info(
-                    message=f"{self.name} can be imported successfully - No database changes made",
-                )
+                self.logger.info("%s can be imported successfully - No database changes made", self.name)
         except (DesignImplementationError, DesignModelError) as ex:
             transaction.savepoint_rollback(sid)
-            self.log_failure(message="Failed to implement design")
-            self.log_failure(message=str(ex))
+            self.logger.fatal("Failed to implement design")
+            self.logger.fatal(str(ex))
             raise ex
         except Exception as ex:
             transaction.savepoint_rollback(sid)

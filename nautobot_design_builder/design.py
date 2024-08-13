@@ -1,5 +1,6 @@
 """Provides ORM interaction for design builder."""
 
+import logging
 from types import FunctionType
 from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Type, Union
@@ -15,7 +16,6 @@ from nautobot.extras.models import JobResult, Relationship
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
-from nautobot_design_builder.logging import LoggingMixin, get_logger
 from nautobot_design_builder.fields import CustomRelationshipField, field_factory
 from nautobot_design_builder import models
 
@@ -619,8 +619,8 @@ class ModelInstance:
             self.environment.journal.log(self)
             self.metadata.created = False
             if self._parent is None:
-                self.environment.log_success(
-                    message=f"{msg} {self.model_class.__name__} {self.instance}", obj=self.instance
+                self.environment.logger.info(
+                    "%s %s %s", msg, self.model_class.__name__, self.instance, extra={"object": self.instance}
                 )
             # Refresh from DB so that we update based on any
             # post save signals that may have fired.
@@ -653,7 +653,7 @@ _OBJECT_TYPES_APP_FILTER = set(
 )
 
 
-class Environment(LoggingMixin):
+class Environment:
     """The design builder build environment.
 
     The build `Environment` contains all of the components needed to implement a design.
@@ -681,14 +681,12 @@ class Environment(LoggingMixin):
         return object.__new__(cls)
 
     def __init__(
-        self, job_result: JobResult = None, extensions: List[ext.Extension] = None, change_set: models.ChangeSet = None
+        self, logger: logging.Logger = None, extensions: List[ext.Extension] = None, change_set: models.ChangeSet = None
     ):
         """Create a new build environment for implementing designs.
 
         Args:
-            job_result (JobResult, optional): If this environment is being used by
-                a `DesignJob` then it can log to the `JobResult` for the job.
-                Defaults to None.
+            logger (Logger): A logger to use. If not supplied one will be created.
 
             extensions (List[ext.Extension], optional): Any custom extensions to use
                 when implementing designs. Defaults to None.
@@ -702,8 +700,9 @@ class Environment(LoggingMixin):
             errors.DesignImplementationError: If a provided extension is not a subclass
                 of `ext.Extension`.
         """
-        self.job_result = job_result
-        self.logger = get_logger(__name__, self.job_result)
+        self.logger = logger
+        if self.logger is None:
+            self.logger = logging.getLogger(__name__)
 
         self.extensions = {
             "extensions": [],
@@ -735,8 +734,8 @@ class Environment(LoggingMixin):
     def decommission_object(self, object_id, object_name):
         """This method decommissions an specific object_id from the design instance."""
         self.journal.change_set.deployment.decommission(object_id, local_logger=self.logger)
-        self.log_success(
-            message=f"Decommissioned {object_name} with ID {object_id} from design instance {self.journal.change_set.deployment}."
+        self.logger.info(
+            "Decommissioned %s with ID %s from design instance %s.", object_name, object_id, self.journal.change_set.deployment
         )
 
     def get_extension(self, ext_type: str, tag: str) -> ext.Extension:
