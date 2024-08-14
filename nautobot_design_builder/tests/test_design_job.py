@@ -272,7 +272,6 @@ class TestDesignJobIntegration(DesignTestCase):
 
         # This is a second, and third run with new input to update the deployment
         for i in range(2):
-            print("\n\nJob", i)
             data = copy.copy(original_data)
             if i == 0:
                 data["device_b"] = self.device3

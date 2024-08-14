@@ -619,6 +619,9 @@ class ChangeRecord(BaseModel):
             # deletion since this delete operation is part of an owning design.
             self.design_object._current_deployment = self.change_set.deployment  # pylint: disable=protected-access
             self.design_object.delete()
+            # This refreshes the field to prevent
+            # `save() prohibited to prevent data loss due to unsaved related object`
+            self.design_object  # pylint:disable=pointless-statement
             local_logger.info(
                 "%s %s has been deleted as it was owned by this design", object_type, object_str, extra={"object": self}
             )
