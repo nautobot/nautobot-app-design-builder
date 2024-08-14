@@ -27,7 +27,9 @@ def validate_delete(instance, **kwargs):
     change_record = (
         ChangeRecord.objects.filter(_design_object_id=instance.id, active=True).exclude_decommissioned().first()
     )
-    if change_record and change_record.change_set.deployment == getattr(instance, "_current_deployment", None):
+    if change_record is None:
+        return
+    if change_record.change_set.deployment == getattr(instance, "_current_deployment", None):
         if change_record.full_control:
             return
     # The next couple of lines need some explanation... due to the way
