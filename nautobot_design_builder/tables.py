@@ -11,7 +11,7 @@ from nautobot_design_builder.models import Design, Deployment, ChangeSet, Change
 
 DESIGN_TABLE = """
 
-<a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
+<a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="btn btn-xs btn-default openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
     <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
 </a>
 <a href="{% url 'extras:job_run_by_class_path' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
