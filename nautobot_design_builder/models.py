@@ -387,7 +387,6 @@ class ChangeSet(PrimaryModel):
                 full_control=model_instance.metadata.created,
                 index=self._next_index(),
             )
-        return
 
     def revert(self, *object_ids, local_logger: logging.Logger = logger):
         """Revert the changes represented in this ChangeSet.
@@ -620,7 +619,9 @@ class ChangeRecord(BaseModel):
             # deletion since this delete operation is part of an owning design.
             self.design_object._current_deployment = self.change_set.deployment  # pylint: disable=protected-access
             self.design_object.delete()
-            local_logger.info("%s %s has been deleted as it was owned by this design", object_type, object_str, extra={"object": self})
+            local_logger.info(
+                "%s %s has been deleted as it was owned by this design", object_type, object_str, extra={"object": self}
+            )
         else:
             local_logger.info("Reverting change record", extra={"object": self.design_object})
             for attr_name, change in self.changes.items():

@@ -321,7 +321,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                     ).id,
                 }
             )
-            
+
             existing_cable = dcim.Cable.objects.filter(
                 Q(termination_a_id=model_instance.instance.id) | Q(termination_b_id=remote_instance.instance.id)
             ).first()

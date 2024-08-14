@@ -128,9 +128,13 @@ class DesignObjectsTable(BaseTable):  # pylint:disable=nb-sub-class-name
 class ChangeSetTable(BaseTable):
     """Table for list view."""
 
-    created  = tables.DateTimeColumn(linkify=True, format=settings.SHORT_DATETIME_FORMAT)
+    created = tables.DateTimeColumn(linkify=True, format=settings.SHORT_DATETIME_FORMAT)
     deployment = tables.Column(linkify=True, verbose_name="Deployment")
-    job_result = tables.Column(accessor=Accessor("job_result.name"), linkify=lambda record: record.job_result.get_absolute_url(), verbose_name="Job Result")
+    job_result = tables.Column(
+        accessor=Accessor("job_result.name"),
+        linkify=lambda record: record.job_result.get_absolute_url(),
+        verbose_name="Job Result",
+    )
     record_count = tables.Column(accessor=Accessor("record_count"), verbose_name="Change Records")
     active = BooleanColumn(verbose_name="Active")
 

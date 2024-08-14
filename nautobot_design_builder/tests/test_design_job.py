@@ -1,7 +1,6 @@
 """Test running design jobs."""
 
 import copy
-import unittest
 from unittest.mock import patch, Mock, ANY
 
 from django.contrib.contenttypes.models import ContentType

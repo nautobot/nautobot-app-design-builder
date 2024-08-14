@@ -12,7 +12,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError, Multiple
 
 
 from nautobot.core.graphql.utils import str_to_var_name
-from nautobot.extras.models import JobResult, Relationship
+from nautobot.extras.models import Relationship
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
@@ -735,7 +735,10 @@ class Environment:
         """This method decommissions an specific object_id from the design instance."""
         self.journal.change_set.deployment.decommission(object_id, local_logger=self.logger)
         self.logger.info(
-            "Decommissioned %s with ID %s from design instance %s.", object_name, object_id, self.journal.change_set.deployment
+            "Decommissioned %s with ID %s from design instance %s.",
+            object_name,
+            object_id,
+            self.journal.change_set.deployment,
         )
 
     def get_extension(self, ext_type: str, tag: str) -> Union[ext.Extension, None]:

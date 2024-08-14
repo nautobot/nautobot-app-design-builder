@@ -5,7 +5,6 @@ import shutil
 import tempfile
 from os import path
 from typing import Type
-from unittest import mock
 from unittest.mock import PropertyMock, patch
 
 from django.test import TestCase
@@ -52,7 +51,7 @@ class DesignTestCase(TestCase):
         self.logged_messages = []
 
         class _CaptureLogHandler(logging.Handler):
-            def emit(handler, record: logging.LogRecord) -> None:
+            def emit(handler, record: logging.LogRecord) -> None:  # pylint:disable=no-self-argument,arguments-renamed
                 message = handler.format(record)
                 obj = getattr(record, "object", None)
                 self.logged_messages.append(

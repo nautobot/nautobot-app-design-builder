@@ -270,7 +270,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         """
         sid = transaction.savepoint()
 
-        self.logger.info("Building %s", getattr(self.Meta, 'name'))
+        self.logger.info("Building %s", getattr(self.Meta, "name"))
         extensions = getattr(self.Meta, "extensions", [])
 
         design_files = None
@@ -280,7 +280,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
 
         self.job_result.job_kwargs = {"data": self.serialize_data(data)}
 
-        self.logger.info("Building %s", getattr(self.Meta, 'name'))
+        self.logger.info("Building %s", getattr(self.Meta, "name"))
         extensions = getattr(self.Meta, "extensions", [])
         self.environment = Environment(
             logger=self.logger,
@@ -311,7 +311,9 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
             if previous_change_set:
                 deleted_object_ids = previous_change_set - change_set
                 if deleted_object_ids:
-                    self.logger.info("Decommissioning %d objects that are no longer part of this design.", deleted_object_ids.count())
+                    self.logger.info(
+                        "Decommissioning %d objects that are no longer part of this design.", deleted_object_ids.count()
+                    )
                     change_set.deployment.decommission(*deleted_object_ids, local_logger=self.logger)
 
             if not dryrun:
