@@ -320,7 +320,7 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
             items = []
             for value in values:
                 related_model, through_fields = self._get_related_model(value)
-                relationship_manager = getattr(obj.instance, self.field_name)
+                relationship_manager = getattr(obj.instance, self.field_name).model.objects
                 if through_fields:
                     value[f"!create_or_update:{self.link_field}_id"] = str(obj.instance.id)
                     relationship_manager = self.through.objects
@@ -330,10 +330,13 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
                 value = self._get_instance(obj, value, relationship_manager, related_model)
                 if related_model is not self.through:
                     items.append(value.instance)
-                # else:
-                #     setattr(value.instance, self.link_field, obj.instance)
                 if value.metadata.created:
                     value.save()
+                else:
+                    # If the value isn't saved we still need to log it so that
+                    # the changeset gets a record of this value's existence in
+                    # a design
+                    value.environment.journal.log(value)
             if items:
                 with change_log(obj, self.field_name):
                     getattr(obj.instance, self.field_name).add(*items)

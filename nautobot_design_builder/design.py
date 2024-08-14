@@ -738,7 +738,7 @@ class Environment:
             "Decommissioned %s with ID %s from design instance %s.", object_name, object_id, self.journal.change_set.deployment
         )
 
-    def get_extension(self, ext_type: str, tag: str) -> ext.Extension:
+    def get_extension(self, ext_type: str, tag: str) -> Union[ext.Extension, None]:
         """Look up an extension based on its tag name and return an instance of that Extension type.
 
         Args:

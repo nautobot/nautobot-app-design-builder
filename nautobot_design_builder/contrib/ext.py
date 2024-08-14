@@ -308,31 +308,30 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                         model=model_instance.model_class, parent=model_instance, query_filter=termination_query
                     )
 
-        cable_attributes.update(
-            {
-                "termination_a": model_instance,
-                "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
-                    remote_instance.instance
-                ).id,
-                "!create_or_update:termination_b_id": remote_instance.instance.id,
-            }
-        )
-
         def connect():
+            cable_attributes.update(
+                {
+                    "!create_or_update:termination_a_id": model_instance.instance.id,
+                    "!create_or_update:termination_a_type_id": ContentType.objects.get_for_model(
+                        model_instance.instance
+                    ).id,
+                    "!create_or_update:termination_b_id": remote_instance.instance.id,
+                    "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
+                        remote_instance.instance
+                    ).id,
+                }
+            )
+            
             existing_cable = dcim.Cable.objects.filter(
                 Q(termination_a_id=model_instance.instance.id) | Q(termination_b_id=remote_instance.instance.id)
             ).first()
+            Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name
             if existing_cable:
                 if (
-                    existing_cable.termination_a_id == model_instance.instance.id
-                    and existing_cable.termination_b_id == remote_instance.instance.id
-                ) or (
-                    existing_cable.termination_b_id == model_instance.instance.id
-                    and existing_cable.termination_a_id == remote_instance.instance.id
+                    existing_cable.termination_a_id != model_instance.instance.id
+                    or existing_cable.termination_b_id != remote_instance.instance.id
                 ):
-                    return
-                self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
-            Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name
+                    self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
             cable = Cable(self.environment, cable_attributes)
             cable.save()
 

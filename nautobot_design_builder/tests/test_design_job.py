@@ -241,7 +241,6 @@ class TestDesignJobIntegration(DesignTestCase):
         self.assertEqual(VRF.objects.first().rd, "64501:1")
         Prefix.objects.get(prefix="192.0.2.4/30")
 
-    @unittest.skip
     def test_update_integration_design(self):
         """Test to validate the update of the design."""
         original_data = copy.copy(self.data)
@@ -290,19 +289,21 @@ class TestDesignJobIntegration(DesignTestCase):
 
             self.assertEqual(VRF.objects.first().rd, "64501:2")
             self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.0/24").prefix), "192.0.2.0/24")
-            self.assertEqual(str(Prefix.objects.get(prefix="192.0.2.4/30").prefix), "192.0.2.4/30")
-            self.assertEqual(Prefix.objects.get(prefix="192.0.2.4/30").vrfs.first(), VRF.objects.get(rd="64501:2"))
+            self.assertEqual(Prefix.objects.get(prefix="192.0.2.0/30").vrfs.first(), VRF.objects.get(rd="64501:2"))
 
             self.assertEqual(
                 data["device_a"].interfaces.first().cable,
                 data["device_b"].interfaces.first().cable,
             )
             self.assertEqual(
-                IPAddress.objects.get(host="192.0.2.6").assigned_object,
+                IPAddress.objects.get(host="192.0.2.2").interfaces.first(),
                 data["device_a"].interfaces.first(),
             )
 
             self.assertEqual(
-                IPAddress.objects.get(host="192.0.2.5").assigned_object,
+                IPAddress.objects.get(host="192.0.2.1").interfaces.first(),
                 data["device_b"].interfaces.first(),
             )
+
+            data["device_a"].refresh_from_db()
+            self.assertIsNotNone(data["device_a"].local_config_context_data)

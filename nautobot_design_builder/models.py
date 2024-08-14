@@ -362,9 +362,11 @@ class ChangeSet(PrimaryModel):
         Args:
             model_instance: Model instance to log changes.
         """
-        # Don't need to record changes when nothing happened.
-        if len(model_instance.metadata.changes) == 0:
-            return
+        # Note: We always need to create a change record, even when there
+        # are no individual attribute changes. Change records that don't
+        # exist appear that objects are no longer needed by a design and
+        # then trigger the objects to be deleted on re-running a given
+        # deployment.
         instance = model_instance.instance
         content_type = ContentType.objects.get_for_model(instance)
 
