@@ -5,7 +5,7 @@ Design builder is primarily extended by creating new action tags. These action t
 ## Action Tag Extensions
 
 The action tags in Design Builder are provided by `design.Builder`. This component reads a design and then executes instructions that are specified in the design. Basic functions, provided out of the box, are
-`create`, `create_or_update` and `update`. These actions are self explanatory (for details on syntax see [this document](../user//design_development.md#special-syntax)). Two additional actions are provided, these are the `ref` and `git_context` actions. These two actions are provided as extensions to the builder.
+`get`, `create`, `create_or_update` and `update`. These actions are self explanatory (for details on syntax see [this document](../user//design_development.md#special-syntax)). Two additional actions are provided, these are the `ref` and `git_context` actions. These two actions are provided as extensions to the builder.
 
 Extensions specify attribute and/or value actions to the object creator. Within a design template, these extensions can be used by specifying an exclamation point (!) followed by the extensions attribute or value tag. For instance, the `ref` extension implements both an attribute and a value extension. This extension can be used by specifying `!ref`. Extensions can add behavior to the object creator that is not supplied by the standard create and update actions.
 
