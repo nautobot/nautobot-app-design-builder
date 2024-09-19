@@ -227,9 +227,9 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
             if self.field.remote_field.through_fields:
                 self.link_field = self.field.remote_field.through_fields[0]
             else:
-                for f in self.through._meta.fields:
-                    if f.related_model == self.field.model:
-                        self.link_field = f.name
+                for field in self.through._meta.fields:
+                    if field.related_model == self.field.model:
+                        self.link_field = field.name
 
     def _get_related_model(self, value):
         """Get the appropriate related model for the value.
@@ -295,9 +295,9 @@ class ManyToManyRelField(ManyToManyField):  # pylint:disable=too-few-public-meth
             if self.field.through_fields:
                 self.link_field = self.field.through_fields[0]
             else:
-                for f in self.through._meta.fields:
-                    if f.related_model == self.field.model:
-                        self.link_field = f.name
+                for field in self.through._meta.fields:
+                    if field.related_model == self.field.model:
+                        self.link_field = field.name
 
 
 class GenericRelationField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
