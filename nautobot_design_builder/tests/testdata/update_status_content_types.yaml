@@ -1,0 +1,22 @@
+---
+designs:
+  - statuses:
+      - "!create_or_update:name": "Active"
+        content_types:
+          - "!get:model": "cable"
+            "!get:app_label": "dcim"
+
+pre_checks:
+  - not_in:
+      - model: "django.contrib.contenttypes.models.ContentType"
+        query: {app_label: "dcim", model: "cable"}
+      - model: "nautobot.extras.models.Status"
+        query: {name: "Active"}
+        attribute: "content_types"
+checks:
+  - in:
+      - model: "django.contrib.contenttypes.models.ContentType"
+        query: {app_label: "dcim", model: "cable"}
+      - model: "nautobot.extras.models.Status"
+        query: {name: "Active"}
+        attribute: "content_types"

@@ -1,28 +1,21 @@
 ---
+depends_on: "base_test.yaml"
 designs:
-  - location_types:
-      - name: "Site"
-        content_types:
-          - "!get:app_label": "ipam"
-            "!get:model": "prefix"
-        locations:
-          - name: "site_1"
-            status__name: "Active"
-            "!ref": "site_1"
-
-    prefixes:
+  - prefixes:
       - locations:
-          - "!ref:site_1"
+          - location:
+              "!get:name": "Site"
         status__name: "Active"
         prefix: "192.168.0.0/24"
       - "!create_or_update:prefix": "192.168.56.0/24"
         locations:
-          - "!ref:site_1"
+          - location:
+              "!get:name": "Site"
         status__name: "Active"
 
 checks:
   - equal:
       - model: "nautobot.ipam.models.Prefix"
-        query: {locations__name: "site_1"}
+        query: {locations__name: "Site"}
         attribute: "__str__"
       - value: ["192.168.0.0/24", "192.168.56.0/24"]

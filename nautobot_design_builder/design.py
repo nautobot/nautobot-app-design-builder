@@ -553,16 +553,15 @@ class ModelInstance:
                 if self.metadata.action == ModelMetadata.UPDATE:
                     # pylint: disable=raise-missing-from
                     raise errors.DesignImplementationError(f"No match with {query_filter}", self.model_class)
-                self.metadata.created = True
-                # since the object was not found, we need to
-                # put the search criteria back into the attributes
-                # so that they will be set when the object is created
-                self.metadata.attributes.update(field_values)
         elif self.metadata.action != ModelMetadata.CREATE:
             raise errors.DesignImplementationError(f"Unknown database action {self.metadata.action}", self.model_class)
+        # since the object was not found, we need to
+        # put the search criteria back into the attributes
+        # so that they will be set when the object is created
+        self.metadata.attributes.update(field_values)
+        self.metadata.created = True
         try:
             self.instance = self.model_class(**self.metadata.kwargs)
-            self.metadata.created = True
         except TypeError as ex:
             raise errors.DesignImplementationError(str(ex), self.model_class)
 

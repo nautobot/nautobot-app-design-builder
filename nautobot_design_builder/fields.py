@@ -145,7 +145,9 @@ class RelationshipFieldMixin:  # pylint:disable=too-few-public-methods
     Relationship fields also include the reverse side of fields or even custom relationships.
     """
 
-    def _get_instance(self, obj: "ModelInstance", value: Any, relationship_manager: "Manager" = None):
+    def _get_instance(
+        self, obj: "ModelInstance", value: Any, relationship_manager: "Manager" = None, related_model=None
+    ):
         """Helper function to create a new child model from a value.
 
         If the passed-in value is a dictionary, this method assumes that the dictionary
@@ -165,8 +167,10 @@ class RelationshipFieldMixin:  # pylint:disable=too-few-public-methods
         Returns:
             ModelInstance: Either a newly created `ModelInstance` or the original value.
         """
+        if related_model is None:
+            related_model = self.related_model
         if isinstance(value, Mapping):
-            value = obj.create_child(self.related_model, value, relationship_manager)
+            value = obj.create_child(related_model, value, relationship_manager)
         return value
 
 
@@ -213,23 +217,87 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
 
     def __init__(self, field: django_models.Field):  # noqa:D102
         super().__init__(field)
-        if hasattr(field.remote_field, "through"):
-            through = field.remote_field.through
-            if not through._meta.auto_created:
-                self.related_model = through
+        self.auto_through = True
+        self._init_through()
+
+    def _init_through(self):
+        self.through = self.field.remote_field.through
+        if not self.through._meta.auto_created:
+            self.auto_through = False
+            if self.field.remote_field.through_fields:
+                self.link_field = self.field.remote_field.through_fields[0]
+            else:
+                for field in self.through._meta.fields:
+                    if field.related_model == self.field.model:
+                        self.link_field = field.name
+
+    def _get_related_model(self, value):
+        """Get the appropriate related model for the value.
+
+        if there is an explicit through class, then we have two choices:
+        1) Assign explicitly using the through-class attributes
+        2) Assign implicitly like a normal many-to-many
+
+        We want to be able to handle both situations, because it may be that
+        the through class has additional attributes. The way we determine if
+        the design is requesting the through-class or the implicit related class
+        is by examining the values to be assigned and matching their keys with
+        the related model and through model.
+        """
+        if isinstance(value, Mapping):
+            attributes = set()
+            # Extract all of the top-level field names from the query in order
+            # to match them against available fields in the through table. If
+            # the set of attributes is a subset of the through class's attributes
+            # then use the through class directly, otherwise use the related_model
+            # class
+            for attribute in value.keys():
+                if attribute.startswith("!get") or attribute.startswith("!create"):
+                    attribute_parts = attribute.split(":")
+                    attribute = attribute_parts[1]
+
+                if "__" in attribute:
+                    attribute = attribute.split("__")[0]
+                attributes.add(attribute)
+            through_fields = set(field.name for field in self.through._meta.fields)
+            if self.auto_through is False and attributes.issubset(through_fields):
+                return self.through
+        return self.related_model
 
     @debug_set
     def __set__(self, obj: "ModelInstance", values):  # noqa:D105
         def setter():
             items = []
             for value in values:
-                value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
+                related_model = self._get_related_model(value)
+                value = self._get_instance(obj, value, getattr(obj.instance, self.field_name), related_model)
+                if related_model is not self.through:
+                    items.append(value.instance)
+                else:
+                    setattr(value.instance, self.link_field, obj.instance)
                 if value.metadata.created:
                     value.save()
-                items.append(value.instance)
-            getattr(obj.instance, self.field_name).add(*items)
+                else:
+                    value.environment.journal.log(value)
+            if items:
+                getattr(obj.instance, self.field_name).add(*items)
 
         obj.connect("POST_INSTANCE_SAVE", setter)
+
+
+class ManyToManyRelField(ManyToManyField):  # pylint:disable=too-few-public-methods
+    """Reverse many to many relationship field."""
+
+    def _init_through(self):
+        self.through = self.field.through
+        if not self.through._meta.auto_created:
+            self.auto_through = False
+            if self.field.through_fields:
+                self.link_field = self.field.through_fields[0]
+            else:
+                for field in self.through._meta.fields:
+                    if field.related_model == self.field.model:
+                        self.link_field = field.name
 
 
 class GenericRelationField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -259,12 +327,29 @@ class GenericForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:
         setattr(obj.instance, ct_field, ContentType.objects.get_for_model(value.instance))
 
 
-class TagField(ManyToManyField):  # pylint:disable=too-few-public-methods
+class TagField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
     """Taggit field."""
 
     def __init__(self, field: django_models.Field):  # noqa:D102
         super().__init__(field)
         self.related_model = field.remote_field.model
+
+    def __set__(self, obj: "ModelInstance", values):  # noqa:D105
+        # I hate that this code is almost identical to the ManyToManyField
+        # __set__ code, but I don't see an easy way to DRY it up at the
+        # moment.
+        def setter():
+            items = []
+            for value in values:
+                value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
+                if value.metadata.created:
+                    value.save()
+                else:
+                    value.environment.journal.log(value)
+                items.append(value.instance)
+            getattr(obj.instance, self.field_name).add(*items)
+
+        obj.connect("POST_INSTANCE_SAVE", setter)
 
 
 class GenericRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -348,8 +433,10 @@ def field_factory(arg1, arg2) -> ModelField:
         field = ForeignKeyField(arg2)
     elif isinstance(arg2, django_models.ManyToOneRel):
         field = ManyToOneRelField(arg2)
-    elif isinstance(arg2, (django_models.ManyToManyField, django_models.ManyToManyRel)):
+    elif isinstance(arg2, django_models.ManyToManyField):
         field = ManyToManyField(arg2)
+    elif isinstance(arg2, django_models.ManyToManyRel):
+        field = ManyToManyRelField(arg2)
     else:
         raise DesignImplementationError(f"Cannot manufacture field for {type(arg2)}, {arg2} {arg2.is_relation}")
     return field
