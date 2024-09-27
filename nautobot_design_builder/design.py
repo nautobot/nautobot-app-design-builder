@@ -597,8 +597,8 @@ class ModelInstance:
             elif hasattr(self.instance, field_name):
                 setattr(self.instance, field_name, value)
 
-            for key, value in self.metadata.custom_fields.items():
-                self.set_custom_field(key, value)
+        for key, value in self.metadata.custom_fields.items():
+            self.set_custom_field(key, value)
 
     def save(self):
         """Save the model instance to the database.
