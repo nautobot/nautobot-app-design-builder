@@ -1,0 +1,54 @@
+---
+designs:
+  - custom_fields:
+      - label: "test_boolean"
+        name: "Test Boolean"
+        type: "boolean"
+        default: false
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "vlan"
+    vlans:
+      - vid: 100
+        name: "TEST-VLAN-100"
+        status__name: "Active"
+        custom_fields:
+          "Test Boolean": true
+      - vid: 101
+        name: "TEST-VLAN-101"
+        status__name: "Active"
+        custom_fields:
+          "Test Boolean": false
+      - vid: 102
+        name: "TEST-VLAN-102"
+        status__name: "Active"
+      - vid: 103
+        name: "TEST-VLAN-103"
+        status__name: "Active"
+      - "!update:vid": 103
+        custom_fields:
+          "Test Boolean": true
+checks:
+  - equal:
+      - model: "nautobot.ipam.models.VLAN"
+        query: {vid: 100}
+        attribute: "cf.Test Boolean"
+      - value: true
+
+  - equal:
+      - model: "nautobot.ipam.models.VLAN"
+        query: {vid: 101}
+        attribute: "cf.Test Boolean"
+      - value: false
+
+  - equal:
+      - model: "nautobot.ipam.models.VLAN"
+        query: {vid: 102}
+        attribute: "cf.Test Boolean"
+      - value: false
+
+  - equal:
+      - model: "nautobot.ipam.models.VLAN"
+        query: {vid: 103}
+        attribute: "cf.Test Boolean"
+      - value: true
