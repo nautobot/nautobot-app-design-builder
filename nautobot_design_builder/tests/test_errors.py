@@ -15,11 +15,11 @@ class TestDesignModelError(unittest.TestCase):
 
         def __init__(self, title="", parent=None):
             self.title = title
-            self.instance = self
+            self.design_instance = self
             self.model_class = self
             self._meta = self
             self.verbose_name = "verbose name"
-            self._parent = parent
+            self._design_instance_parent = parent
 
         def __str__(self):
             return self.title

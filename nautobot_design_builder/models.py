@@ -367,7 +367,7 @@ class ChangeSet(PrimaryModel):
         # exist appear that objects are no longer needed by a design and
         # then trigger the objects to be deleted on re-running a given
         # deployment.
-        instance = model_instance.instance
+        instance = model_instance.design_instance
         content_type = ContentType.objects.get_for_model(instance)
 
         try:
@@ -377,14 +377,14 @@ class ChangeSet(PrimaryModel):
             )
             # Look up the pre_change state from the existing
             # record and record the differences.
-            entry.changes.update(model_instance.metadata.changes)
+            entry.changes.update(model_instance.design_metadata.changes)
             entry.save()
         except ChangeRecord.DoesNotExist:
             entry = self.records.create(
                 _design_object_type=content_type,
                 _design_object_id=instance.id,
-                changes=model_instance.metadata.changes,
-                full_control=model_instance.metadata.created,
+                changes=model_instance.design_metadata.changes,
+                full_control=model_instance.design_metadata.created,
                 index=self._next_index(),
             )
 

@@ -14,7 +14,7 @@ For the remainder of this tutorial we will focus solely on the Design Job, Desig
 
 ## Design Components
 
-Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. Since, fundamentally, all designs are Nautobot Jobs, everything must be in a top level `jobs` python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `jobs` module or be imported to it. The following directory layout is from the [demo designs repository](hhttps://github.com/nautobot/demo-designs):
+Designs can be loaded either from local files or from a git repository. Either way, the structure of the actual designs and all the associated files is the same. Since, fundamentally, all designs are Nautobot Jobs, everything must be in a top level `jobs` python package (meaning the directory must contain the file `__init__.py`) and all design classes must be either defined in this `jobs` module or be imported to it. The following directory layout is from the [demo designs repository](https://github.com/nautobot/demo-designs):
 
 ```bash
 jobs
@@ -49,7 +49,7 @@ The `jobs` directory contains everything that is needed for implementing a desig
 
 Within the `jobs` directory, the naming of modules and files is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there is are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
 
-Designs are just specialized Nautobot jobs. Any design must inherit from `DesignJob`, and just like any other job, design jobs must be registered using `register_jbos`. An example design follows:
+Designs are just specialized Nautobot jobs. Any design must inherit from `DesignJob`, and just like any other job, design jobs must be registered using `register_jobs`. An example design follows:
 
 ```python
 from nautobot.apps.jobs import register_jobs

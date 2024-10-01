@@ -109,7 +109,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         """
         fields = {name: var.as_field() for name, var in cls._get_vars().items()}
         old_clean = JobForm.clean
-        context_class = cls.Meta.context_class
+        context_class = cls.Meta.context_class  # pylint:disable=no-member
 
         def clean(self):
             cleaned_data = old_clean(self)

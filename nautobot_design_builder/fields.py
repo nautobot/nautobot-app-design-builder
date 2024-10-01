@@ -76,21 +76,25 @@ def change_log(model_instance: "ModelInstance", attr_name: str):
         model_instance (ModelInstance): The model instance that is being updated.
         attr_name (str): The attribute to be updated.
     """
-    old_value = _get_change_value(getattr(model_instance.instance, attr_name))
+    old_value = _get_change_value(getattr(model_instance.design_instance, attr_name))
     yield
-    new_value = _get_change_value(getattr(model_instance.instance, attr_name))
+    new_value = _get_change_value(getattr(model_instance.design_instance, attr_name))
     if old_value != new_value:
         if isinstance(old_value, set):
-            model_instance.metadata.changes[attr_name] = {
+            model_instance.design_metadata.changes[attr_name] = {
                 "old_items": old_value,
                 "new_items": new_value,
             }
             # Many-to-Many changes need to be logged on the parent,
             # and this won't happen implicitly so we log the changes
             # explicitly here.
-            model_instance.environment.journal.log(model_instance)
+            #
+            # TODO: This has been commented out because I *think* that it is
+            # no longer needed since their is now a journal log created in the
+            # create_child method.
+            # model_instance.design_metadata.environment.journal.log(model_instance)
         else:
-            model_instance.metadata.changes[attr_name] = {
+            model_instance.design_metadata.changes[attr_name] = {
                 "old_value": old_value,
                 "new_value": new_value,
             }
@@ -123,9 +127,9 @@ class ModelField(ABC):
         Returns:
             Any: Either the descriptor instance or the field value.
         """
-        if obj is None or obj.instance is None:
+        if obj is None or obj.design_instance is None:
             return self
-        return getattr(obj.instance, self.field_name)
+        return getattr(obj.design_instance, self.field_name)
 
     @abstractmethod
     def __set__(self, obj: "ModelInstance", value):
@@ -173,7 +177,7 @@ class SimpleField(BaseModelField):  # pylint:disable=too-few-public-methods
     @debug_set
     def __set__(self, obj: "ModelInstance", value):  # noqa: D105
         with change_log(obj, self.field_name):
-            setattr(obj.instance, self.field_name, value)
+            setattr(obj.design_instance, self.field_name, value)
 
 
 class RelationshipFieldMixin:  # pylint:disable=too-few-public-methods
@@ -214,7 +218,7 @@ class RelationshipFieldMixin:  # pylint:disable=too-few-public-methods
         if related_model is None:
             related_model = self.related_model
         if isinstance(value, Mapping):
-            value = obj.create_child(related_model, value, relationship_manager)
+            value = obj.design_metadata.create_child(related_model, value, relationship_manager)
         return value
 
 
@@ -227,16 +231,14 @@ class ForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
 
         def setter():
             model_instance = self._get_instance(obj, value)
-            if model_instance.metadata.created:
+            if model_instance.design_metadata.created:
                 model_instance.save()
-            else:
-                model_instance.environment.journal.log(model_instance)
 
             with change_log(obj, self.field.attname):
-                setattr(obj.instance, self.field_name, model_instance.instance)
+                setattr(obj.design_instance, self.field_name, model_instance.design_instance)
 
             if deferred:
-                obj.instance.save(update_fields=[self.field_name])
+                obj.design_instance.save(update_fields=[self.field_name])
 
         if deferred:
             obj.connect("POST_INSTANCE_SAVE", setter)
@@ -256,7 +258,7 @@ class ManyToOneRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disab
             for value in values:
                 value = self._get_instance(obj, value, getattr(obj, self.field_name))
                 with change_log(value, self.field.field.attname):
-                    setattr(value.instance, self.field.field.name, obj.instance)
+                    setattr(value.design_instance, self.field.field.name, obj.design_instance)
                 value.save()
 
         obj.connect("POST_INSTANCE_SAVE", setter)
@@ -277,9 +279,9 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
             if self.field.remote_field.through_fields:
                 self.link_field = self.field.remote_field.through_fields[0]
             else:
-                for f in self.through._meta.fields:
-                    if f.related_model == self.field.model:
-                        self.link_field = f.name
+                for field in self.through._meta.fields:
+                    if field.related_model == self.field.model:
+                        self.link_field = field.name
 
     def _get_related_model(self, value):
         """Get the appropriate related model for the value.
@@ -320,26 +322,23 @@ class ManyToManyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
             items = []
             for value in values:
                 related_model, through_fields = self._get_related_model(value)
-                relationship_manager = getattr(obj.instance, self.field_name).model.objects
+                relationship_manager = getattr(obj.design_instance, self.field_name).model.objects
                 if through_fields:
-                    value[f"!create_or_update:{self.link_field}_id"] = str(obj.instance.id)
+                    value[f"!create_or_update:{self.link_field}_id"] = str(obj.design_instance.id)
                     relationship_manager = self.through.objects
 
                 for field in through_fields:
                     value[f"!create_or_update:{field}"] = value.pop(field)
                 value = self._get_instance(obj, value, relationship_manager, related_model)
                 if related_model is not self.through:
-                    items.append(value.instance)
-                if value.metadata.created:
-                    value.save()
+                    items.append(value.design_instance)
                 else:
-                    # If the value isn't saved we still need to log it so that
-                    # the changeset gets a record of this value's existence in
-                    # a design
-                    value.environment.journal.log(value)
+                    setattr(value.design_instance, self.link_field, obj.design_instance)
+                if value.design_metadata.created:
+                    value.save()
             if items:
                 with change_log(obj, self.field_name):
-                    getattr(obj.instance, self.field_name).add(*items)
+                    getattr(obj.design_instance, self.field_name).add(*items)
 
         obj.connect("POST_INSTANCE_SAVE", setter)
 
@@ -354,9 +353,9 @@ class ManyToManyRelField(ManyToManyField):  # pylint:disable=too-few-public-meth
             if self.field.through_fields:
                 self.link_field = self.field.through_fields[0]
             else:
-                for f in self.through._meta.fields:
-                    if f.related_model == self.field.model:
-                        self.link_field = f.name
+                for field in self.through._meta.fields:
+                    if field.related_model == self.field.model:
+                        self.link_field = field.name
 
 
 class GenericRelationField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -369,13 +368,11 @@ class GenericRelationField(BaseModelField, RelationshipFieldMixin):  # pylint:di
         items = []
         for value in values:
             value = self._get_instance(obj, value)
-            if value.metadata.created:
+            if value.design_metadata.created:
                 value.save()
-            else:
-                value.environment.journal.log(value)
-            items.append(value.instance)
+            items.append(value.design_instance)
         with change_log(obj, self.field_name):
-            getattr(obj.instance, self.field_name).add(*items)
+            getattr(obj.design_instance, self.field_name).add(*items)
 
 
 class GenericForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -385,10 +382,10 @@ class GenericForeignKeyField(BaseModelField, RelationshipFieldMixin):  # pylint:
     def __set__(self, obj: "ModelInstance", value):  # noqa:D105
         fk_field = self.field.fk_field
         ct_field = self.field.ct_field
-        ct_id_field = obj.instance._meta.get_field(ct_field).attname
+        ct_id_field = obj.design_instance._meta.get_field(ct_field).attname
         with change_log(obj, fk_field), change_log(obj, ct_id_field):
-            setattr(obj.instance, fk_field, value.instance.pk)
-            setattr(obj.instance, ct_field, ContentType.objects.get_for_model(value.instance))
+            setattr(obj.design_instance, fk_field, value.design_instance.pk)
+            setattr(obj.design_instance, ct_field, ContentType.objects.get_for_model(value.design_instance))
 
 
 class TagField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-few-public-methods
@@ -405,13 +402,13 @@ class TagField(BaseModelField, RelationshipFieldMixin):  # pylint:disable=too-fe
         def setter():
             items = []
             for value in values:
-                value = self._get_instance(obj, value, getattr(obj.instance, self.field_name))
-                if value.metadata.created:
+                value = self._get_instance(obj, value, getattr(obj.design_instance, self.field_name))
+                if value.design_metadata.created:
                     value.save()
-                items.append(value.instance)
+                items.append(value.design_instance)
             if items:
                 with change_log(obj, self.field_name):
-                    getattr(obj.instance, self.field_name).add(*items)
+                    getattr(obj.design_instance, self.field_name).add(*items)
 
         obj.connect("POST_INSTANCE_SAVE", setter)
 
@@ -422,7 +419,7 @@ class GenericRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
     @debug_set
     def __set__(self, obj: "ModelInstance", value):  # noqa:D105
         with change_log(obj, self.field.attname):
-            setattr(obj.instance, self.field.attname, self._get_instance(obj, value))
+            setattr(obj.design_instance, self.field.attname, self._get_instance(obj, value))
 
 
 class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: disable=too-few-public-methods
@@ -459,25 +456,27 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
         def setter():
             for value in values:
                 value = self._get_instance(obj, value)
-                if value.metadata.created:
+                if value.design_metadata.created:
                     value.save()
-                else:
-                    value.environment.journal.log(value)
 
-                source = obj.instance
-                destination = value.instance
+                source = obj.design_instance
+                destination = value.design_instance
                 if self.relationship.source_type == ContentType.objects.get_for_model(destination):
                     source, destination = destination, source
 
                 source_type = ContentType.objects.get_for_model(source)
                 destination_type = ContentType.objects.get_for_model(destination)
-                RelationshipAssociation.objects.update_or_create(
-                    relationship=self.relationship,
-                    source_id=source.id,
-                    source_type=source_type,
-                    destination_id=destination.id,
-                    destination_type=destination_type,
+                relationship_association = obj.design_metadata.create_child(
+                    RelationshipAssociation,
+                    attributes={
+                        "relationship_id": self.relationship.id,
+                        "source_id": source.id,
+                        "source_type_id": source_type.id,
+                        "destination_id": destination.id,
+                        "destination_type_id": destination_type.id,
+                    },
                 )
+                relationship_association.save()
 
         obj.connect("POST_INSTANCE_SAVE", setter)
 
