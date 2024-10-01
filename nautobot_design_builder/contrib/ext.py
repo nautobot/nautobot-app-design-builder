@@ -66,7 +66,7 @@ class LookupMixin:
                 yield from LookupMixin._flatten(value, f"{prefix}{key}__")
             else:
                 if isinstance(value, ModelInstance):
-                    yield (f"!get:{prefix}{key}", value.instance)
+                    yield (f"!get:{prefix}{key}", value.design_instance)
                 else:
                     yield (f"!get:{prefix}{key}", value)
 
@@ -127,7 +127,7 @@ class LookupMixin:
         try:
             model_class = self.environment.model_class_index[queryset.model]
             if parent:
-                return parent.create_child(model_class, query, queryset)
+                return parent.design_metadata.create_child(model_class, query, queryset)
             return model_class(self.environment, query, queryset)
         except ObjectDoesNotExist:
             # pylint: disable=raise-missing-from
@@ -298,23 +298,24 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             {
                 "termination_a": model_instance,
                 "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
-                    remote_instance.instance
+                    remote_instance.design_instance
                 ).id,
-                "!create_or_update:termination_b_id": remote_instance.instance.id,
+                "!create_or_update:termination_b_id": remote_instance.design_instance.id,
             }
         )
 
         def connect():
             existing_cable = dcim.Cable.objects.filter(
-                Q(termination_a_id=model_instance.instance.id) | Q(termination_b_id=remote_instance.instance.id)
+                Q(termination_a_id=model_instance.design_instance.id)
+                | Q(termination_b_id=remote_instance.design_instance.id)
             ).first()
             if existing_cable:
                 if (
-                    existing_cable.termination_a_id == model_instance.instance.id
-                    and existing_cable.termination_b_id == remote_instance.instance.id
+                    existing_cable.termination_a_id == model_instance.design_instance.id
+                    and existing_cable.termination_b_id == remote_instance.design_instance.id
                 ) or (
-                    existing_cable.termination_b_id == model_instance.instance.id
-                    and existing_cable.termination_a_id == remote_instance.instance.id
+                    existing_cable.termination_b_id == model_instance.design_instance.id
+                    and existing_cable.termination_a_id == remote_instance.design_instance.id
                 ):
                     return
                 self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
@@ -368,7 +369,7 @@ class NextPrefixExtension(AttributeExtension):
         identified_by = value.pop("identified_by", None)
         if identified_by:
             try:
-                model_instance.instance = model_instance.relationship_manager.get(**identified_by)
+                model_instance.design_instance = model_instance.relationship_manager.get(**identified_by)
                 return None
             except ObjectDoesNotExist:
                 pass
@@ -476,7 +477,7 @@ class ChildPrefixExtension(AttributeExtension):
         if parent is None:
             raise DesignImplementationError("the child_prefix tag requires a parent")
         if isinstance(parent, ModelInstance):
-            parent = str(parent.instance.prefix)
+            parent = str(parent.design_instance.prefix)
         elif not isinstance(parent, str):
             raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
 
@@ -569,8 +570,8 @@ class BGPPeeringExtension(AttributeExtension):
         peering_a = None
         peering_z = None
         try:
-            peering_a = endpoint_a.instance.peering
-            peering_z = endpoint_z.instance.peering
+            peering_a = endpoint_a.design_instance.peering
+            peering_z = endpoint_z.design_instance.peering
         except self.Peering.model_class.DoesNotExist:
             pass
 
@@ -585,13 +586,13 @@ class BGPPeeringExtension(AttributeExtension):
                 peering_z.delete()
 
         retval["endpoints"] = [endpoint_a, endpoint_z]
-        endpoint_a.metadata.attributes["peering"] = model_instance
-        endpoint_z.metadata.attributes["peering"] = model_instance
+        endpoint_a.design_metadata.attributes["peering"] = model_instance
+        endpoint_z.design_metadata.attributes["peering"] = model_instance
 
         def post_save():
             peering_instance: ModelInstance = model_instance
-            endpoint_a = peering_instance.instance.endpoint_a
-            endpoint_z = peering_instance.instance.endpoint_z
+            endpoint_a = peering_instance.design_instance.endpoint_a
+            endpoint_z = peering_instance.design_instance.endpoint_z
             endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
             endpoint_a.save()
             endpoint_z.save()

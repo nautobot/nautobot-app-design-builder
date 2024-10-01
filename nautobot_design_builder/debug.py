@@ -8,9 +8,9 @@ DEBUG = False
 
 class ObjDetails:  # noqa:D101  # pylint:disable=too-few-public-methods,missing-class-docstring
     def __init__(self, obj):  # noqa:D107  # pylint:disable=missing-function-docstring
-        self.instance = obj
-        if hasattr(obj, "instance"):
-            self.instance = obj.instance
+        self.design_instance = obj
+        if hasattr(obj, "design_instance"):
+            self.design_instance = obj.design_instance
         try:
             description = str(obj)
             if description.startswith("<class"):
@@ -20,15 +20,15 @@ class ObjDetails:  # noqa:D101  # pylint:disable=too-few-public-methods,missing-
 
         self.obj = obj
         self.obj_class = obj.__class__.__name__
-        self.obj_id = str(getattr(self.instance, "id", None))
-        if hasattr(self.instance, "name"):
-            self.name = getattr(self.instance, "name")
+        self.obj_id = str(getattr(self.design_instance, "id", None))
+        if hasattr(self.design_instance, "name"):
+            self.name = getattr(self.design_instance, "name")
         else:
             self.name = None
         self.description = description
 
     def __str__(self):  # noqa:D105  # pylint:disable=missing-function-docstring
-        if isinstance(self.instance, models.Model):
+        if isinstance(self.design_instance, models.Model):
             string = self.obj_class + " "
             if self.name is not None:
                 string += '"' + self.name + '"' + ":"
@@ -36,7 +36,7 @@ class ObjDetails:  # noqa:D101  # pylint:disable=too-few-public-methods,missing-
                 string += self.description + ":"
             string += self.obj_id
             return string
-        if isinstance(self.instance, dict):
+        if isinstance(self.design_instance, dict):
             return str(self.obj)
         return self.description or self.name or self.obj_class
 

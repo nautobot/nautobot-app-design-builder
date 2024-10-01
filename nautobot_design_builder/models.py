@@ -360,7 +360,7 @@ class ChangeSet(PrimaryModel):
             model_instance: Model instance to log changes.
             import_mode: Boolean used to import design objects already present in the database.
         """
-        instance = model_instance.instance
+        instance = model_instance.design_instance
         content_type = ContentType.objects.get_for_model(instance)
 
         try:
@@ -370,21 +370,21 @@ class ChangeSet(PrimaryModel):
             )
             # Look up the pre_change state from the existing
             # record and record the differences.
-            entry.changes.update(model_instance.metadata.changes)
+            entry.changes.update(model_instance.design_metadata.changes)
             entry.save()
         except ChangeRecord.DoesNotExist:
             entry_parameters = {
                 "_design_object_type": content_type,
                 "_design_object_id": instance.id,
-                "changes": model_instance.metadata.changes,
-                "full_control": model_instance.metadata.created,
+                "changes": model_instance.design_metadata.changes,
+                "full_control": model_instance.design_metadata.created,
                 "index": self._next_index(),
             }
             # Deferred import as otherwise Nautobot doesn't start
             from .design import ModelMetadata  # pylint: disable=import-outside-toplevel,cyclic-import
 
             # Path when not importing, either because it's not enabled or the action is not supported for importing.
-            if not import_mode or model_instance.metadata.action not in ModelMetadata.IMPORTABLE_ACTION_CHOICES:
+            if not import_mode or model_instance.design_metadata.action not in ModelMetadata.IMPORTABLE_ACTION_CHOICES:
                 entry = self.records.create(**entry_parameters)
                 return entry
 
@@ -394,14 +394,14 @@ class ChangeSet(PrimaryModel):
             # we acknowledge it and set `full_control` to `False`.
             # TODO: Shouldn't this change record object also need to be active?
             change_records_for_instance = ChangeRecord.objects.filter_by_design_object_id(_design_object_id=instance.id)
-            if model_instance.metadata.action == ModelMetadata.CREATE_OR_UPDATE:
+            if model_instance.design_metadata.action == ModelMetadata.CREATE_OR_UPDATE:
                 entry_parameters["full_control"] = not change_records_for_instance.filter(full_control=True).exists()
 
             # When we don't want to assume full control, make sure we don't try to own any of the query filter values.
             # We do this by removing any query filter values from the `changes` dictionary, which is the structure that
             # defines which attributes are owned by the deployment.
             if not entry_parameters["full_control"]:
-                for attribute in model_instance.metadata.query_filter_values:
+                for attribute in model_instance.design_metadata.query_filter_values:
                     entry_parameters["changes"].pop(attribute, None)
 
             # Check if any owned attributes exist that conflict with the changes for this instance.

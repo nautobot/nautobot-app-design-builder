@@ -38,7 +38,7 @@ class NextInterfaceExtension(AttributeExtension):
             tags__name="VRF Interface",
         ).first()
         if existing_interface:
-            model_instance.instance = existing_interface
+            model_instance.design_instance = existing_interface
             return {"!create_or_update:name": existing_interface.name}
         return {"!create_or_update:name": f"{root_interface_name}1/{len(interfaces) + 1}"}
 
