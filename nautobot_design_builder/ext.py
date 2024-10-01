@@ -195,12 +195,13 @@ class ReferenceExtension(AttributeExtension, ValueExtension):
         except KeyError:
             # pylint: disable=raise-missing-from
             raise DesignImplementationError(f"No ref named {key} has been saved in the design.")
-        if model_instance.instance and not model_instance.instance._state.adding:  # pylint: disable=protected-access
-            model_instance.instance.refresh_from_db()
+        adding = model_instance.design_instance._state.adding  # pylint: disable=protected-access
+        if model_instance.design_instance and not adding:
+            model_instance.design_instance.refresh_from_db()
         if attribute:
             # TODO: I think the result of the reduce operation needs to (potentially)
             # be wrapped up in a ModelInstance object
-            return reduce(getattr, [model_instance.instance, *attribute.split(".")])
+            return reduce(getattr, [model_instance.design_instance, *attribute.split(".")])
         return model_instance
 
 
