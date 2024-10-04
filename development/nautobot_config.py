@@ -21,6 +21,9 @@ if DEBUG and not _TESTING:
     if "debug_toolbar.middleware.DebugToolbarMiddleware" not in MIDDLEWARE:  # noqa: F405
         MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")  # noqa: F405
 
+if "nautobot_design_builder.middleware.GlobalRequestMiddleware" not in MIDDLEWARE:  # noqa: F405
+    MIDDLEWARE.insert(0, "nautobot_design_builder.middleware.GlobalRequestMiddleware")  # noqa: F405
+
 #
 # Misc. settings
 #
@@ -138,4 +141,19 @@ PLUGINS = ["nautobot_design_builder"]
 if is_truthy(os.getenv("DESIGN_BUILDER_ENABLE_BGP", "False")):
     PLUGINS.append("nautobot_bgp_models")
 
-PLUGINS_CONFIG = {"design_builder": {"context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None)}}
+
+def pre_decommission_hook_example(design_instance):
+    """Example decomission hook."""
+    return True, "Everything good!"
+
+
+PLUGINS_CONFIG = {
+    "nautobot_design_builder": {
+        "context_repository": os.getenv("DESIGN_BUILDER_CONTEXT_REPO_SLUG", None),
+        "pre_decommission_hook": pre_decommission_hook_example,
+        "protected_models": [("dcim", "region"), ("dcim", "device"), ("dcim", "interface")],
+        "protected_superuser_bypass": False,
+    }
+}
+
+STRICT_FILTERING = False

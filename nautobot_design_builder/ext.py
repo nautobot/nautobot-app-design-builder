@@ -100,12 +100,23 @@ class AttributeExtension(Extension, ABC):
     """An `AttributeExtension` will be evaluated when the design key matches the `tag`."""
 
     @abstractmethod
-    def attribute(self, value: Any, model_instance: "ModelInstance") -> None:
+    def attribute(self, *args: List[Any], value: Any = None, model_instance: "ModelInstance" = None) -> None:
         """This method is called when the `attribute_tag` is encountered.
 
+        Note: The method signature must match the above for the extension to work. The
+        extension name is parsed by splitting on `:` symbols and the result is passed as the
+        varargs. For instance, if the attribute tag is `my_tag` and it is called with `!my_tag:arg1`: {} then
+        `*args` will be ['arg1'] and `value` will be the empty dictionary.
+
         Args:
-            value (Any): The value of the data structure at this key's point in the design YAML. This could be a scalar, a dict or a list.
-            model_instance (CreatorObject): Object is the CreatorObject that would ultimately contain the values.
+            *args (List[Any]): Any additional arguments following the tag name. These are `:`
+                delimited.
+
+            value (Any): The value of the data structure at this key's point in the design YAML.
+                This could be a scalar, a dict or a list.
+
+            model_instance (ModelInstance): Object is the ModelInstance that would ultimately
+                contain the values.
         """
 
 
@@ -151,10 +162,12 @@ class ReferenceExtension(AttributeExtension, ValueExtension):
         super().__init__(environment)
         self._env = {}
 
-    def attribute(self, value, model_instance):
+    def attribute(self, *args: List[Any], value, model_instance):
         """This method is called when the `!ref` tag is encountered.
 
         Args:
+            *args (List[Any]): Any additional arguments following the tag name. These are `:` delimited.
+
             value (Any): Value should be a string name (the reference) to refer to the object
             model_instance (CreatorObject): The object that will be later referenced
 
@@ -244,14 +257,17 @@ class GitContextExtension(AttributeExtension):
             "directories": [],
         }
 
-    def attribute(self, value, model_instance):
+    def attribute(self, *args, value=None, model_instance: "ModelInstance" = None):
         """Provide the attribute tag functionality for git_context.
 
         Args:
+            *args (Any): Unused
+
             value (Any): Value should be a dictionary with the required fields `destination` and
                 `data`. The `destination` field of the dictionary indicates the relative path to
                 store information in the git repo. The `data` field contains the information that
                 should be written to the git repository.
+
             model_instance (CreatorObject): The object containing the data.
 
         Raises:

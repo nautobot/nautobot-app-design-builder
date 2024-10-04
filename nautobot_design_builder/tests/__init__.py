@@ -5,14 +5,15 @@ import shutil
 import tempfile
 from os import path
 from typing import Type
-from unittest import mock
 from unittest.mock import PropertyMock, patch
 
 from django.test import TestCase
 
+from nautobot.extras.utils import refresh_job_model_from_job_class
+from nautobot.extras.models import Job, JobResult
 from nautobot_design_builder.design_job import DesignJob
 
-logging.disable(logging.CRITICAL)
+logging.disable(logging.INFO)
 
 
 class DesignTestCase(TestCase):
@@ -21,6 +22,9 @@ class DesignTestCase(TestCase):
     def setUp(self):
         """Setup a mock git repo to watch for config context creation."""
         super().setUp()
+        self.data = {
+            "deployment_name": "Test Design",
+        }
         self.logged_messages = []
         self.git_patcher = patch("nautobot_design_builder.ext.GitRepo")
         self.git_mock = self.git_patcher.start()
@@ -32,8 +36,12 @@ class DesignTestCase(TestCase):
 
     def get_mocked_job(self, design_class: Type[DesignJob]):
         """Create an instance of design_class and properly mock request and job_result for testing."""
+        job_model, _ = refresh_job_model_from_job_class(Job, design_class)
         job = design_class()
-        job.job_result = mock.Mock()
+        job.job_result = JobResult.objects.create(
+            name="Fake Job Result",
+            job_model=job_model,
+        )
         job.saved_files = {}
 
         def save_design_file(filename, content):
@@ -42,17 +50,20 @@ class DesignTestCase(TestCase):
         job.save_design_file = save_design_file
         self.logged_messages = []
 
-        def record_log(message, obj, level_choice, grouping=None, logger=None):  # pylint: disable=unused-argument
-            self.logged_messages.append(
-                {
-                    "message": message,
-                    "obj": obj,
-                    "level_choice": level_choice,
-                    "grouping": grouping,
-                }
-            )
+        class _CaptureLogHandler(logging.Handler):
+            def emit(handler, record: logging.LogRecord) -> None:  # pylint:disable=no-self-argument,arguments-renamed
+                message = handler.format(record)
+                obj = getattr(record, "object", None)
+                self.logged_messages.append(
+                    {
+                        "message": message,
+                        "obj": obj,
+                        "level_choice": record.levelname,
+                        "grouping": getattr(record, "grouping", record.funcName),
+                    }
+                )
 
-        job.job_result.log.side_effect = record_log
+        job.logger.addHandler(_CaptureLogHandler())
         return job
 
     def assert_context_files_created(self, *filenames):

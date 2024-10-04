@@ -34,7 +34,7 @@ nautobot = ">=2.0.3,<=2.9999"
 bandit = "*"
 black = "*"
 coverage = "*"
-django-debug-toolbar = "*"
+django-debug-toolbar = "<4.4"
 flake8 = "*"
 invoke = "*"
 ipython = "*"
@@ -54,11 +54,15 @@ mkdocs-material = "9.1.15"
 # Render custom markdown for version added/changed/remove notes
 mkdocs-version-annotations = "1.0.0"
 # Automatic documentation from sources, for MkDocs
-mkdocstrings = "0.22.0"
-mkdocstrings-python = "1.5.2"
+mkdocstrings = "0.25.2"
+mkdocstrings-python = "1.10.8"
 gitpython = "^3.1.41"
 snakeviz = "^2.2.0"
 nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "develop"}
+towncrier = "~23.6.0"
+ruff = "*"
+to-json-schema = "^1.0.1"
+json-schema = "^0.3"
 
 [tool.poetry.extras]
 nautobot = ["nautobot"]
@@ -100,7 +104,17 @@ no-docstring-rgx="^(_|test_|Meta$)"
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
 disable = """,
     line-too-long,
-    """
+    duplicate-code,
+    too-many-lines,
+    too-many-ancestors,
+    too-many-statements,
+    line-too-long,
+    nb-replaced-site,
+    nb-replaced-device-role,
+    nb-code-location-changed,
+    nb-code-location-changed-object,
+    nb-use-fields-all,
+"""
 
 [tool.pylint.miscellaneous]
 # Don't flag TODO as a failure, let us commit with things that still need to be done in the code
@@ -111,7 +125,7 @@ notes = """,
 
 [tool.pylint-nautobot]
 supported_nautobot_versions = [
-    "1.6.0"
+    "1"
 ]
 
 [tool.pydocstyle]
@@ -126,6 +140,98 @@ match-dir = "(?!tests|migrations|development)[^\\.].*"
 # We've discussed and concluded that we consider this to be a valid style choice.
 add_ignore = "D212"
 
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "D",  # pydocstyle
+]
+ignore = [
+    "D106",  # Missing docstring in public nested class - We have Meta and _meta and other similar
+             # classes all over the place, but docstrings here don't usually add much
+    # warning: `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible.
+    "D203",  # 1 blank line required before class docstring
+
+    # D212 is enabled by default in google convention, and complains if we have a docstring like:
+    # """
+    # My docstring is on the line after the opening quotes instead of on the same line as them.
+    # """
+    # We've discussed and concluded that we consider this to be a valid style choice.
+    "D212",  # Multi-line docstring summary should start at the first line
+    "D213",  # Multi-line docstring summary should start at the second line
+
+    # Produces a lot of issues in the current codebase.
+    "D401",  # First line of docstring should be in imperative mood
+    "D407",  # Missing dashed underline after section
+    "D416",  # Section name ends in colon
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"nautobot_design_builder/migrations/*" = [
+    "D",  # pydocstyle
+]
+"nautobot_design_builder/tests/*" = [
+    "D",  # pydocstyle
+]
+
 [build-system]
 requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.towncrier]
+package = "nautobot_design_builder"
+directory = "changes"
+filename = "docs/admin/release_notes/version_X.Y.md"
+template = "development/towncrier_template.j2"
+start_string = "<!-- towncrier release notes start -->"
+issue_format = "[#{issue}](https://github.com/nautobot/nautobot-app-design-builder/issues/{issue})"
+
+[[tool.towncrier.type]]
+directory = "security"
+name = "Security"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "changed"
+name = "Changed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "deprecated"
+name = "Deprecated"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removed"
+name = "Removed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "dependencies"
+name = "Dependencies"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "documentation"
+name = "Documentation"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "housekeeping"
+name = "Housekeeping"
+showcontent = true

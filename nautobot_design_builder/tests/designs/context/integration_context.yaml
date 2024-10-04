@@ -1,0 +1,4 @@
+---
+p2p_prefix: "192.0.2.0/24"
+p2p_prefix_length: 30
+p2p_asn: 64501

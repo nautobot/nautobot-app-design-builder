@@ -8,7 +8,9 @@ The [Demo Designs](https://github.com/nautobot/demo-designs) repository includes
 
 To add a new design you will need (at a minimum) a class extending `nautobot_design_builder.base.DesignJob`, a class extending `nautobot_design_builder.context.Context` and a design template. The design job must be imported in the `jobs/__init__.py` and it must also be either in a module in the `jobs` directory or it must be loaded in the `__init__.py` file in a package within the `jobs` directory. This follows the [standard convention](https://docs.nautobot.com/projects/core/en/stable/development/jobs/#writing-jobs) for Nautobot jobs.
 
- For more information on creating designs see [Getting Started with Designs](design_development.md).
+For more information on creating designs see [Getting Started with Designs](design_development.md).
+
+Once the designs are loaded, you can start managing them from the "Design Builder" navigation tab.
 
 ## Sample Data
 

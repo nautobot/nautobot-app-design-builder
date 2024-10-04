@@ -47,6 +47,46 @@ PLUGINS = ["nautobot_design_builder"]
 # }
 ```
 
+### Data Protection
+
+Data protection allows enforcing consistent protection of data owned by designs.
+
+There are two data protection configuration settings, and this is how you can manage them.
+
+#### Define the Protected Data Models
+
+By default, no data models are protected. To enable data protection, you should add it under the `PLUGINS_CONFIG`:
+
+```python
+PLUGINS_CONFIG = {
+    "nautobot_design_builder": {
+        "protected_models": [("dcim", "location"), ("dcim", "device")],
+        ...
+    }
+}
+```
+
+In this example, data protection feature will be only taken into account for locations and devices.
+
+#### Bypass Data Protection for Super Users
+
+First, you have to enable a middleware that provides request information in all the Django processing.
+
+```python
+MIDDLEWARE.insert(0, "nautobot_design_builder.middleware.GlobalRequestMiddleware")
+```
+
+Finally, you have to tune the default behavior of allowing superuser bypass of protection (i.e., `True`).
+
+```python
+PLUGINS_CONFIG = {
+    "nautobot_design_builder": {
+        "protected_superuser_bypass": False,
+        ...
+    }
+}
+```
+
 Once the Nautobot configuration is updated, run the Post Upgrade command (`nautobot-server post_upgrade`) to run migrations and clear any cache:
 
 ```shell

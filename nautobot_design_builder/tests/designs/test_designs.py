@@ -1,16 +1,25 @@
 """Design jobs used for unit testing."""
 
 from nautobot.apps.jobs import register_jobs
-from nautobot.dcim.models import Manufacturer
 
+from nautobot.dcim.models import Manufacturer, Device, Interface
+from nautobot.extras.jobs import StringVar, ObjectVar
+
+from nautobot_design_builder.choices import DesignModeChoices
 from nautobot_design_builder.context import Context
 from nautobot_design_builder.design import Environment
 from nautobot_design_builder.design_job import DesignJob
-from nautobot_design_builder.ext import Extension
+from nautobot_design_builder.design import ModelInstance
+from nautobot_design_builder.ext import Extension, AttributeExtension
+from nautobot_design_builder.contrib import ext
+from nautobot_design_builder.tests.designs.context import IntegrationTestContext
 
 
 class SimpleDesign(DesignJob):
     """Simple design job."""
+
+    instance = StringVar()
+    manufacturer = ObjectVar(model=Manufacturer)
 
     class Meta:  # pylint: disable=too-few-public-methods
         name = "Simple Design"
@@ -58,8 +67,19 @@ class MultiDesignJob(DesignJob):
         ]
 
 
-class MultiDesignJobWithError(DesignJob):
+class DesignJobModeDeploymentWithError(DesignJob):
     """Design job that includes an error (for unit testing)."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "File Design with Error"
+        design_files = [
+            "templates/simple_design_with_error.yaml.j2",
+        ]
+        design_mode = DesignModeChoices.DEPLOYMENT
+
+
+class MultiDesignJobWithError(DesignJob):
+    """Multi Design job that includes an error (for unit testing)."""
 
     class Meta:  # pylint: disable=too-few-public-methods
         name = "Multi File Design with Error"
@@ -100,12 +120,86 @@ class DesignWithValidationError(DesignJob):
         design_file = "templates/design_with_validation_error.yaml.j2"
 
 
+class NextInterfaceExtension(AttributeExtension):
+    """Attribute extension to calculate the next available interface name."""
+
+    tag = "next_interface"
+
+    def attribute(self, *args, value, model_instance: ModelInstance) -> dict:
+        """Determine the next available interface name.
+
+        Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+            value (Any): The value of the data structure at this key's point in the design YAML. This could be a scalar, a dict or a list.
+            model_instance (ModelInstance): Object is the ModelInstance that would ultimately contain the values.
+
+        Returns:
+            dict: Dictionary with the new interface name `{"!create_or_update:name": new_interface_name}
+        """
+        root_interface_name = "GigabitEthernet"
+        previous_interfaces = self.environment.deployment.get_design_objects(Interface).values_list("id", flat=True)
+        interfaces = model_instance.relationship_manager.filter(
+            name__startswith="GigabitEthernet",
+        )
+        existing_interface = interfaces.filter(
+            pk__in=previous_interfaces,
+            tags__name="VRF Interface",
+        ).first()
+        if existing_interface:
+            model_instance.instance = existing_interface
+            return {"!create_or_update:name": existing_interface.name}
+        return {"!create_or_update:name": f"{root_interface_name}1/{len(interfaces) + 1}"}
+
+
+class IntegrationDesign(DesignJob):
+    """Create a p2p connection."""
+
+    customer_name = StringVar()
+
+    device_a = ObjectVar(
+        label="Device A",
+        description="Device A for P2P connection",
+        model=Device,
+    )
+
+    device_b = ObjectVar(
+        label="Device B",
+        description="Device B for P2P connection",
+        model=Device,
+    )
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Metadata needed to implement the P2P design."""
+
+        design_mode = DesignModeChoices.DEPLOYMENT
+        name = "P2P Connection Design"
+        commit_default = False
+        design_files = [
+            "templates/integration_design_ipam.yaml.j2",
+            "templates/integration_design_devices.yaml.j2",
+        ]
+        context_class = IntegrationTestContext
+        extensions = [
+            ext.CableConnectionExtension,
+            ext.NextPrefixExtension,
+            NextInterfaceExtension,
+            ext.ChildPrefixExtension,
+        ]
+        version = "0.5.1"
+        description = "Connect via a direct cable two network devices using a P2P network."
+
+
+name = "Test Designs"  # pylint:disable=invalid-name
+
 register_jobs(
     SimpleDesign,
+    SimpleDesign3,
     SimpleDesignReport,
     MultiDesignJob,
+    DesignJobModeDeploymentWithError,
     MultiDesignJobWithError,
     DesignJobWithExtensions,
     DesignWithRefError,
     DesignWithValidationError,
+    IntegrationDesign,
 )

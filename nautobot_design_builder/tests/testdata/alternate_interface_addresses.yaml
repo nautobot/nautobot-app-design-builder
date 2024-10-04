@@ -1,0 +1,31 @@
+---
+depends_on: "base_test.yaml"
+designs:
+  - prefixes:
+      - prefix: "192.168.56.0/24"
+        status__name: "Active"
+        "!ref": "parent_prefix"
+
+    devices:
+      - name: "device_1"
+        location__name: "Site"
+        status__name: "Active"
+        device_type__model: "model name"
+        role__name: "device role"
+        interfaces:
+          - name: "Ethernet1/1"
+            type: "virtual"
+            status__name: "Active"
+            ip_addresses:
+              - "!create_or_update:address": "192.168.56.1/24"
+                "!create_or_update:parent": "!ref:parent_prefix"
+                status__name: "Active"
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.IPAddress"
+      query: {address: "192.168.56.1/24"}
+  - equal:
+      - model: "nautobot.ipam.models.IPAddressToInterface"
+        query: {interface__name: "Ethernet1/1"}
+        attribute: "ip_address"
+      - model: "nautobot.ipam.models.IPAddress"

@@ -15,6 +15,8 @@
 
 Design Builder is a Nautobot application for easily populating data within Nautobot using standardized design files. These design files are just Jinja templates that describe the Nautobot objects to be created or updated.
 
+It also introduces the concept of a design-oriented Source of Truth with a complete lifecycle management of the design deployments (i.e., an instantiation of a design with concrete input data). With this approach, the users of the application can not only create (or populate) data within Nautobot but also update or decommission it while enforcing data protection and dependency.
+
 ## Documentation
 
 Full documentation for this App can be found over on the [Nautobot Docs](https://docs.nautobot.com) website:
