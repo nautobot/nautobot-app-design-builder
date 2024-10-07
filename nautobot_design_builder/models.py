@@ -13,6 +13,8 @@ from nautobot.core.celery import NautobotKombuJSONEncoder
 from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 
+from nautobot_design_builder.changes import revert_changed_dict
+
 from .util import get_created_and_last_updated_usernames_for_model
 from . import choices
 from .errors import DesignValidationError
@@ -555,31 +557,6 @@ class ChangeRecord(BaseModel):
             ("change_set", "_design_object_type", "_design_object_id"),
         ]
 
-    @staticmethod
-    def update_current_value_from_dict(current_value, added_value, removed_value):
-        """Update current value if it's a dictionary.
-
-        The removed_value keys (the original one) are going to be recovered, the added_value ones
-        will be reverted, and the current_value ones that were not added by the design will be kept.
-        """
-        keys_to_remove = []
-        for key in current_value:
-            if key in added_value:
-                if key in removed_value:
-                    # Reverting the value of keys that existed before and the design deployment modified
-                    current_value[key] = removed_value[key]
-                else:
-                    keys_to_remove.append(key)
-
-        # Removing keys that were added by the design.
-        for key in keys_to_remove:
-            del current_value[key]
-
-        # Recovering old keys that the ChangeRecord deleted.
-        for key in removed_value:
-            if key not in added_value:
-                current_value[key] = removed_value[key]
-
     def revert(self, local_logger: logging.Logger = logger):  # pylint: disable=too-many-branches
         """Revert the changes that are represented in this change record.
 
@@ -627,7 +604,10 @@ class ChangeRecord(BaseModel):
             )
         else:
             local_logger.info("Reverting change record", extra={"object": self.design_object})
-            for attr_name, change in self.changes.items():
+            changes = self.changes
+            if changes is None:
+                changes = {}
+            for attr_name, change in changes.items():
                 current_value = getattr(self.design_object, attr_name)
                 if "old_items" in change:
                     old_items = set(change["old_items"])
@@ -637,19 +617,16 @@ class ChangeRecord(BaseModel):
                     current_items -= added_items
                     current_value.set(current_value.filter(pk__in=current_items))
                 else:
-                    old_value = change["old_value"]
-                    new_value = change["new_value"]
-
-                    if isinstance(old_value, dict):
+                    if isinstance(change["old_value"], dict):
                         # config-context like thing, only change the keys
                         # that were added/changed
-                        self.update_current_value_from_dict(
-                            current_value=current_value,
-                            added_value=new_value,
-                            removed_value=old_value if old_value else {},
+                        setattr(
+                            self.design_object,
+                            attr_name,
+                            revert_changed_dict(current_value, change["old_value"], change["new_value"]),
                         )
                     else:
-                        setattr(self.design_object, attr_name, old_value)
+                        setattr(self.design_object, attr_name, change["old_value"])
 
                 self.design_object.save()
                 local_logger.info(

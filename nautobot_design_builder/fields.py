@@ -39,7 +39,6 @@ See also: https://docs.python.org/3/howto/descriptor.html
 """
 
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from typing import Any, Mapping, Type, TYPE_CHECKING
 
 from django.db import models as django_models
@@ -51,53 +50,12 @@ from taggit.managers import TaggableManager
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import Relationship, RelationshipAssociation
 
+from nautobot_design_builder.changes import change_log
 from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.debug import debug_set
 
 if TYPE_CHECKING:
     from .design import ModelInstance
-
-
-def _get_change_value(value):
-    if isinstance(value, django_models.Manager):
-        value = {item.pk for item in value.all()}
-    return value
-
-
-@contextmanager
-def change_log(model_instance: "ModelInstance", attr_name: str):
-    """Log changes for a field.
-
-    This context manager will record the value of a field prior to a change
-    as well as the value after the change. If the values are different then
-    a change record is added to the underlying model instance.
-
-    Args:
-        model_instance (ModelInstance): The model instance that is being updated.
-        attr_name (str): The attribute to be updated.
-    """
-    old_value = _get_change_value(getattr(model_instance.design_instance, attr_name))
-    yield
-    new_value = _get_change_value(getattr(model_instance.design_instance, attr_name))
-    if old_value != new_value:
-        if isinstance(old_value, set):
-            model_instance.design_metadata.changes[attr_name] = {
-                "old_items": old_value,
-                "new_items": new_value,
-            }
-            # Many-to-Many changes need to be logged on the parent,
-            # and this won't happen implicitly so we log the changes
-            # explicitly here.
-            #
-            # TODO: This has been commented out because I *think* that it is
-            # no longer needed since their is now a journal log created in the
-            # create_child method.
-            # model_instance.design_metadata.environment.journal.log(model_instance)
-        else:
-            model_instance.design_metadata.changes[attr_name] = {
-                "old_value": old_value,
-                "new_value": new_value,
-            }
 
 
 class ModelField(ABC):
