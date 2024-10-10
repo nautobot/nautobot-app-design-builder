@@ -1,7 +1,7 @@
 """Test running design jobs."""
 
 import copy
-from unittest.mock import patch, Mock, ANY
+from unittest.mock import patch, Mock, ANY, MagicMock
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -10,7 +10,7 @@ from nautobot.dcim.models import Location, LocationType, Manufacturer, DeviceTyp
 from nautobot.ipam.models import VRF, Prefix, IPAddress
 
 from nautobot.extras.models import Status, Role
-from nautobot_design_builder.models import Deployment
+from nautobot_design_builder.models import Deployment, ChangeRecord
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
@@ -98,7 +98,74 @@ class TestDesignJob(DesignTestCase):
             logger=job.logger,
             extensions=test_designs.DesignJobWithExtensions.Meta.extensions,
             change_set=ANY,
+            import_mode=False,
         )
+
+    def test_import_design_create_or_update(self):
+        """Confirm that existing data can be imported with 'create_or_update'."""
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentMode)
+
+        # The object to be imported by the design deployment already exists
+        manufacturer = Manufacturer.objects.create(name="Test Manufacturer")
+        self.data["import_mode"] = True
+        self.data["deployment_name"] = "deployment name example"
+        job.run(dryrun=False, **self.data)
+        self.assertEqual(Deployment.objects.first().name, "deployment name example")
+        self.assertEqual(ChangeRecord.objects.first().design_object, manufacturer)
+        self.assertEqual(ChangeRecord.objects.first().design_object.description, "Test description")
+
+        # Running the import twice for a 'create_or_update' operation should raise an exception
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentMode)
+        self.data["deployment_name"] = "another deployment name example"
+        with self.assertRaises(ValueError) as error:
+            job.run(dryrun=False, **self.data)
+        self.assertEqual(
+            str(error.exception),
+            "The description attribute for Test Manufacturer is already owned by Design Deployment Simple Design in deployment mode with create_or_update - deployment name example",
+        )
+
+    def test_import_design_update(self):
+        """Confirm that existing data can be imported with 'update'."""
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeUpdate)
+
+        # The object to be imported by the design deployment already exists
+        manufacturer = Manufacturer.objects.create(name="Test Manufacturer", description="old description")
+        self.data["import_mode"] = True
+        self.data["deployment_name"] = "deployment name example"
+        job.run(dryrun=False, **self.data)
+        self.assertEqual(Deployment.objects.first().name, "deployment name example")
+        self.assertEqual(ChangeRecord.objects.first().design_object, manufacturer)
+        self.assertEqual(ChangeRecord.objects.first().design_object.description, "Test description")
+
+        # Running the import twice for a 'update' operation should raise an exception when attribute conflict
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeUpdate)
+        self.data["deployment_name"] = "another deployment name example"
+        with self.assertRaises(ValueError) as error:
+            job.run(dryrun=False, **self.data)
+        self.assertEqual(
+            str(error.exception),
+            "The description attribute for Test Manufacturer is already owned by Design Deployment Simple Design in deployment mode with update - deployment name example",
+        )
+
+    def test_import_design_multiple_objects(self):
+        """Confirming that multiple, interrelated objects can be imported."""
+        job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeMultipleObjects)
+
+        # Create data initially
+        self.data["deployment_name"] = "I will be deleted"
+        job.run(dryrun=False, **self.data)
+
+        # Unlink the objects from the deployment so that they can be re-imported
+        deployment = Deployment.objects.get(name=self.data["deployment_name"])
+        deployment.decommission(local_logger=MagicMock(), delete=False)
+        deployment.delete()
+
+        self.data["import_mode"] = True
+        self.data["deployment_name"] = "I will persist"
+        job.run(dryrun=False, **self.data)
+
+        self.assertEqual(ChangeRecord.objects.count(), 8)
+        self.assertTrue(ChangeRecord.objects.filter_by_design_object_id(Device.objects.first().pk).exists())
 
 
 class TestDesignJobLogging(DesignTestCase):

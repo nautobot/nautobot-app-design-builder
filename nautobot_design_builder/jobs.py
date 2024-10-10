@@ -1,6 +1,6 @@
 """Generic Design Builder Jobs."""
 
-from nautobot.apps.jobs import Job, MultiObjectVar, register_jobs
+from nautobot.apps.jobs import Job, MultiObjectVar, register_jobs, BooleanVar
 
 from .models import Deployment
 
@@ -17,13 +17,18 @@ class DeploymentDecommissioning(Job):
         description="Design Deployments to decommission.",
     )
 
+    delete = BooleanVar(
+        description="Actually delete the objects, not just their link to the design deployment.",
+        default=True,
+    )
+
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta class."""
 
         name = "Decommission Design Deployments"
         description = """Job to decommission one or many Design Deployments from Nautobot."""
 
-    def run(self, deployments):  # pylint:disable=arguments-differ
+    def run(self, deployments, delete):  # pylint:disable=arguments-differ
         """Execute Decommissioning job."""
         self.logger.info(
             "Starting decommissioning of design deployments: %s",
@@ -31,9 +36,20 @@ class DeploymentDecommissioning(Job):
         )
 
         for deployment in deployments:
-            self.logger.info("Working on resetting objects for this Design Instance...", extra={"object": deployment})
-            deployment.decommission(local_logger=self.logger)
-            self.logger.info("%s has been successfully decommissioned from Nautobot.", deployment)
+            if delete:
+                message = "Working on deleting objects for this Design Deployment."
+            else:
+                message = "Working on unlinking objects from this Design Deployment."
+            self.logger.info(message, extra={"object": deployment})
+
+            deployment.decommission(local_logger=self.logger, delete=delete)
+
+            if delete:
+                message = f"{deployment} has been successfully decommissioned from Nautobot."
+            else:
+                message = f"Objects have been successfully unlinked from {deployment}."
+
+            self.logger.info(message)
 
 
 register_jobs(DeploymentDecommissioning)

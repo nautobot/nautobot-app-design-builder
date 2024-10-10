@@ -79,7 +79,8 @@ def change_log(model_instance: "ModelInstance", attr_name: str):
     old_value = _get_change_value(getattr(model_instance.design_instance, attr_name))
     yield
     new_value = _get_change_value(getattr(model_instance.design_instance, attr_name))
-    if old_value != new_value:
+
+    if old_value != new_value or model_instance.design_metadata.import_mode:
         if isinstance(old_value, set):
             model_instance.design_metadata.changes[attr_name] = {
                 "old_items": old_value,
