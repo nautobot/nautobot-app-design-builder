@@ -79,7 +79,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         deployment_name_field = cls.deployment_name_field()
         if deployment_name_field is None:
             if "deployment_name" not in data:
-                raise DesignImplementationError("No Deployment name was provided for the deployment.")
+                raise DesignImplementationError("No name was provided for the deployment.")
             return data["deployment_name"]
         return data[deployment_name_field]
 

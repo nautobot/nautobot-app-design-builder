@@ -37,19 +37,17 @@ class DeploymentDecommissioning(Job):
 
         for deployment in deployments:
             if delete:
-                message = "Working on deleting objects for this Design Deployment."
+                message = "Deleting objects for this Design Deployment."
             else:
-                message = "Working on unlinking objects from this Design Deployment."
+                message = "Unlinking objects from this Design Deployment."
             self.logger.info(message, extra={"object": deployment})
 
             deployment.decommission(local_logger=self.logger, delete=delete)
 
             if delete:
-                message = f"{deployment} has been successfully decommissioned from Nautobot."
+                self.logger.info("%s has been successfully decommissioned from Nautobot.", deployment)
             else:
-                message = f"Objects have been successfully unlinked from {deployment}."
-
-            self.logger.info(message)
+                self.logger.info("Objects have been successfully unlinked from %s", deployment)
 
 
 register_jobs(DeploymentDecommissioning)
