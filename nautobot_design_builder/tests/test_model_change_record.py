@@ -1,10 +1,10 @@
 """Test ChangeRecord."""
 
-import unittest
 from unittest.mock import patch, Mock
 from nautobot.extras.models import Secret
 from nautobot.dcim.models import Manufacturer, DeviceType
 
+from nautobot_design_builder.design import Environment, ModelInstance
 from nautobot_design_builder.errors import DesignValidationError
 
 from .test_model_deployment import BaseDeploymentTest
@@ -155,34 +155,51 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
             old_value,
         )
 
-    @unittest.skip
-    def test_new_key_reverted_without_original_and_with_a_new_one(self):
-        # TODO: I don't understand this test
-        secret = Secret.objects.get(id=self.secret.id)
-        secret.parameters["key2"] = "changed-value"
-        secret.save()
-        secret.refresh_from_db()
-        self.assertDictEqual(
-            secret.parameters,
-            {"key1": "initial-value", "key2": "changed-value"},
-        )
+    def test_only_protected_field_attributes_are_reverted(self):
+        """This test confirms that non-design dictionary keys are unaffected.
 
-        # Delete the initial value and add a new one
-        del secret.parameters["key1"]
-        secret.parameters["key3"] = "changed-value"
+        Any Nautobot JSON field stored as an object (dictionary) is protected
+        only for those object attributes (dictionary keys) that are part
+        of the design. This means that keys added outside of the design process
+        should remain when the design is reverted. This test confirms that
+        behavior.
+        """
+
+        original_params = {"key1": "initial-value"}
+        secret = Secret.objects.create(
+            name="test secret 1",
+            provider="environment-variable",
+            description="test description",
+            parameters=original_params,
+        )
         secret.save()
-        self.assertDictEqual(
-            secret.parameters,
+        updated_params = {"key1": "initial-value", "key2": "changed-value"}
+        design_secret = ModelInstance.factory(Secret)(
+            Environment(),
             {
-                "key2": "changed-value",
-                "key3": "changed-value",
+                "!create_or_update:name": "test secret 1",
+                "parameters": updated_params,
             },
         )
-
-        entry = self.create_change_record(secret, None)
-        entry.revert()
+        design_secret.save()
+        change_record = self.create_change_record(secret, design_secret.design_metadata.changes)
+        print(design_secret.design_metadata.changes)
         secret.refresh_from_db()
-        self.assertDictEqual(self.secret.parameters, secret.parameters)
+        self.assertDictEqual(
+            secret.parameters,
+            updated_params,
+        )
+
+        # The "final params" is the design parameters "key2" plus a "key3" that
+        # has been added outside of the design process.
+        final_params = {"key2": "changed-value", "key3": "changed-value"}
+        secret.parameters = final_params
+        secret.save()
+        change_record.revert()
+        secret.refresh_from_db()
+        # reverting should bring back key1 and leave key3 alone (since it was added outside of the
+        # design process)
+        self.assertDictEqual(secret.parameters, {"key1": "initial-value", "key3": "changed-value"})
 
     @patch("nautobot.extras.models.Secret.save")
     def test_reverting_without_old_value(self, save_mock: Mock):
@@ -199,35 +216,6 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
             entry.revert()
             self.assertEqual(entry.design_object.parameters, {})
             save_mock.assert_called()
-
-    @unittest.skip
-    @patch("nautobot.extras.models.Secret.save")
-    def test_reverting_without_new_value(self, save_mock: Mock):
-        # TODO: I don't understand this test
-        with patch("nautobot.extras.models.Secret.refresh_from_db"):
-            secret = Secret(
-                name="test secret 1",
-                provider="environment-variable",
-                description="Description",
-                parameters={"key1": "value1"},
-            )
-            secret.parameters = None
-            entry = self.create_change_record(secret, secret)
-            self.assertEqual(entry.design_object.parameters, None)
-            entry.revert()
-            self.assertEqual(entry.design_object.parameters, {"key1": "value1"})
-            save_mock.assert_called()
-
-    @unittest.skip
-    def test_change_property(self):
-        """This test checks that the 'display' property is properly managed."""
-        updated_device_type = DeviceType.objects.get(id=self.device_type.id)
-        updated_device_type.model = "new name"
-        updated_device_type.save()
-        entry = self.create_change_record(updated_device_type, None)
-        entry.revert()
-        self.device_type.refresh_from_db()
-        self.assertEqual(self.device_type.model, "test device type")
 
     def test_change_foreign_key(self):
         new_manufacturer = Manufacturer.objects.create(name="new manufacturer")
