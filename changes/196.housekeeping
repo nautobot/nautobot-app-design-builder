@@ -1,0 +1,2 @@
+Updates docs dependencies to cookiecutter versions so the RTD build will pass.
+Fixes #187, removing Nautobot as an extra and setting the upper bound to 3.0.
