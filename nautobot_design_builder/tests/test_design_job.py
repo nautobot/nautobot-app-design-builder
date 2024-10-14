@@ -117,6 +117,8 @@ class TestDesignJob(DesignTestCase):
         # Running the import twice for a 'create_or_update' operation should raise an exception
         job = self.get_mocked_job(test_designs.SimpleDesignDeploymentMode)
         self.data["deployment_name"] = "another deployment name example"
+        manufacturer.description = "new description to show changes"
+        manufacturer.save()
         with self.assertRaises(ValueError) as error:
             job.run(dryrun=False, **self.data)
         self.assertEqual(
@@ -140,6 +142,8 @@ class TestDesignJob(DesignTestCase):
         # Running the import twice for a 'update' operation should raise an exception when attribute conflict
         job = self.get_mocked_job(test_designs.SimpleDesignDeploymentModeUpdate)
         self.data["deployment_name"] = "another deployment name example"
+        manufacturer.description = "new description to show changes"
+        manufacturer.save()
         with self.assertRaises(ValueError) as error:
             job.run(dryrun=False, **self.data)
         self.assertEqual(

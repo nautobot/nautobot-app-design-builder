@@ -399,8 +399,8 @@ class ChangeSet(PrimaryModel):
 
             # Path when not importing, either because it's not enabled or the action is not supported for importing.
             if not import_mode or model_instance.design_metadata.action not in ModelMetadata.IMPORTABLE_ACTION_CHOICES:
-                entry = self.records.create(**entry_parameters)
-                return entry
+                self.records.create(**entry_parameters)
+                return
 
             # When we have intention to claim ownership (i.e. the action is CREATE_OR_UPDATE) we first try to obtain
             # `full_control` over the object, thus pretending that we have created it.
@@ -430,10 +430,7 @@ class ChangeSet(PrimaryModel):
                             f"The {attribute} attribute for {instance} is already owned by Design Deployment {record.change_set.deployment}"
                         )
 
-            entry = self.records.create(**entry_parameters)
-
-        # TODO: not sure about this return...
-        return entry
+            self.records.create(**entry_parameters)
 
     def revert(self, *object_ids, local_logger: logging.Logger = logger):
         """Revert the changes represented in this ChangeSet.
@@ -490,7 +487,6 @@ class ChangeSet(PrimaryModel):
             .values_list("_design_object_id", flat=True)
         )
 
-    # TODO: check if this method is it's necessary
     def deactivate(self):
         """Mark the change_set and its records as not active."""
         self.active = False
