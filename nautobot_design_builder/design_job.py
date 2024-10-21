@@ -15,7 +15,7 @@ from django.utils import timezone
 from jinja2 import TemplateError
 
 from nautobot.extras.models import Status
-from nautobot.apps.jobs import Job, DryRunVar, StringVar
+from nautobot.apps.jobs import Job, DryRunVar, StringVar, BooleanVar
 from nautobot.extras.models import FileProxy
 from nautobot.extras.jobs import JobForm
 
@@ -79,7 +79,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         deployment_name_field = cls.deployment_name_field()
         if deployment_name_field is None:
             if "deployment_name" not in data:
-                raise DesignImplementationError("No instance name was provided for the deployment.")
+                raise DesignImplementationError("No name was provided for the deployment.")
             return data["deployment_name"]
         return data[deployment_name_field]
 
@@ -97,6 +97,8 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
                     label="Deployment Name",
                     max_length=models.DESIGN_NAME_MAX_LENGTH,
                 )
+            cls_vars["import_mode"] = BooleanVar(label="Import Mode", default=False)
+
         cls_vars.update(super()._get_vars())
         return cls_vars
 
@@ -275,6 +277,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
 
         design_files = None
 
+        data["import_mode"] = self.is_deployment_job() and data.get("import_mode", False)
         data["deployment_name"] = self.determine_deployment_name(data)
         change_set, previous_change_set = self._setup_changeset(data["deployment_name"])
 
@@ -286,7 +289,11 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
             logger=self.logger,
             extensions=extensions,
             change_set=change_set,
+            import_mode=data["import_mode"],
         )
+
+        if data["import_mode"]:
+            self.logger.info("Running in import mode for %s", data["deployment_name"])
 
         design_files = None
 

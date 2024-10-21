@@ -1,7 +1,8 @@
 """Collection of models that DesignBuilder uses to track design implementations."""
 
 import logging
-from typing import List
+from typing import List, Optional
+from uuid import UUID
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
@@ -241,7 +242,7 @@ class Deployment(PrimaryModel):
         """Stringify instance."""
         return f"{self.design.name} - {self.name}"
 
-    def decommission(self, *object_ids, local_logger=logger):
+    def decommission(self, *object_ids, local_logger=logger, delete=True):
         """Decommission a design instance.
 
         This will reverse the change records for the design instance and
@@ -253,7 +254,10 @@ class Deployment(PrimaryModel):
         # Iterate the change sets in reverse order (most recent first) and
         # revert each change set.
         for change_set in self.change_sets.filter(active=True).order_by("-last_updated"):
-            change_set.revert(*object_ids, local_logger=local_logger)
+            if delete:
+                change_set.revert(*object_ids, local_logger=local_logger)
+            else:
+                change_set.deactivate()
 
         if not object_ids:
             content_type = ContentType.objects.get_for_model(Deployment)
@@ -352,7 +356,7 @@ class ChangeSet(PrimaryModel):
         setattr(self, "_index", index)
         return index
 
-    def log(self, model_instance):
+    def log(self, model_instance, import_mode: bool):
         """Log changes to a model instance.
 
         This will log the differences between a model instance's
@@ -363,6 +367,7 @@ class ChangeSet(PrimaryModel):
 
         Args:
             model_instance: Model instance to log changes.
+            import_mode: Boolean used to import design objects already present in the database.
         """
         # Note: We always need to create a change record, even when there
         # are no individual attribute changes. Change records that don't
@@ -382,13 +387,50 @@ class ChangeSet(PrimaryModel):
             entry.changes.update(model_instance.design_metadata.changes)
             entry.save()
         except ChangeRecord.DoesNotExist:
-            entry = self.records.create(
-                _design_object_type=content_type,
-                _design_object_id=instance.id,
-                changes=model_instance.design_metadata.changes,
-                full_control=model_instance.design_metadata.created,
-                index=self._next_index(),
-            )
+            entry_parameters = {
+                "_design_object_type": content_type,
+                "_design_object_id": instance.id,
+                "changes": model_instance.design_metadata.changes,
+                "full_control": model_instance.design_metadata.created,
+                "index": self._next_index(),
+            }
+            # Deferred import as otherwise Nautobot doesn't start
+            from .design import ModelMetadata  # pylint: disable=import-outside-toplevel,cyclic-import
+
+            # Path when not importing, either because it's not enabled or the action is not supported for importing.
+            if not import_mode or model_instance.design_metadata.action not in ModelMetadata.IMPORTABLE_ACTION_CHOICES:
+                self.records.create(**entry_parameters)
+                return
+
+            # When we have intention to claim ownership (i.e. the action is CREATE_OR_UPDATE) we first try to obtain
+            # `full_control` over the object, thus pretending that we have created it.
+            # If the object is already owned with full_control by another Design Deployment,
+            # we acknowledge it and set `full_control` to `False`.
+            # TODO: Shouldn't this change record object also need to be active?
+            change_records_for_instance = ChangeRecord.objects.filter_by_design_object_id(_design_object_id=instance.id)
+            if model_instance.design_metadata.action == ModelMetadata.CREATE_OR_UPDATE:
+                entry_parameters["full_control"] = not change_records_for_instance.filter(full_control=True).exists()
+
+            # When we don't want to assume full control, make sure we don't try to own any of the query filter values.
+            # We do this by removing any query filter values from the `changes` dictionary, which is the structure that
+            # defines which attributes are owned by the deployment.
+            if not entry_parameters["full_control"]:
+                for attribute in model_instance.design_metadata.query_filter_values:
+                    entry_parameters["changes"].pop(attribute, None)
+
+            # Check if any owned attributes exist that conflict with the changes for this instance.
+            # We do this by iterating over all change records that exist for this instance, ...
+            for record in change_records_for_instance:
+                # ...iterating over all attributes in those instances changes...
+                for attribute in record.changes:
+                    # ...and, finally, by raising an error if any of those overlap with those attributes that we are
+                    # trying to own by importing the object.
+                    if attribute in entry_parameters["changes"]:
+                        raise ValueError(  # pylint: disable=raise-missing-from
+                            f"The {attribute} attribute for {instance} is already owned by Design Deployment {record.change_set.deployment}"
+                        )
+
+            self.records.create(**entry_parameters)
 
     def revert(self, *object_ids, local_logger: logging.Logger = logger):
         """Revert the changes represented in this ChangeSet.
@@ -444,6 +486,14 @@ class ChangeSet(PrimaryModel):
             .exclude(_design_object_id__in=other_ids)
             .values_list("_design_object_id", flat=True)
         )
+
+    def deactivate(self):
+        """Mark the change_set and its records as not active."""
+        self.active = False
+        for change_set_record in self.records.all():
+            change_set_record.active = False
+            change_set_record.save()
+        self.save()
 
 
 class ChangeRecordQuerySet(RestrictedQuerySet):
@@ -512,6 +562,22 @@ class ChangeRecordQuerySet(RestrictedQuerySet):
             for record_id, design_object_id, design_object_type in design_objects
         }
         return self.filter(id__in=design_object_ids.values())
+
+    def filter_by_design_object_id(self, _design_object_id: UUID, full_control: Optional[bool] = None):
+        """Lookup all the active records for a design object ID and an full_control.
+
+        Args:
+            _design_object_id (UUID): The design object UUID.
+            full_control (type, optional): Include the full_control filter. Defaults to None.
+
+        Returns:
+            Query set matching the options.
+        """
+        if full_control is not None:
+            queryset = self.filter(_design_object_id=_design_object_id, active=True, full_control=full_control)
+        else:
+            queryset = self.filter(_design_object_id=_design_object_id, active=True)
+        return queryset.exclude_decommissioned()
 
 
 class ChangeRecord(BaseModel):
