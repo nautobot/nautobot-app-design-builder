@@ -1,6 +1,8 @@
 """Provides ORM interaction for design builder."""
 
+import logging
 from types import FunctionType
+from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
@@ -10,14 +12,15 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError, Multiple
 
 
 from nautobot.core.graphql.utils import str_to_var_name
-from nautobot.extras.models import JobResult, Relationship
+from nautobot.extras.models import Relationship
 
 from nautobot_design_builder import errors
 from nautobot_design_builder import ext
-from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.fields import CustomRelationshipField, field_factory
+from nautobot_design_builder import models
 
 
+# TODO: Refactor this code into the Journal model
 class Journal:
     """Keep track of the objects created or updated during the course of a design's implementation.
 
@@ -40,11 +43,13 @@ class Journal:
     will only be in each of those indices at most once.
     """
 
-    def __init__(self):
+    def __init__(self, change_set: models.ChangeSet = None, import_mode: bool = False):
         """Constructor for Journal object."""
         self.index = set()
-        self.created = {}
-        self.updated = {}
+        self.created = defaultdict(set)
+        self.updated = defaultdict(set)
+        self.change_set = change_set
+        self.import_mode = import_mode
 
     def log(self, model: "ModelInstance"):
         """Log that a model has been created or updated.
@@ -52,12 +57,15 @@ class Journal:
         Args:
             model (BaseModel): The model that has been created or updated
         """
-        instance = model.instance
+        instance = model.design_instance
         model_type = instance.__class__
+        if self.change_set:
+            self.change_set.log(model, self.import_mode)
+
         if instance.pk not in self.index:
             self.index.add(instance.pk)
 
-            if model.metadata.created:
+            if model.design_metadata.created:
                 index = self.created
             else:
                 index = self.updated
@@ -89,7 +97,7 @@ def _map_query_values(query: Mapping) -> Mapping:
     retval = {}
     for key, value in query.items():
         if isinstance(value, ModelInstance):
-            retval[key] = value.instance
+            retval[key] = value.design_instance
         elif isinstance(value, Mapping):
             retval[key] = _map_query_values(value)
         else:
@@ -121,8 +129,10 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
     CREATE_OR_UPDATE = "create_or_update"
 
     ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
+    # Actions that work with import mode
+    IMPORTABLE_ACTION_CHOICES = [UPDATE, CREATE_OR_UPDATE]
 
-    def __init__(self, model_instance: "ModelInstance", **kwargs):
+    def __init__(self, model_instance: "ModelInstance", environment: "Environment", **kwargs):
         """Initialize the metadata object for a given model instance.
 
         By default, the metadata object doesn't really have anything in it. In order
@@ -131,9 +141,13 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
 
         Args:
             model_instance (ModelInstance): The model instance to which this metadata refers.
+            environment (Environment): The implementation environment being used for the current
+                design.
+
+            **kwargs (Any): Additional metadata specified in the object.
         """
         self.model_instance = model_instance
-        self.environment = model_instance.environment
+        self.environment = environment
 
         self.created = False
 
@@ -145,6 +159,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
 
         self.save_args = kwargs.get("save_args", {})
 
+        self.changes = {}
+
         # The following attributes are dunder attributes
         # because they should only be set in the @attributes.setter
         # method
@@ -154,6 +170,11 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         self._deferred = False
         self._filter = {}
         self._kwargs = {}
+
+    @property
+    def import_mode(self) -> bool:
+        """Indicates whether the underlying environment is in import mode or not."""
+        return self.environment.import_mode
 
     @property
     def action(self) -> str:
@@ -229,8 +250,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         while attribute_names:
             key = attribute_names.pop(0)
             self._attributes[key] = self.environment.resolve_values(self._attributes[key])
-            if key == "deferred":
-                self._deferred = self._attributes.pop(key)
+            if hasattr(self, key):
+                setattr(self, f"_{key}", self._attributes.pop(key))
             elif key.startswith("!"):
                 value = self._attributes.pop(key)
                 args = key.lstrip("!").split(":")
@@ -258,7 +279,7 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
             elif not hasattr(self.model_instance, key):
                 value = self._attributes.pop(key)
                 if isinstance(value, ModelInstance):
-                    value = value.instance
+                    value = value.design_instance
                 self._kwargs[key] = value
 
     def connect(self, signal: str, handler: FunctionType):
@@ -278,7 +299,112 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         """
         for handler in self._signals[signal]:
             handler()
-            self.model_instance.instance.refresh_from_db()
+            self.model_instance.design_instance.refresh_from_db()
+
+    def create_child(
+        self,
+        model_class: "ModelInstance",
+        attributes: Dict,
+        relationship_manager: Manager = None,
+    ) -> "ModelInstance":
+        """Create a new ModelInstance that is linked to the current instance.
+
+        Args:
+            model_class (Type[Model]): Class of the child model.
+            attributes (Dict): Design attributes for the child.
+            relationship_manager (Manager): Database relationship manager to use for the new instance.
+
+        Returns:
+            ModelInstance: Model instance that has its parent correctly set.
+        """
+        if not issubclass(model_class, ModelInstance):
+            model_class = self.environment.model_class_index[model_class]
+        try:
+            model_instance = model_class(
+                self.environment,
+                attributes,
+                relationship_manager,
+                parent=self,
+            )
+            # Add the newly created instance to the log so we can keep track of
+            # it belonging to a design.
+            self.environment.journal.log(model_instance)
+            return model_instance
+        except MultipleObjectsReturned:
+            # pylint: disable=raise-missing-from
+            raise errors.DesignImplementationError(
+                f"Expected exactly 1 object for {model_class.__name__}({attributes}) but got more than one"
+            )
+        except ObjectDoesNotExist:
+            query = ",".join([f'{k}="{v}"' for k, v in attributes.items()])
+            # pylint: disable=raise-missing-from
+            raise errors.DesignImplementationError(f"Could not find {model_class.__name__}: {query}")
+
+    def load_instance(self):  # pylint: disable=too-many-branches
+        """Load the model instance's design instance from the database.
+
+        This method will either create a new object or load an existing object
+        from the database, based on the action tags and query strings specified
+        in the design.
+        """
+        # Short circuit if the instance was loaded earlier in
+        # the initialization process
+        if self.model_instance.design_instance is not None:
+            return
+
+        query_filter = self.query_filter
+        field_values = self.query_filter_values
+        if self.action == ModelMetadata.GET:
+            self.model_instance.design_instance = self.model_instance.model_class.objects.get(**query_filter)
+            return
+
+        if self.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
+            # perform nested lookups. First collect all the
+            # query params for top-level relationships, then
+            # perform the actual lookup
+            for query_param in list(query_filter.keys()):
+                if "__" in query_param:
+                    value = query_filter.pop(query_param)
+                    attribute, filter_param = query_param.split("__", 1)
+                    query_filter.setdefault(attribute, {})
+                    query_filter[attribute][f"!get:{filter_param}"] = value
+
+            for query_param, value in query_filter.items():
+                if isinstance(value, Mapping):
+                    rel: Manager = getattr(self.model_instance.model_class, query_param)
+                    queryset: QuerySet = rel.get_queryset()
+
+                    model = self.create_child(
+                        self.environment.model_class_index[queryset.model],
+                        value,
+                        relationship_manager=queryset,
+                    )
+                    if model.design_metadata.action != ModelMetadata.GET:
+                        model.save()
+                    query_filter[query_param] = model.design_instance
+                    field_values[query_param] = model
+            try:
+                self.model_instance.design_instance = self.model_instance.relationship_manager.get(**query_filter)
+                return
+            except ObjectDoesNotExist:
+                if self.action == ModelMetadata.UPDATE:
+                    # pylint: disable=raise-missing-from
+                    raise errors.DesignImplementationError(
+                        f"No match with {query_filter}", self.model_instance.model_class
+                    )
+        elif self.action != ModelMetadata.CREATE:
+            raise errors.DesignImplementationError(
+                f"Unknown database action {self.action}", self.model_instance.model_class
+            )
+        # since the object was not found, we need to
+        # put the search criteria back into the attributes
+        # so that they will be set when the object is created
+        self.attributes.update(field_values)
+        self.created = True
+        try:
+            self.model_instance.design_instance = self.model_instance.model_class(**self.kwargs)
+        except TypeError as ex:
+            raise errors.DesignImplementationError(str(ex), self.model_instance.model_class)
 
     @property
     def custom_fields(self) -> Dict[str, Any]:
@@ -366,6 +492,26 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         return _map_query_values(self._filter)
 
 
+def _refresh_custom_relationships(instance: "ModelInstance"):
+    """Look for any custom relationships for this model class and add any new fields."""
+    for direction in Relationship.objects.get_for_model(instance.model_class):
+        for relationship in direction:
+            field = field_factory(instance, relationship)
+
+            # make sure not to mask non-custom relationship fields that
+            # may have the same key name or field name
+            for attr_name in [field.key_name, field.field_name]:
+                if hasattr(instance.__class__, attr_name):
+                    # if there is already an attribute with the same name,
+                    # delete it if it is a custom relationship, that way
+                    # we reload the config from the database.
+                    if isinstance(getattr(instance.__class__, attr_name), CustomRelationshipField):
+                        delattr(instance.__class__, attr_name)
+
+                if not hasattr(instance.__class__, attr_name):
+                    setattr(instance.__class__, attr_name, field)
+
+
 class ModelInstance:
     """An individual object to be created or updated as Design Builder iterates through a rendered design YAML file.
 
@@ -411,7 +557,7 @@ class ModelInstance:
         """Create a proxy instance for the model.
 
         This constructor will create a new `ModelInstance` object that wraps a Django
-        model instance. All assignments to this instance will be proxied to the underlying
+        model instance. All assignments to this instance will proxy to the underlying
         object using the descriptors in the `fields` module.
 
         Args:
@@ -425,82 +571,28 @@ class ModelInstance:
             errors.MultipleObjectsReturnedError: If the object is being retrieved or updated (not created)
                 and more than one object matches the lookup criteria.
         """
-        self.environment = environment
-        self.instance: Model = None
-        self.metadata = ModelMetadata(self, **attributes.pop("model_metadata", {}))
-
-        self._parent = parent
-        self.refresh_custom_relationships()
+        self.design_instance: Model = None
+        self.design_metadata = ModelMetadata(self, environment, **attributes.pop("model_metadata", {}))
+        self._design_instance_parent = parent
+        _refresh_custom_relationships(self)
         self.relationship_manager = relationship_manager
         if self.relationship_manager is None:
             self.relationship_manager = self.model_class.objects
 
-        self.metadata.attributes = attributes
+        self.design_metadata.attributes = attributes
 
         try:
-            self._load_instance()
+            self.design_metadata.load_instance()
+            setattr(self.design_instance, "__design_builder_instance", self)
         except ObjectDoesNotExist as ex:
             raise errors.DoesNotExistError(self) from ex
         except MultipleObjectsReturned as ex:
             raise errors.MultipleObjectsReturnedError(self) from ex
         self._update_fields()
 
-    def refresh_custom_relationships(self):
-        """Look for any custom relationships for this model class and add any new fields."""
-        for direction in Relationship.objects.get_for_model(self.model_class):
-            for relationship in direction:
-                field = field_factory(self, relationship)
-
-                # make sure not to mask non-custom relationship fields that
-                # may have the same key name or field name
-                for attr_name in [field.key_name, field.field_name]:
-                    if hasattr(self.__class__, attr_name):
-                        # if there is already an attribute with the same name,
-                        # delete it if it is a custom relationship, that way
-                        # we reload the config from the database.
-                        if isinstance(getattr(self.__class__, attr_name), CustomRelationshipField):
-                            delattr(self.__class__, attr_name)
-                    if not hasattr(self.__class__, attr_name):
-                        setattr(self.__class__, attr_name, field)
-
     def __str__(self):
         """Get the model class name."""
         return str(self.model_class)
-
-    def create_child(
-        self,
-        model_class: "ModelInstance",
-        attributes: Dict,
-        relationship_manager: Manager = None,
-    ) -> "ModelInstance":
-        """Create a new ModelInstance that is linked to the current instance.
-
-        Args:
-            model_class (Type[Model]): Class of the child model.
-            attributes (Dict): Design attributes for the child.
-            relationship_manager (Manager): Database relationship manager to use for the new instance.
-
-        Returns:
-            ModelInstance: Model instance that has its parent correctly set.
-        """
-        if not issubclass(model_class, ModelInstance):
-            model_class = self.environment.model_class_index[model_class]
-        try:
-            return model_class(
-                self.environment,
-                attributes,
-                relationship_manager,
-                parent=self,
-            )
-        except MultipleObjectsReturned:
-            # pylint: disable=raise-missing-from
-            raise errors.DesignImplementationError(
-                f"Expected exactly 1 object for {model_class.__name__}({attributes}) but got more than one"
-            )
-        except ObjectDoesNotExist:
-            query = ",".join([f'{k}="{v}"' for k, v in attributes.items()])
-            # pylint: disable=raise-missing-from
-            raise errors.DesignImplementationError(f"Could not find {model_class.__name__}: {query}")
 
     def connect(self, signal: str, handler: FunctionType):
         """Connect a handler between this model instance (as sender) and signal.
@@ -509,79 +601,28 @@ class ModelInstance:
             signal (Signal): Signal to listen for.
             handler (FunctionType): Callback function
         """
-        self.metadata.connect(signal, handler)
+        self.design_metadata.connect(signal, handler)
 
     def _send(self, signal: str):
-        self.metadata.send(signal)
-
-    def _load_instance(self):
-        query_filter = self.metadata.query_filter
-        field_values = self.metadata.query_filter_values
-        if self.metadata.action == ModelMetadata.GET:
-            self.instance = self.model_class.objects.get(**query_filter)
-            return
-
-        if self.metadata.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
-            # perform nested lookups. First collect all the
-            # query params for top-level relationships, then
-            # perform the actual lookup
-            for query_param in list(query_filter.keys()):
-                if "__" in query_param:
-                    value = query_filter.pop(query_param)
-                    attribute, filter_param = query_param.split("__", 1)
-                    query_filter.setdefault(attribute, {})
-                    query_filter[attribute][f"!get:{filter_param}"] = value
-
-            for query_param, value in query_filter.items():
-                if isinstance(value, Mapping):
-                    rel: Manager = getattr(self.model_class, query_param)
-                    queryset: QuerySet = rel.get_queryset()
-
-                    model = self.create_child(
-                        self.environment.model_class_index[queryset.model],
-                        value,
-                        relationship_manager=queryset,
-                    )
-                    if model.metadata.action != ModelMetadata.GET:
-                        model.save()
-                    query_filter[query_param] = model.instance
-                    field_values[query_param] = model
-            try:
-                self.instance = self.relationship_manager.get(**query_filter)
-                return
-            except ObjectDoesNotExist:
-                if self.metadata.action == ModelMetadata.UPDATE:
-                    # pylint: disable=raise-missing-from
-                    raise errors.DesignImplementationError(f"No match with {query_filter}", self.model_class)
-        elif self.metadata.action != ModelMetadata.CREATE:
-            raise errors.DesignImplementationError(f"Unknown database action {self.metadata.action}", self.model_class)
-        # since the object was not found, we need to
-        # put the search criteria back into the attributes
-        # so that they will be set when the object is created
-        self.metadata.attributes.update(field_values)
-        self.metadata.created = True
-        try:
-            self.instance = self.model_class(**self.metadata.kwargs)
-        except TypeError as ex:
-            raise errors.DesignImplementationError(str(ex), self.model_class)
+        self.design_metadata.send(signal)
 
     def _update_fields(self):
-        if self.metadata.action == ModelMetadata.GET:
-            if self.metadata.attributes:
+        if self.design_metadata.action == ModelMetadata.GET:
+            if self.design_metadata.attributes:
                 # TODO: Raise a DesignModelError from here. Currently the DesignModelError doesn't
                 # include a message.
                 raise errors.DesignImplementationError(
                     "Cannot update fields when using the GET action", self.model_class
                 )
 
-        for field_name, value in self.metadata.attributes.items():
+        for field_name, value in self.design_metadata.attributes.items():
             if hasattr(self.__class__, field_name):
                 setattr(self, field_name, value)
-            elif hasattr(self.instance, field_name):
-                setattr(self.instance, field_name, value)
+            elif hasattr(self.design_instance, field_name):
+                setattr(self.design_instance, field_name, value)
 
-            for key, value in self.metadata.custom_fields.items():
-                self.set_custom_field(key, value)
+        for key, value in self.design_metadata.custom_fields.items():
+            self.design_instance.cf[key] = value
 
     def save(self):
         """Save the model instance to the database.
@@ -590,33 +631,33 @@ class ModelInstance:
         will send signals (`PRE_SAVE`, `POST_INSTANCE_SAVE` and `POST_SAVE`). The
         design journal is updated in this step.
         """
-        if self.metadata.action == ModelMetadata.GET:
+        if self.design_metadata.action == ModelMetadata.GET:
             return
 
         self._send(ModelMetadata.PRE_SAVE)
 
-        msg = "Created" if self.metadata.created else "Updated"
+        msg = "Created" if self.design_metadata.created else "Updated"
         try:
-            self.instance.full_clean()
-            self.instance.save(**self.metadata.save_args)
-            self.environment.journal.log(self)
-            self.metadata.created = False
-            if self._parent is None:
-                self.environment.log_success(
-                    message=f"{msg} {self.model_class.__name__} {self.instance}", obj=self.instance
+            self.design_instance.full_clean()
+            self.design_instance.save(**self.design_metadata.save_args)
+            self.design_metadata.environment.journal.log(self)
+            self.design_metadata.created = False
+            if self._design_instance_parent is None:
+                self.design_metadata.environment.logger.info(
+                    "%s %s %s",
+                    msg,
+                    self.model_class.__name__,
+                    self.design_instance,
+                    extra={"object": self.design_instance},
                 )
             # Refresh from DB so that we update based on any
             # post save signals that may have fired.
-            self.instance.refresh_from_db()
+            self.design_instance.refresh_from_db()
         except ValidationError as validation_error:
             raise errors.DesignValidationError(self) from validation_error
 
         self._send(ModelMetadata.POST_INSTANCE_SAVE)
         self._send(ModelMetadata.POST_SAVE)
-
-    def set_custom_field(self, field, value):
-        """Sets a value for a custom field."""
-        self.instance.cf[field] = value
 
 
 # Don't add models from these app_labels to the
@@ -636,7 +677,7 @@ _OBJECT_TYPES_APP_FILTER = set(
 )
 
 
-class Environment(LoggingMixin):
+class Environment:
     """The design builder build environment.
 
     The build `Environment` contains all of the components needed to implement a design.
@@ -647,6 +688,7 @@ class Environment(LoggingMixin):
 
     model_map: Dict[str, Type[Model]]
     model_class_index: Dict[Type, "ModelInstance"]
+    deployment: models.Deployment
 
     def __new__(cls, *args, **kwargs):
         """Sets the model_map class attribute when the first Builder is initialized."""
@@ -662,21 +704,37 @@ class Environment(LoggingMixin):
                 cls.model_class_index[model_class] = cls.model_map[plural_name]
         return object.__new__(cls)
 
-    def __init__(self, job_result: JobResult = None, extensions: List[ext.Extension] = None):
+    def __init__(
+        self,
+        logger: logging.Logger = None,
+        extensions: List[ext.Extension] = None,
+        change_set: models.ChangeSet = None,
+        import_mode=False,
+    ):
         """Create a new build environment for implementing designs.
 
         Args:
-            job_result (JobResult, optional): If this environment is being used by
-                a `DesignJob` then it can log to the `JobResult` for the job.
-                Defaults to None.
+            logger (Logger): A logger to use. If not supplied one will be created.
+
             extensions (List[ext.Extension], optional): Any custom extensions to use
                 when implementing designs. Defaults to None.
+
+            change_set (models.ChangeSet): A change set object to use for logging changes
+                in the environment. This defaults to `None` which means the environment shouldn't
+                log any changes to the database. This behavior is used when a design is in Ad-Hoc
+                mode (classic mode) and does not represent a design lifecycle.
+
+            import_mode (bool): Whether or not the environment is in import mode. Defaults to False.
 
         Raises:
             errors.DesignImplementationError: If a provided extension is not a subclass
                 of `ext.Extension`.
         """
-        self.job_result = job_result
+        self.logger = logger
+        if self.logger is None:
+            self.logger = logging.getLogger(__name__)
+
+        self.import_mode = import_mode
 
         self.extensions = {
             "extensions": [],
@@ -701,9 +759,21 @@ class Environment(LoggingMixin):
 
             self.extensions["extensions"].append(extn)
 
-        self.journal = Journal()
+        self.journal = Journal(change_set=change_set, import_mode=import_mode)
+        if change_set:
+            self.deployment = change_set.deployment
 
-    def get_extension(self, ext_type: str, tag: str) -> ext.Extension:
+    def decommission_object(self, object_id, object_name):
+        """This method decommissions an specific object_id from the design instance."""
+        self.journal.change_set.deployment.decommission(object_id, local_logger=self.logger)
+        self.logger.info(
+            "Decommissioned %s with ID %s from design instance %s.",
+            object_name,
+            object_id,
+            self.journal.change_set.deployment,
+        )
+
+    def get_extension(self, ext_type: str, tag: str) -> Union[ext.Extension, None]:
         """Look up an extension based on its tag name and return an instance of that Extension type.
 
         Args:
@@ -722,12 +792,12 @@ class Environment(LoggingMixin):
         return extn["object"]
 
     def implement_design(self, design: Dict, commit: bool = False):
-        """Iterates through items in the design and create them.
+        """Iterates through items in the design and creates them.
 
-        If either commit=False (default) or an exception is raised, then any extensions
-        with rollback functionality are called to revert their state. If commit=True
-        and no exceptions are raised then the extensions with commit functionality are
-        called to finalize changes.
+        This process is wrapped in a transaction. If either commit=False (default) or
+        an exception is raised, then the transaction is rolled back and no database
+        changes will be present. If commit=True and no exceptions are raised then the
+        database state should represent the changes provided in the design.
 
         Args:
             design (Dict): An iterable mapping of design changes.
@@ -743,8 +813,9 @@ class Environment(LoggingMixin):
             for key, value in design.items():
                 if key in self.model_map and value:
                     self._create_objects(self.model_map[key], value)
-                else:
+                elif key not in self.model_map:
                     raise errors.DesignImplementationError(f"Unknown model key {key} in design")
+
             # TODO: The way this works now the commit happens on a per-design file
             #       basis. If a design job has multiple design files and the first
             #       one completes, but the second one fails, the first will still
@@ -811,13 +882,14 @@ class Environment(LoggingMixin):
                 value[k] = self.resolve_value(item)
         return value
 
+    # IDEA: rename to `_create_or_import_objects` to better reflect the import mode
     def _create_objects(self, model_class: Type[ModelInstance], objects: Union[List[Any], Dict[str, Any]]):
         if isinstance(objects, dict):
             model = model_class(self, objects)
             model.save()
         elif isinstance(objects, list):
-            for model_attributes in objects:
-                model = model_class(self, model_attributes)
+            for model_instance in objects:
+                model = model_class(self, model_instance)
                 model.save()
 
     def commit(self):

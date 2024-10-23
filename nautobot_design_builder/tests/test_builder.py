@@ -1,7 +1,6 @@
 """Test object creator methods."""
 
 import importlib
-from operator import attrgetter
 import os
 from unittest.mock import patch
 import yaml
@@ -41,7 +40,14 @@ class BuilderChecks:
         value1 = _get_value(check[1])
         if len(value0) == 1 and len(value1) == 1:
             test.assertEqual(value0[0], value1[0], msg=f"Check {index}")
-        test.assertEqual(value0, value1, msg=f"Check {index}")
+
+        # TODO: Mysql tests fail due to unordered lists
+        if isinstance(value0, list) and isinstance(value1, list):
+            test.assertEqual(len(value0), len(value1))
+            for item0 in value0:
+                test.assertIn(item0, value1)
+        else:
+            test.assertEqual(value0, value1, msg=f"Check {index}")
 
     @staticmethod
     def check_count_equal(test, check, index):
@@ -81,6 +87,34 @@ class BuilderChecks:
         if len(value1) == 1:
             value1 = value1[0]
         test.assertNotIn(value0, value1, msg=f"Check {index}")
+
+
+class attrgetter:  # pylint:disable=invalid-name,too-few-public-methods
+    """Return a callable object that fetches attr or key from its operand.
+
+    The attribute names can also contain dots
+    """
+
+    def __init__(self, attr):
+        if not isinstance(attr, str):
+            raise TypeError("attribute name must be a string")
+        self._attrs = (attr,)
+        names = attr.split(".")
+
+        def func(obj):
+            for name in names:
+                if hasattr(obj, name):
+                    obj = getattr(obj, name)
+                elif name in obj:
+                    obj = obj[name]
+                else:
+                    raise AttributeError(f"'{type(obj).__name__}' has no attribute or item '{name}'")
+            return obj
+
+        self._call = func
+
+    def __call__(self, obj):
+        return self._call(obj)
 
 
 def _get_value(check_info):

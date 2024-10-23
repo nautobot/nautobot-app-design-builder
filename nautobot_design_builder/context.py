@@ -12,7 +12,6 @@ from nautobot.extras.models import JobResult
 
 from nautobot_design_builder.errors import DesignValidationError
 from nautobot_design_builder.jinja2 import new_template_environment
-from nautobot_design_builder.logging import LoggingMixin
 from nautobot_design_builder.util import load_design_yaml
 
 
@@ -273,7 +272,7 @@ def context_file(*ctx_files):
     return wrapper
 
 
-class Context(_DictNode, LoggingMixin):
+class Context(_DictNode):
     """A context represents a tree of variables that can include templates for values.
 
     The Design Builder context is a tree structure that can be used for a

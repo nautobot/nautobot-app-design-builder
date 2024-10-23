@@ -1,0 +1,6 @@
+---
+secrets:
+    "!create_or_update:name": "test secret"
+    "provider": "environment-variable"
+    "description": "test description"
+    "parameters": {"key1": "{{ secret }}"}

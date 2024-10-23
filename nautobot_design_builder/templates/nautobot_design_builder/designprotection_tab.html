@@ -1,0 +1,41 @@
+{% extends 'generic/object_retrieve.html' %}
+{% load helpers %}
+{% load tz %}
+{% load static %}
+
+
+<!-- {% if content|length > 0 %} -->
+{% block title %} {{ object }} - Design Protection {% endblock %}
+
+{% block content %}
+
+<!-- <pre>{{ data }}</pre> -->
+
+<table class="table table-hover table-headings">
+    <thead>
+        <tr>
+            <th>Attribute</th>
+            <th>Referencing Design Deployments</th>
+
+        </tr>
+    </thead>
+    <tbody>
+
+{% for key, value in design_protection.items %}
+
+        <tr>
+            <td>
+                {{ key }}
+            </td>
+            <td>
+                {% with deployment=value %}
+                <a href="{{ deployment.get_absolute_url }}">{{ deployment }}</a>
+                {% endwith %}
+            </td>
+        </tr>
+
+{% endfor %}
+</tbody>
+</table>
+{% endblock %}
+<!-- {% endif %} -->

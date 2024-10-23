@@ -1,0 +1,28 @@
+---
+manufacturers:
+  - "!create_or_update:name": "Test Manufacturer"
+    "description": "Test description"
+roles:
+  - "!create_or_update:name": "Switch"
+    color: "3f51b5"
+    content_types:
+      - "!get:app_label": "dcim"
+        "!get:model": "device"
+device_types:
+  - "!create_or_update:model": "Test Device Type"
+    "manufacturer__name": "Test Manufacturer"
+location_types:
+  - "!create_or_update:name": "Test Location Type"
+    content_types:
+      - "!get:app_label": "dcim"
+        "!get:model": "device"
+locations:
+  - "!create_or_update:name": "Test Location"
+    "location_type__name": "Test Location Type"
+    "status__name": "Active"
+devices:
+  - "!create_or_update:name": "Test Device"
+    "role__name": "Switch"
+    "device_type__model": "Test Device Type"
+    "location__name": "Test Location"
+    "status__name": "Active"

@@ -40,10 +40,11 @@ class DesignModelError(Exception):
 
         Args:
             model: The model that generated the error.
+
             parent: If model is a django model (as opposed to a design
-            builder ModelInstance) then a parent can be specified
-            in order to better represent the relationship of the
-            model within the design.
+                builder ModelInstance) then a parent can be specified
+                in order to better represent the relationship of the
+                model within the design.
         """
         super().__init__()
         self.model = model
@@ -52,7 +53,7 @@ class DesignModelError(Exception):
     @staticmethod
     def _model_str(model):
         instance_str = None
-        if not isinstance(model, Model) and not hasattr(model, "instance"):
+        if not isinstance(model, Model) and not hasattr(model, "design_instance"):
             if isclass(model):
                 return model.__name__
             try:
@@ -67,9 +68,9 @@ class DesignModelError(Exception):
 
         model_class = model.__class__
         # if it looks like a duck...
-        if hasattr(model, "instance"):
+        if hasattr(model, "design_instance"):
             model_class = model.model_class
-            model = model.instance
+            model = model.design_instance
 
         if model:
             try:
@@ -112,8 +113,8 @@ class DesignModelError(Exception):
         model = self.model
         while model is not None:
             path_msg.insert(0, DesignModelError._model_str(model))
-            if not isclass(model) and hasattr(model, "_parent"):
-                model = model._parent  # pylint:disable=protected-access
+            if not isclass(model) and hasattr(model, "_design_instance_parent"):
+                model = model._design_instance_parent  # pylint:disable=protected-access
             elif self.parent:
                 model = self.parent
                 self.parent = None
@@ -171,14 +172,19 @@ class DesignValidationError(DesignModelError):
 class DesignQueryError(DesignModelError):
     """Exception indicating design builder could not find the object."""
 
-    def __init__(self, model=None, query_filter=None, **kwargs):
+    def __init__(self, model=None, parent=None, query_filter=None):
         """Initialize a design query error.
 
         Args:
             model: Model or model class this query error corresponds to.
             query_filter: Query filter the generated the error.
+
+            parent: If model is a django model (as opposed to a design
+                builder ModelInstance) then a parent can be specified
+                in order to better represent the relationship of the
+                model within the design.
         """
-        super().__init__(model=model, **kwargs)
+        super().__init__(model=model, parent=parent)
         self.query_filter = query_filter
 
     def __str__(self) -> str:

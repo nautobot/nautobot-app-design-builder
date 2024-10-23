@@ -30,8 +30,10 @@ class LookupMixin:
 
         Args:
             app_label: Content type app-label that the model exists in.
-            model_name_: Name of the model for the query.
-            query (_type_): Dictionary to be used for the query.
+
+            model_name: Name of the model for the query.
+
+            query: Dictionary to be used for the query.
 
         Raises:
             DesignImplementationError: If no matching object is found or no
@@ -56,6 +58,7 @@ class LookupMixin:
 
         Args:
             query (dict): The input query (or subquery during recursion) to flatten.
+
             prefix (str, optional): The prefix to add to each flattened key. Defaults to "".
 
         Returns:
@@ -66,7 +69,7 @@ class LookupMixin:
                 yield from LookupMixin._flatten(value, f"{prefix}{key}__")
             else:
                 if isinstance(value, ModelInstance):
-                    yield (f"!get:{prefix}{key}", value.instance)
+                    yield (f"!get:{prefix}{key}", value.design_instance)
                 else:
                     yield (f"!get:{prefix}{key}", value)
 
@@ -87,15 +90,17 @@ class LookupMixin:
             Dict[str, Any]: The flattened query dictionary.
 
         Example:
-            >>> query = {
-            ...     "status": {
-            ...         "name": "Active",
-            ...     }
-            ... }
-            >>>
-            >>> LookupMixin.flatten_query(query)
-            {'status__name': 'Active'}
-            >>>
+        ```python
+        >>> query = {
+        ...     "status": {
+        ...         "name": "Active",
+        ...     }
+        ... }
+        >>>
+        >>> LookupMixin.flatten_query(query)
+        {'status__name': 'Active'}
+        >>>
+        ```
         """
         return dict(LookupMixin._flatten(query))
 
@@ -104,10 +109,12 @@ class LookupMixin:
 
         Args:
             queryset: Queryset (e.g. Status.objects.all) from which to query.
+
             query: Query params to filter by.
+
             parent: Optional field used for better error reporting. Set this
-            value to the model instance that is semantically the parent so
-            that DesignModelErrors raised are more easily debugged.
+                value to the model instance that is semantically the parent so
+                that DesignModelErrors raised are more easily debugged.
 
         Raises:
             DoesNotExistError: If either no object is found.
@@ -117,18 +124,24 @@ class LookupMixin:
             Any: The object matching the query.
         """
         query = self.environment.resolve_values(query)
+        # it's possible an extension actually returned the instance we need, in
+        # that case, no need to look it up. This is especially true for the
+        # !ref extension used as a value.
+        if isinstance(query, ModelInstance):
+            return query
+
         query = self.flatten_query(query)
         try:
             model_class = self.environment.model_class_index[queryset.model]
             if parent:
-                return parent.create_child(model_class, query, queryset)
+                return parent.design_metadata.create_child(model_class, query, queryset)
             return model_class(self.environment, query, queryset)
         except ObjectDoesNotExist:
             # pylint: disable=raise-missing-from
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
         except MultipleObjectsReturned:
             # pylint: disable=raise-missing-from
-            raise MultipleObjectsReturnedError(queryset.model, query=query, parent=parent)
+            raise MultipleObjectsReturnedError(queryset.model, query_filter=query, parent=parent)
 
 
 class LookupExtension(AttributeExtension, LookupMixin):
@@ -143,11 +156,15 @@ class LookupExtension(AttributeExtension, LookupMixin):
         assign it to an attribute of another object.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: A filter describing the object to get. Keys should map to lookup
-            parameters equivalent to Django's `filter()` syntax for the given model.
-            The special `type` parameter will override the relationship's model class
-            and instead lookup the model class using the `ContentType`. The value
-            of the `type` field must match `ContentType` `app_label` and `model` fields.
+                parameters equivalent to Django's `filter()` syntax for the given model.
+                The special `type` parameter will override the relationship's model class
+                and instead lookup the model class using the `ContentType`. The value
+                of the `type` field must match `ContentType` `app_label` and `model` fields.
+
+            model_instance: The model instance that is the parent of this attribute lookup.
 
         Raises:
             DesignImplementationError: if no matching object was found.
@@ -230,17 +247,21 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
 
         return query_managers
 
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """Connect a cable termination to another cable termination.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: Dictionary with details about the cable. At a minimum
-            the dictionary must have a `to` key which includes a query
-            dictionary that will return exactly one object to be added to the
-            `termination_b` side of the cable. All other attributes map
-            directly to the cable attributes. Cables require a status,
-            so the `status` field is mandatory and follows typical design
-            builder query lookup.
+                the dictionary must have a `to` key which includes a query
+                dictionary that will return exactly one object to be added to the
+                `termination_b` side of the cable. All other attributes map
+                directly to the cable attributes. Cables require a status,
+                so the `status` field is mandatory and follows typical design
+                builder query lookup.
+
+            model_instance: The object receiving the `a` side of this connection.
 
         Raises:
             DesignImplementationError: If no `status` was provided, or no matching
@@ -283,19 +304,39 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
             except (DoesNotExistError, FieldError):
                 if not query_managers:
                     # pylint:disable=raise-missing-from
-                    raise DoesNotExistError(model_instance.model_class, query_filter=termination_query)
+                    raise DoesNotExistError(
+                        model=model_instance.model_class, parent=model_instance, query_filter=termination_query
+                    )
 
-        cable_attributes.update(
-            {
-                "termination_a": model_instance,
-                "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
-                    remote_instance.instance
-                ).id,
-                "!create_or_update:termination_b_id": remote_instance.instance.id,
-                "deferred": True,
-            }
-        )
-        return ("cable", cable_attributes)
+        def connect():
+            cable_attributes.update(
+                {
+                    "!create_or_update:termination_a_id": model_instance.design_instance.id,
+                    "!create_or_update:termination_a_type_id": ContentType.objects.get_for_model(
+                        model_instance.design_instance
+                    ).id,
+                    "!create_or_update:termination_b_id": remote_instance.design_instance.id,
+                    "!create_or_update:termination_b_type_id": ContentType.objects.get_for_model(
+                        remote_instance.design_instance
+                    ).id,
+                }
+            )
+
+            existing_cable = dcim.Cable.objects.filter(
+                Q(termination_a_id=model_instance.design_instance.id)
+                | Q(termination_b_id=remote_instance.design_instance.id)
+            ).first()
+            Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name
+            if existing_cable:
+                if (
+                    existing_cable.termination_a_id != model_instance.design_instance.id
+                    or existing_cable.termination_b_id != remote_instance.design_instance.id
+                ):
+                    self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
+            cable = Cable(self.environment, cable_attributes)
+            cable.save()
+
+        model_instance.connect("POST_INSTANCE_SAVE", connect)
 
 
 class NextPrefixExtension(AttributeExtension):
@@ -303,15 +344,19 @@ class NextPrefixExtension(AttributeExtension):
 
     tag = "next_prefix"
 
-    def attribute(self, value: dict, model_instance) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: A filter describing the parent prefix to provision from. If `prefix`
                 is one of the query keys then the network and prefix length will be
                 split and used as query arguments for the underlying Prefix object. The
                 requested prefix length must be specified using the `length` dictionary
                 key. All other keys are passed on to the query filter directly.
+
+            model_instance: The prefix object that will ultimately be saved to the database.
 
         Raises:
             DesignImplementationError: if value is not a dictionary, the prefix is improperly formatted
@@ -329,12 +374,20 @@ class NextPrefixExtension(AttributeExtension):
                     - "10.0.0.0/23"
                     - "10.0.2.0/23"
                     length: 24
+                    identified_by:
+                        tag__name: "some tag name"
                 status__name: "Active"
             ```
         """
         if not isinstance(value, dict):
             raise DesignImplementationError("the next_prefix tag requires a dictionary of arguments")
-
+        identified_by = value.pop("identified_by", None)
+        if identified_by:
+            try:
+                model_instance.design_instance = model_instance.relationship_manager.get(**identified_by)
+                return None
+            except ObjectDoesNotExist:
+                pass
         length = value.pop("length", None)
         if length is None:
             raise DesignImplementationError("the next_prefix tag requires a prefix length")
@@ -364,7 +417,8 @@ class NextPrefixExtension(AttributeExtension):
             query = Q(**value) & reduce(operator.or_, prefix_q)
 
         prefixes = Prefix.objects.filter(query)
-        return "prefix", self._get_next(prefixes, length)
+        attr = args[0] if args else "prefix"
+        return attr, self._get_next(prefixes, length)
 
     @staticmethod
     def _get_next(prefixes, length) -> str:
@@ -372,6 +426,7 @@ class NextPrefixExtension(AttributeExtension):
 
         Args:
             prefixes (str): Comma separated list of prefixes to search for available subnets.
+
             length (int): The requested prefix length.
 
         Returns:
@@ -390,7 +445,7 @@ class ChildPrefixExtension(AttributeExtension):
 
     tag = "child_prefix"
 
-    def attribute(self, value: dict, model_instance) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: "ModelInstance" = None) -> None:
         """Provides the `!child_prefix` attribute.
 
         !child_prefix calculates a child prefix using a parent prefix
@@ -399,10 +454,16 @@ class ChildPrefixExtension(AttributeExtension):
         object.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value: a dictionary containing the `parent` prefix (string or
-            `Prefix` instance) and the `offset` in the form of a CIDR
-            string. The length of the child prefix will match the length
-            provided in the offset string.
+                `Prefix` instance) and the `offset` in the form of a CIDR
+                string. The length of the child prefix will match the length
+                provided in the offset string.
+
+            model_instance: The object that this prefix string should be assigned to.
+                It could be an IP Address or Prefix or any field that takes a
+                dotted decimal address string.
 
         Raises:
             DesignImplementationError: if value is not a dictionary, or the
@@ -433,11 +494,13 @@ class ChildPrefixExtension(AttributeExtension):
         if not isinstance(value, dict):
             raise DesignImplementationError("the child_prefix tag requires a dictionary of arguments")
 
+        action = value.pop("action", "")
+
         parent = value.pop("parent", None)
         if parent is None:
             raise DesignImplementationError("the child_prefix tag requires a parent")
         if isinstance(parent, ModelInstance):
-            parent = str(parent.instance.prefix)
+            parent = str(parent.design_instance.prefix)
         elif not isinstance(parent, str):
             raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
 
@@ -446,8 +509,13 @@ class ChildPrefixExtension(AttributeExtension):
             raise DesignImplementationError("the child_prefix tag requires an offset")
         if not isinstance(offset, str):
             raise DesignImplementationError("offset must be string")
+        attr = args[0] if args else "prefix"
 
-        return "prefix", network_offset(parent, offset)
+        if action:
+            model_instance.design_metadata.action = action
+            model_instance.design_metadata.filter[attr] = str(network_offset(parent, offset))
+            return None
+        return attr, str(network_offset(parent, offset))
 
 
 class BGPPeeringExtension(AttributeExtension):
@@ -476,7 +544,7 @@ class BGPPeeringExtension(AttributeExtension):
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
 
-    def attribute(self, value, model_instance) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """This attribute tag creates or updates a BGP peering for two endpoints.
 
         !bgp_peering will take an `endpoint_a` and `endpoint_z` argument to correctly
@@ -484,10 +552,14 @@ class BGPPeeringExtension(AttributeExtension):
         Design Builder syntax.
 
         Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
             value (dict): dictionary containing the keys `endpoint_a`
-            and `endpoint_z`. Both of these keys must be dictionaries
-            specifying a way to either lookup or create the appropriate
-            peer endpoints.
+                and `endpoint_z`. Both of these keys must be dictionaries
+                specifying a way to either lookup or create the appropriate
+                peer endpoints.
+
+            model_instance (ModelInstance): The BGP Peering that is to be updated.
 
         Raises:
             DesignImplementationError: if the supplied value is not a dictionary
@@ -528,8 +600,8 @@ class BGPPeeringExtension(AttributeExtension):
         peering_a = None
         peering_z = None
         try:
-            peering_a = endpoint_a.instance.peering
-            peering_z = endpoint_z.instance.peering
+            peering_a = endpoint_a.design_instance.peering
+            peering_z = endpoint_z.design_instance.peering
         except self.Peering.model_class.DoesNotExist:
             pass
 
@@ -544,13 +616,13 @@ class BGPPeeringExtension(AttributeExtension):
                 peering_z.delete()
 
         retval["endpoints"] = [endpoint_a, endpoint_z]
-        endpoint_a.metadata.attributes["peering"] = model_instance
-        endpoint_z.metadata.attributes["peering"] = model_instance
+        endpoint_a.design_metadata.attributes["peering"] = model_instance
+        endpoint_z.design_metadata.attributes["peering"] = model_instance
 
         def post_save():
             peering_instance: ModelInstance = model_instance
-            endpoint_a = peering_instance.instance.endpoint_a
-            endpoint_z = peering_instance.instance.endpoint_z
+            endpoint_a = peering_instance.design_instance.endpoint_a
+            endpoint_z = peering_instance.design_instance.endpoint_z
             endpoint_a.peer, endpoint_z.peer = endpoint_z, endpoint_a
             endpoint_a.save()
             endpoint_z.save()
