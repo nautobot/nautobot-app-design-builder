@@ -17,7 +17,7 @@ from nautobot_design_builder.design import Environment, ModelInstance, ModelMeta
 
 from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
 from nautobot_design_builder.ext import AttributeExtension
-from nautobot_design_builder.jinja2 import network_offset
+from nautobot_design_builder.jinja_filters import network_offset
 
 
 class LookupMixin:
