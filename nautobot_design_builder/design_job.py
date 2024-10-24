@@ -244,7 +244,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         previous_change_set = instance.change_sets.order_by("-last_updated").exclude(job_result=self.job_result).first()
         return (change_set, previous_change_set)
 
-    def run(self, dryrun: bool, **kwargs):  # pylint: disable=arguments-differ
+    def run(self, dryrun: bool = False, **kwargs):  # pylint: disable=arguments-differ
         """Render the design and implement it within a build Environment object."""
         try:
             return self._run_in_transaction(dryrun, **kwargs)
