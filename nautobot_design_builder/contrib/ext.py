@@ -326,7 +326,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 Q(termination_a_id=model_instance.design_instance.id)
                 | Q(termination_b_id=remote_instance.design_instance.id)
             ).first()
-            Cable = ModelInstance.factory(dcim.Cable)  # pylint:disable=invalid-name
+            Cable = self.environment.model_factory(dcim.Cable)  # pylint:disable=invalid-name
             if existing_cable:
                 if (
                     existing_cable.termination_a_id != model_instance.design_instance.id
@@ -536,8 +536,8 @@ class BGPPeeringExtension(AttributeExtension):
         try:
             from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
 
-            self.PeerEndpoint = ModelInstance.factory(PeerEndpoint)  # pylint:disable=invalid-name
-            self.Peering = ModelInstance.factory(Peering)  # pylint:disable=invalid-name
+            self.PeerEndpoint = self.environment.model_factory(PeerEndpoint)  # pylint:disable=invalid-name
+            self.Peering = self.environment.model_factory(Peering)  # pylint:disable=invalid-name
         except ModuleNotFoundError:
             # pylint:disable=raise-missing-from
             raise DesignImplementationError(

@@ -1,0 +1,28 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.LookupExtension"
+depends_on: "base_test.yaml"
+designs:
+  - relationships:
+      - label: "Prefix -> VLAN"
+        key: "prefix_vlan"
+        type: "one-to-many"
+        "!lookup:source_type":
+          app_label: "ipam"
+          model: "prefix"
+        source_label: "prefix"
+        "!lookup:destination_type":
+          app_label: "ipam"
+          model: "prefix"
+        destination_label: "vlan"
+    prefixes:
+      - locations:
+          - location:
+              "!get:name": "Site"
+        status__name: "Active"
+        prefix: "192.168.0.0/24"
+
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.Prefix"
+      query: {prefix: "192.168.0.0/24"}

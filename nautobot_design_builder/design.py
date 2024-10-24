@@ -492,24 +492,32 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         return _map_query_values(self._filter)
 
 
+def _refresh_custom_relationship(instance: "ModelInstance", relationship: "Relationship"):
+    """Refresh fields for a single custom relationship."""
+    try:
+        field = field_factory(instance.__class__, relationship)
+
+        # make sure not to mask non-custom relationship fields that
+        # may have the same key name or field name
+        for attr_name in [field.key_name, field.field_name]:
+            if hasattr(instance.__class__, attr_name):
+                # if there is already an attribute with the same name,
+                # delete it if it is a custom relationship, that way
+                # we reload the config from the database.
+                if isinstance(getattr(instance.__class__, attr_name), CustomRelationshipField):
+                    delattr(instance.__class__, attr_name)
+
+            if not hasattr(instance.__class__, attr_name):
+                setattr(instance.__class__, attr_name, field)
+    except errors.FieldNameError as ex:
+        instance.design_metadata.environment.logger.warning(str(ex))
+
+
 def _refresh_custom_relationships(instance: "ModelInstance"):
     """Look for any custom relationships for this model class and add any new fields."""
     for direction in Relationship.objects.get_for_model(instance.model_class):
         for relationship in direction:
-            field = field_factory(instance, relationship)
-
-            # make sure not to mask non-custom relationship fields that
-            # may have the same key name or field name
-            for attr_name in [field.key_name, field.field_name]:
-                if hasattr(instance.__class__, attr_name):
-                    # if there is already an attribute with the same name,
-                    # delete it if it is a custom relationship, that way
-                    # we reload the config from the database.
-                    if isinstance(getattr(instance.__class__, attr_name), CustomRelationshipField):
-                        delattr(instance.__class__, attr_name)
-
-                if not hasattr(instance.__class__, attr_name):
-                    setattr(instance.__class__, attr_name, field)
+            _refresh_custom_relationship(instance, relationship)
 
 
 class ModelInstance:
@@ -525,27 +533,6 @@ class ModelInstance:
 
     name: str
     model_class: Type[Model]
-
-    @classmethod
-    def factory(cls, django_class: Type[Model]) -> "ModelInstance":
-        """`factory` takes a normal Django model class and creates a dynamic ModelInstance proxy class.
-
-        Args:
-            django_class (Type[Model]): The Django model class to wrap in a proxy class.
-
-        Returns:
-            type[ModelInstance]: The newly created proxy class.
-        """
-        cls_attributes = {
-            "model_class": django_class,
-            "name": django_class.__name__,
-        }
-
-        field: DjangoField
-        for field in django_class._meta.get_fields():
-            cls_attributes[field.name] = field_factory(None, field)
-        model_class = type(django_class.__name__, (ModelInstance,), cls_attributes)
-        return model_class
 
     def __init__(
         self,
@@ -690,20 +677,6 @@ class Environment:
     model_class_index: Dict[Type, "ModelInstance"]
     deployment: models.Deployment
 
-    def __new__(cls, *args, **kwargs):
-        """Sets the model_map class attribute when the first Builder is initialized."""
-        # only populate the model_map once
-        if not hasattr(cls, "model_map"):
-            cls.model_map = {}
-            cls.model_class_index = {}
-            for model_class in apps.get_models():
-                if model_class._meta.app_label in _OBJECT_TYPES_APP_FILTER:
-                    continue
-                plural_name = str_to_var_name(model_class._meta.verbose_name_plural)
-                cls.model_map[plural_name] = ModelInstance.factory(model_class)
-                cls.model_class_index[model_class] = cls.model_map[plural_name]
-        return object.__new__(cls)
-
     def __init__(
         self,
         logger: logging.Logger = None,
@@ -733,6 +706,15 @@ class Environment:
         self.logger = logger
         if self.logger is None:
             self.logger = logging.getLogger(__name__)
+
+        self.model_map = {}
+        self.model_class_index = {}
+        for model_class in apps.get_models():
+            if model_class._meta.app_label in _OBJECT_TYPES_APP_FILTER:
+                continue
+            plural_name = str_to_var_name(model_class._meta.verbose_name_plural)
+            self.model_map[plural_name] = self.model_factory(model_class)
+            self.model_class_index[model_class] = self.model_map[plural_name]
 
         self.import_mode = import_mode
 
@@ -829,6 +811,29 @@ class Environment:
         except Exception as ex:
             self.roll_back()
             raise ex
+
+    def model_factory(self, django_class: Type[Model]) -> "ModelInstance":
+        """`factory` takes a normal Django model class and creates a dynamic ModelInstance proxy class.
+
+        Args:
+            django_class (Type[Model]): The Django model class to wrap in a proxy class.
+
+        Returns:
+            type[ModelInstance]: The newly created proxy class.
+        """
+        cls_attributes = {
+            "model_class": django_class,
+            "name": django_class.__name__,
+        }
+
+        field: DjangoField
+        for field in django_class._meta.get_fields():
+            try:
+                cls_attributes[field.name] = field_factory(None, field)
+            except errors.FieldNameError as ex:
+                self.logger.warning(str(ex))
+        model_class = type(django_class.__name__, (ModelInstance,), cls_attributes)
+        return model_class
 
     def resolve_value(self, value):
         """Resolve a single value using extensions, if needed.
