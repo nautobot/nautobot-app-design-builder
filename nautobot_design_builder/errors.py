@@ -219,3 +219,23 @@ class MultipleObjectsReturnedError(DesignQueryError):
     def __str__(self):
         """Error message with context."""
         return f"Multiple {self.model_str} objects matched query.\n\n{super().__str__()}"
+
+
+class FieldNameError(Exception):
+    """Raised when a custom relationship label would overwrite an existing field."""
+
+    def __init__(self, model_class, relationship, field_name):
+        """Create a FieldNameError.
+
+        Args:
+            model_class: The design builder model class that has the pre-existing field.
+            relationship: The relationship that would overwrite the field.
+            field_name: The name of the field that would be overwritten.
+        """
+        super().__init__(
+            (
+                f"Custom relationship `{relationship.label}` would overwrite the "
+                f"built-in field `{field_name}` on the `{model_class.__name__}` model. "
+                "This relationship will not be available in design builder."
+            )
+        )

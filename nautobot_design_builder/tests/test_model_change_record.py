@@ -4,7 +4,7 @@ from unittest.mock import patch, Mock
 from nautobot.extras.models import Secret
 from nautobot.dcim.models import Manufacturer, DeviceType
 
-from nautobot_design_builder.design import Environment, ModelInstance
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.errors import DesignValidationError
 
 from .test_model_deployment import BaseDeploymentTest
@@ -174,8 +174,9 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         )
         secret.save()
         updated_params = {"key1": "initial-value", "key2": "changed-value"}
-        design_secret = ModelInstance.factory(Secret)(
-            Environment(),
+        environment = Environment()
+        design_secret = environment.model_factory(Secret)(
+            environment,
             {
                 "!create_or_update:name": "test secret 1",
                 "parameters": updated_params,
