@@ -40,6 +40,28 @@ class TestContext(unittest.TestCase):
         context = PropertiesTest.load(data)
         self.assertEqual("my_prop_value", context.var2)
 
+    def test_nested_properties(self):
+        class NestedPropertyClass:  # pylint:disable=missing-class-docstring, too-few-public-methods
+            @property
+            def my_prop1(self):  # pylint:disable=missing-function-docstring
+                return "my_prop_value"
+
+        class PropertiesTest(Context):
+            """Test class for context."""
+
+            def __init__(self, data):
+                super().__init__(data)
+                self._my_prop = NestedPropertyClass()
+
+            @property
+            def my_prop(self):
+                """Simple property for the context."""
+                return self._my_prop
+
+        data = {"var1": {"var3": "{{ my_prop.my_prop1 }}"}, "var2": "{{ var1.var3 }}"}
+        context = PropertiesTest.load(data)
+        self.assertEqual("my_prop_value", context.var2)
+
     def test_update(self):
         data1 = {"var1": {"var4": "val4", "var3": "val3"}, "var2": "{{ var1.var3 }}"}
 

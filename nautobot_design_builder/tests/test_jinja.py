@@ -17,6 +17,37 @@ class TestJinja(unittest.TestCase):
         got = env.from_string(r"{{ var1 }}").render()
         self.assertEqual(want, got)
 
+    def test_context_with_property(self):
+        class TestContext(Context):  # pylint:disable=missing-class-docstring
+            @property
+            def name(self):  # pylint:disable=missing-function-docstring
+                return "Test Name"
+
+        env = new_template_environment(TestContext())
+        want = "Test Name"
+        got = env.from_string(r"{{ name }}").render()
+        self.assertEqual(want, got)
+
+    def test_context_with_nested_property(self):
+        class Name:  # pylint:disable=missing-class-docstring,too-few-public-methods
+            @property
+            def name(self):  # pylint:disable=missing-function-docstring
+                return "Test Name"
+
+        class TestContext(Context):  # pylint:disable=missing-class-docstring
+            def __init__(self):
+                super().__init__()
+                self._parent = Name()
+
+            @property
+            def parent(self):  # pylint:disable=missing-function-docstring
+                return self._parent
+
+        env = new_template_environment(TestContext())
+        want = "Test Name"
+        got = env.from_string(r"{{ parent.name }}").render()
+        self.assertEqual(want, got)
+
     def test_to_yaml(self):
         test_cases = [
             {
