@@ -1,7 +1,8 @@
 """Test running design jobs."""
 
 import copy
-from unittest.mock import ANY, MagicMock, Mock, patch
+import os
+from unittest.mock import patch, Mock, ANY, MagicMock
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -11,8 +12,9 @@ from nautobot.ipam.models import VRF, IPAddress, Prefix
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.models import ChangeRecord, Deployment
-from nautobot_design_builder.tests import DesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
+from nautobot_design_builder.testing import DesignTestCase, VerifyDesignTestCase
+
 
 # pylint: disable=unused-argument
 
@@ -374,3 +376,14 @@ class TestDesignJobIntegration(DesignTestCase):
 
             data["device_a"].refresh_from_db()
             self.assertIsNotNone(data["device_a"].local_config_context_data)
+
+
+class TestVerifyDesignJob(VerifyDesignTestCase):
+    """Test running verify design jobs."""
+
+    job_design = test_designs.VerifyDesign
+    check_file = os.path.join(os.path.dirname(__file__), "checks", "verify_design.yaml")
+    job_data = {"additional_manufacturer_1": "Manufacturer From Data"}
+
+    def test_my_design(self):
+        self.run_design_test()

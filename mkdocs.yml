@@ -113,6 +113,8 @@ nav:
       - Design Quick Start: "user/design_quickstart.md"
       - Design Development: "user/design_development.md"
       - Design LifeCycle: "user/design_lifecycle.md"
+      - Design Testing: "user/design_testing.md"
+      - Design Job Testing: "user/design_job_testing.md"
       - Frequently Asked Questions: "user/faq.md"
       - Git-based Config Context: "user/git_config_context.md"
   - Administrator Guide:
@@ -144,5 +146,6 @@ nav:
           - Jinja Rendering: "dev/code_reference/jinja2.md"
           - Jinja Filters: "dev/code_reference/jinja_filters.md"
           - Template Extensions: "dev/code_reference/ext.md"
+          - Testing: "dev/code_reference/testing.md"
           - Util: "dev/code_reference/util.md"
   - Nautobot Docs Home ↗︎: "https://docs.nautobot.com"

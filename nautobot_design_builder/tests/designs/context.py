@@ -50,3 +50,14 @@ class IntegrationTestContext(Context):
 
     def vrf_prefix_tag_name(self):
         return f"{self.deployment_name} VRF Prefix"
+
+
+@context_file("context/verify_design.yaml")
+class VerifyDesignContext(Context):
+    """Setup variables from context yaml and Python for testing"""
+
+    additional_manufacturer_1: str
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.additional_manufacturer_2 = "Manufacturer From Context"
