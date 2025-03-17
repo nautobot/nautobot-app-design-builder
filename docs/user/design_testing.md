@@ -8,7 +8,7 @@ The Nautobot Design Builder testing framework provides:
 
 - **Data Creation**: Tools to easily create and configure test data, such as devices, prefixes, and any object.
 - **Data Validation**: Various "check" methods to verify that the data and application state meet the expected conditions.
-- **Modular Design**: Extension and customization of the framework to fit specific testing needs.
+- **Modular Design**: The ability to use inheritance between designs, via the `depends_on` capabilities.
 
 ## Quick Start
 
@@ -17,15 +17,16 @@ To get started with the Nautobot Design Builder testing framework, create a simp
 Create a file named `ensure_device.yaml` in your `tests/testdata/` folder with the following content:
 
 ```yaml
-devices:
-  - name: Test Device
-    device_type: Test Type
-    device_role: Test Role
-    site: Test Site
+designs:
+  - devices:
+      - name: "Test Device"
+        device_type: "WS-C9300-12X-S"
+        device_role: "Test Role"
+        site: "Test Site"
 checks:
   - model_exists:
       model: dcim.device
-      name: Test Device
+      query: {name: "Test Device"}
 ```
 
 In your test file, such as `test_builder.py` or `unittest/test_builder.py`, use the following code to verify the device creation:
@@ -39,7 +40,7 @@ class TestGeneralDesigns(BuilderTestCase):
     data_dir = os.path.join(os.path.dirname(__file__), "testdata")
 ```
 
-This should be enough to get you started and infer how the system works. Essentially, you create designs and then check that the results are as expected.
+This should be enough to get you started and potentially infer how the system works. Essentially, you create designs and then check that the results are as expected.
 
 > Note: While you can set the `testdata` folder to be anything, we will refer to it as `tests/testdata/` throughout the documentation.
 
@@ -119,6 +120,7 @@ To use `depends_on`, reference the base design in the dependent design's YAML fi
 **Base Design**: Create a file named `base_design.yaml` in your `tests/testdata/` folder with the following content:
 
 ```yaml
+abstract: true
 designs:
   - manufacturers:
       - name: "cisco"
@@ -144,6 +146,8 @@ designs:
 ```
 
 In this example, `branch_design.yaml` depends on `base_design.yaml`. When `branch_design.yaml` is processed, it will first apply the configurations from `base_design.yaml` and then apply its own configurations. This ensures that the device type "WS-C9300-12X-S" defined in the base design is available when creating the "Test Device" in the extended design.
+
+> Note: If you don't need to run this design by itself, you can use the `abstract` key as shown in the example so that it doesn't run.
 
 ## Validating Data with Checks
 
@@ -200,6 +204,7 @@ As mentioned, the model will return a list in all cases **except** when using co
 In this example, the check verifies that the `rack.name` attribute of a device with the name "test device" is equal to `["rack-1"]`:
 
 ```yaml
+checks:
   - equal:
       - model: "nautobot.dcim.models.Device"
         query: {name: "test device"}
@@ -324,6 +329,7 @@ checks:
 The `not_in` check verifies that a field of a model is not in a specific list of values. For example, to check if the content types for Status are **not** in the Content Types:
 
 ```yaml
+checks:
   - not_in:
       - model: "django.contrib.contenttypes.models.ContentType"
         query: {app_label: "dcim", model: "cable"}
@@ -372,6 +378,21 @@ designs:
 
 In this example, the `NextPrefixExtension` is explicitly defined in the `extensions` key. This extension will be loaded and used to process the `!next_prefix` directive in the `designs` section.
 
+## Skipping tests
+
+Occasionally, you will need to skip a test, if for example, there is a known reason a test is failing but will be released anyway. You can add the `skip` key to the test file. 
+
+```yaml
+skip: true
+designs:
+  - tenants:
+      - name: "Nautobot Airports"
+checks:
+  - model_exists:
+      model: "nautobot.tenancy.models.Prefix"
+      query: {name: "Nautobot Airports"}
+```
+
 ## Running Single Tests
 
 Occasionally, you want to run a single test. In unittest, they have the concept of a label to run a single test. Here is an example of using the Python unittest with a label:
@@ -387,3 +408,181 @@ python -m nautobot.core.cli test nautobot_design_builder.tests.test_builder.Test
 ```
 
 This is helpful if you do not want to run all of your tests while testing a single issue or working on the root issue first.
+
+## Large Example
+
+You can get many great examples from the [test's folder](https://github.com/nautobot/nautobot-app-design-builder/tree/develop/nautobot_design_builder/tests/testdata), let's review a single larger example:
+
+```yaml
+---
+depends_on: "base_test.yaml"
+designs:
+  - roles:
+      - "name": "EVPN Leaf"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+      - "name": "EVPN Spine"
+        content_types:
+          - "!get:app_label": "dcim"
+            "!get:model": "device"
+
+    devices:
+      # Create Spine Switches
+      - "!create_or_update:name": "spine1"
+        "status__name": "Active"
+        "location__name": "Site"
+        "role__name": "EVPN Spine"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet9/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine1_to_leaf1"
+          - "!create_or_update:name": "Ethernet25/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine1_to_leaf2"
+      - "!create_or_update:name": "spine2"
+        "status__name": "Active"
+        "location__name": "Site"
+        "role__name": "EVPN Spine"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet9/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine2_to_leaf1"
+          - "!create_or_update:name": "Ethernet25/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine2_to_leaf2"
+      - "!create_or_update:name": "spine3"
+        "status__name": "Active"
+        "location__name": "Site"
+        "role__name": "EVPN Spine"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet9/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine3_to_leaf1"
+          - "!create_or_update:name": "Ethernet25/3"
+            "type": "100gbase-x-qsfp28"
+            "status__name": "Active"
+            "!ref": "spine3_to_leaf2"
+      - "!create_or_update:name": "leaf1"
+        "status__name": "Active"
+        "location__name": "Site"
+        "role__name": "EVPN Leaf"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet33/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf1_to_spine1"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet34/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf1_to_spine2"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet35/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf1_to_spine3"
+            "status__name": "Active"
+      - "!create_or_update:name": "leaf2"
+        "status__name": "Active"
+        "location__name": "Site"
+        "role__name": "EVPN Leaf"
+        "device_type__model": "model name"
+        "interfaces":
+          - "!create_or_update:name": "Ethernet33/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf2_to_spine1"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet34/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf2_to_spine2"
+            "status__name": "Active"
+          - "!create_or_update:name": "Ethernet35/1"
+            "type": "100gbase-x-qsfp28"
+            "!ref": "leaf2_to_spine3"
+            "status__name": "Active"
+
+    cables:
+      - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf1.id"
+        "!create_or_update:termination_b_id": "!ref:leaf1_to_spine1.id"
+        "termination_a": "!ref:spine1_to_leaf1"
+        "termination_b": "!ref:leaf1_to_spine1"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf1.id"
+        "!create_or_update:termination_b_id": "!ref:leaf1_to_spine2.id"
+        "termination_a": "!ref:spine2_to_leaf1"
+        "termination_b": "!ref:leaf1_to_spine2"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf1.id"
+        "!create_or_update:termination_b_id": "!ref:leaf1_to_spine3.id"
+        "termination_a": "!ref:spine3_to_leaf1"
+        "termination_b": "!ref:leaf1_to_spine3"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine1_to_leaf2.id"
+        "!create_or_update:termination_b_id": "!ref:leaf2_to_spine1.id"
+        "termination_a": "!ref:spine1_to_leaf2"
+        "termination_b": "!ref:leaf2_to_spine1"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine2_to_leaf2.id"
+        "!create_or_update:termination_b_id": "!ref:leaf2_to_spine2.id"
+        "termination_a": "!ref:spine2_to_leaf2"
+        "termination_b": "!ref:leaf2_to_spine2"
+        "status__name": "Planned"
+      - "!create_or_update:termination_a_id": "!ref:spine3_to_leaf2.id"
+        "!create_or_update:termination_b_id": "!ref:leaf2_to_spine3.id"
+        "termination_a": "!ref:spine3_to_leaf2"
+        "termination_b": "!ref:leaf2_to_spine3"
+        "status__name": "Planned"
+checks:
+  - model_exists:
+      - model: "nautobot.dcim.models.Device"
+        query: {name: "spine1"}
+  # Spine 1 to Leaf 1
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine1", name: "Ethernet9/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf1", name: "Ethernet33/1"}
+
+  # Spine 1 to Leaf 2
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine1", name: "Ethernet25/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf2", name: "Ethernet33/1"}
+
+  # Spine 2 to Leaf 1
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine2", name: "Ethernet9/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf1", name: "Ethernet34/1"}
+
+  # Spine 2 to Leaf 2
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine2", name: "Ethernet25/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf2", name: "Ethernet34/1"}
+
+  # Spine 3 to Leaf 1
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine3", name: "Ethernet9/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf1", name: "Ethernet35/1"}
+
+  # Spine 3 to Leaf 2
+  - connected:
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "spine3", name: "Ethernet25/3"}
+      - model: "nautobot.dcim.models.Interface"
+        query: {device__name: "leaf2", name: "Ethernet35/1"}
+
+```
