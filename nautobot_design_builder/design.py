@@ -250,8 +250,8 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         while attribute_names:
             key = attribute_names.pop(0)
             self._attributes[key] = self.environment.resolve_values(self._attributes[key])
-            if hasattr(self, key):
-                setattr(self, f"_{key}", self._attributes.pop(key))
+            if hasattr(self, key) and key not in ["filter"]:
+                    setattr(self, f"_{key}", self._attributes.pop(key))
             elif key.startswith("!"):
                 value = self._attributes.pop(key)
                 args = key.lstrip("!").split(":")
