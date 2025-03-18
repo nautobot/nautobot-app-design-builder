@@ -26,11 +26,11 @@ designs:
         group_type: "dynamic-filter"
         filter:
           status:
-            - Reserved
+            - "Reserved"
 
 checks:
   - equal:
       - model: "nautobot.extras.models.groups.DynamicGroup"
-        query: { name: "Reserved Prefixes" }
+        query: {name: "Reserved Prefixes"}
         attribute: "count"
       - value: 3
