@@ -1,0 +1,36 @@
+---
+# depends_on: "base_test.yaml"
+designs:
+  - prefixes:
+      - prefix: "10.0.0.0/24"
+        type: "container"
+        status__name: "Active"
+      - prefix: "10.0.1.0/24"
+        type: "container"
+        status__name: "Active"
+      - prefix: "10.0.3.0/24"
+        type: "container"
+        status__name: "Reserved"
+      - prefix: "10.0.4.0/24"
+        type: "container"
+        status__name: "Reserved"
+      - prefix: "10.0.5.0/24"
+        type: "container"
+        status__name: "Reserved"
+
+  - dynamic_groups:
+      - "!create_or_update:name": "Reserved Prefixes"
+        content_type:
+          "!get:model": "prefix"
+          "!get:app_label": "ipam"
+        group_type: "dynamic-filter"
+        filter:
+          status:
+            - "Reserved"
+
+checks:
+  - equal:
+      - model: "nautobot.extras.models.groups.DynamicGroup"
+        query: {name: "Reserved Prefixes"}
+        attribute: "count"
+      - value: 3
