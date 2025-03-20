@@ -151,10 +151,8 @@ def _load_class(class_path):
 
 
 def _testcases(data_dir):
-    # This allows you to specify a specific test file to run
-    search_chars = os.environ.get("TEST_YAML_FILE", ".yaml")
     for filename in os.listdir(data_dir):
-        if filename.endswith(search_chars):
+        if filename.endswith(".yaml"):
             with open(os.path.join(data_dir, filename), encoding="utf-8") as file:
                 yield yaml.safe_load(file), filename
 
