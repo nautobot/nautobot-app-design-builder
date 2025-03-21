@@ -6,15 +6,23 @@ The 2.1.0 release of Design Builder is the first release in the 2.x series to in
 
 ## [v2.1.1 (2025-03-21)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v2.1.1)
 
+### Added
+
+- [#200](https://github.com/nautobot/nautobot-app-design-builder/issues/200) - Error reporting for custom relationships that introduce duplicate fields
+
 ### Fixed
 
-- [#217](https://github.com/nautobot/nautobot-app-design-builder/issues/217) - Fix nested deferred object, in concrete, Virtual Chassis
+- [#203](https://github.com/nautobot/nautobot-app-design-builder/issues/203) - Provided a default value for the `dry_run` keyword argument
+- [#214](https://github.com/nautobot/nautobot-app-design-builder/issues/214) - Provided a default value for the `dry_run` keyword argument
+- [#217](https://github.com/nautobot/nautobot-app-design-builder/issues/217) - Fix APIView tests overwritting `test_list_objects_depth_0`
 - [#218](https://github.com/nautobot/nautobot-app-design-builder/issues/218) - Fix issue with model of with attribute of `filter` overlapping with `ModelMetadata` class.
 
 ### Housekeeping
 
 - [#196](https://github.com/nautobot/nautobot-app-design-builder/issues/196) - Updates docs dependencies to cookiecutter versions so the RTD build will pass.
 - [#196](https://github.com/nautobot/nautobot-app-design-builder/issues/196) - Fixes #187, removing Nautobot as an extra and setting the upper bound to 3.0.
+- [#201](https://github.com/nautobot/nautobot-app-design-builder/issues/201) - Refactored jinja2 filters to Nautobot standard location
+- [#202](https://github.com/nautobot/nautobot-app-design-builder/issues/202) - Adds tests for properties in render contexts
 - [#221](https://github.com/nautobot/nautobot-app-design-builder/issues/221) - Rebake the testing dependencies from the cookie to get docs working.
 
 ## [v2.1.0] - 2024-10
