@@ -39,6 +39,7 @@ See also: https://docs.python.org/3/howto/descriptor.html
 """
 
 from abc import ABC, abstractmethod
+from logging import getLogger
 from typing import Any, Mapping, Type, TYPE_CHECKING
 
 from django.db import models as django_models
@@ -51,11 +52,13 @@ from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import Relationship, RelationshipAssociation
 
 from nautobot_design_builder.changes import change_log
-from nautobot_design_builder.errors import DesignImplementationError
+from nautobot_design_builder.errors import DesignImplementationError, FieldNameError
 from nautobot_design_builder.debug import debug_set
 
 if TYPE_CHECKING:
     from .design import ModelInstance
+
+LOGGER = getLogger(__name__)
 
 
 class ModelField(ABC):
@@ -381,7 +384,20 @@ class GenericRelField(BaseModelField, RelationshipFieldMixin):  # pylint:disable
 
 
 class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: disable=too-few-public-methods
-    """This class models a Nautobot custom relationship."""
+    """This class models a Nautobot custom relationship.
+
+    When a design builder model class is created, custom relationships are
+    retrieved for the underlying content-type. Each of these relationships is
+    then added to the design builder proxy model as new properties. The property
+    name is derived from the source or destination of the label, based on which
+    side matches the underlying content-type. The relationship label will return
+    the verbose_name_plural of the other side object if no label has been set.
+
+    It should be noted that if a custom relationship's label matches a built-in
+    field, then the proxy model will use the built-in field and the custom
+    relationship will not be accessible. Additionally, a warning will be logged
+    that a potential naming conflict exists.
+    """
 
     def __init__(self, model_class, relationship: Relationship):
         """Create a new custom relationship field.
@@ -394,10 +410,12 @@ class CustomRelationshipField(ModelField, RelationshipFieldMixin):  # pylint: di
         field_name = ""
         if self.relationship.source_type == ContentType.objects.get_for_model(model_class.model_class):
             self.related_model = relationship.destination_type.model_class()
-            field_name = str(self.relationship.get_label("source"))
+            field_name = str(self.relationship.get_label("source")).lower()
         else:
             self.related_model = relationship.source_type.model_class()
-            field_name = str(self.relationship.get_label("destination"))
+            field_name = str(self.relationship.get_label("destination")).lower()
+        if hasattr(model_class.model_class, field_name):
+            raise FieldNameError(model_class, relationship, field_name)
         self.__set_name__(model_class, str_to_var_name(field_name))
         self.key_name = self.relationship.key
 

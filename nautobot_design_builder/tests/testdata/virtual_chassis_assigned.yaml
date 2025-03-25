@@ -1,0 +1,20 @@
+---
+depends_on: "base_test.yaml"
+designs:
+  - devices:
+      - name: "device_1"
+        location__name: "Site"
+        status__name: "Active"
+        device_type__model: "model name"
+        role__name: "device role"
+        "!ref": "device_1"
+        virtual_chassis:
+          "!create_or_update:name": "{{ distribution_switch_name }}"
+          domain: "device_1 VC"
+          master: "!ref:device_1"
+          deferred: true
+
+checks:
+  - model_exists:
+      model: "nautobot.dcim.models.VirtualChassis"
+      query: {domain: "device_1 VC"}
