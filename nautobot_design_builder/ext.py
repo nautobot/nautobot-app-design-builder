@@ -208,6 +208,8 @@ class ReferenceExtension(AttributeExtension, ValueExtension):
         except KeyError:
             # pylint: disable=raise-missing-from
             raise DesignImplementationError(f"No ref named {key} has been saved in the design.")
+        if model_instance.design_instance is None:
+            return model_instance
         adding = model_instance.design_instance._state.adding  # pylint: disable=protected-access
         if model_instance.design_instance and not adding:
             model_instance.design_instance.refresh_from_db()
