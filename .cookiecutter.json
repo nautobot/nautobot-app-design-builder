@@ -25,7 +25,10 @@
             "cookie_dir": "",
             "branch_prefix": "drift-manager",
             "pull_request_strategy": "create",
-            "post_actions": [],
+            "post_actions": [
+                "ruff",
+                "poetry"
+            ],
             "draft": false,
             "baked_commit_ref": ""
         }
