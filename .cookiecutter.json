@@ -17,7 +17,7 @@
         "model_class_name": "Design",
         "open_source_license": "Apache-2.0",
         "docs_base_url": "https://docs.nautobot.com",
-        "docs_app_url": "https://docs.nautobot.com/projects/nautobot-design-builder/en/latest",
+        "docs_app_url": "https://docs.nautobot.com/projects/design-builder/en/latest",
         "_drift_manager": {
             "template": "https://github.com/nautobot/cookiecutter-nautobot-app.git",
             "template_dir": "nautobot-app",
