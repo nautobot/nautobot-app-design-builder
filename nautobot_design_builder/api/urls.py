@@ -15,4 +15,5 @@ router.register("deployments", DeploymentAPIViewSet)
 router.register("change-sets", ChangeSetAPIViewSet)
 router.register("change-records", ChangeRecordAPIViewSet)
 
+app_name = "nautobot_design_builder-api"
 urlpatterns = router.urls

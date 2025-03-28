@@ -1,6 +1,6 @@
 ---
 dev_addr: "127.0.0.1:8001"
-edit_uri: "edit/main/nautobot-app-design-builder/docs"
+edit_uri: "edit/main/docs"
 site_dir: "nautobot_design_builder/static/nautobot_design_builder/docs"
 site_name: "Nautobot Design Builder Documentation"
 site_url: "https://docs.nautobot.com/projects/nautobot-design-builder/en/latest/"
@@ -73,6 +73,8 @@ extra:
       name: "Network to Code Twitter"
 markdown_extensions:
   - "abbr"
+  - "markdown_version_annotations":
+      admonition_tag: "???"
   - "admonition"
   - "toc":
       permalink: true
@@ -85,7 +87,11 @@ markdown_extensions:
       url_download: true
       auto_append:
         - "docs/assets/abbreviations.md"
-  - "pymdownx.superfences"
+  - "pymdownx.superfences":
+      custom_fences:
+        - name: "mermaid"
+          class: "mermaid"
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - "footnotes"
 plugins:
   - "search"
@@ -127,6 +133,7 @@ nav:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
       - Development Environment: "dev/dev_environment.md"
+      - Release Checklist: "dev/release_checklist.md"
       - Code Reference:
           - "dev/code_reference/index.md"
           - Package: "dev/code_reference/package.md"
