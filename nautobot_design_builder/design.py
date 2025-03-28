@@ -1,23 +1,19 @@
 """Provides ORM interaction for design builder."""
 
 import logging
-from types import FunctionType
 from collections import defaultdict
+from types import FunctionType
 from typing import Any, Dict, List, Mapping, Type, Union
 
 from django.apps import apps
-from django.db.models import Model, Manager, QuerySet
+from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, ValidationError
+from django.db.models import Manager, Model, QuerySet
 from django.db.models.fields import Field as DjangoField
-from django.core.exceptions import ObjectDoesNotExist, ValidationError, MultipleObjectsReturned
-
-
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import Relationship
 
-from nautobot_design_builder import errors
-from nautobot_design_builder import ext
+from nautobot_design_builder import errors, ext, models
 from nautobot_design_builder.fields import CustomRelationshipField, field_factory
-from nautobot_design_builder import models
 
 
 # TODO: Refactor this code into the Journal model

@@ -1,21 +1,19 @@
 """Extra action tags that are not part of the core Design Builder."""
 
-from functools import reduce
 import operator
+from functools import reduce
 from typing import Any, Dict, Iterator, Tuple
 
+import netaddr
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, FieldError
+from django.core.exceptions import FieldError, MultipleObjectsReturned, ObjectDoesNotExist
 from django.db.models import Q
-
 from nautobot.circuits import models as circuits
 from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
-import netaddr
 from nautobot_design_builder.design import Environment, ModelInstance, ModelMetadata
-
-from nautobot_design_builder.errors import DesignImplementationError, MultipleObjectsReturnedError, DoesNotExistError
+from nautobot_design_builder.errors import DesignImplementationError, DoesNotExistError, MultipleObjectsReturnedError
 from nautobot_design_builder.ext import AttributeExtension
 from nautobot_design_builder.jinja_filters import network_offset
 

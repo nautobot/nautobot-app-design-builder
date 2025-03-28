@@ -2,7 +2,7 @@
 
 from nautobot.apps.testing import ViewTestCases
 
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 from nautobot_design_builder.tests.util import create_test_view_data
 
 # pylint: disable=missing-class-docstring

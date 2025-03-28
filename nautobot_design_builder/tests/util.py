@@ -1,10 +1,9 @@
 """Utilities for setting up tests and test data."""
 
-from nautobot.extras.models import Status
-from nautobot.extras.models import JobResult, Job
+from nautobot.extras.models import Job, JobResult, Status
 from nautobot.tenancy.models import Tenant
 
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 from nautobot_design_builder.tests.designs import test_designs
 
 

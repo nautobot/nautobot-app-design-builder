@@ -3,11 +3,10 @@
 import importlib
 import os
 from unittest.mock import patch
-import yaml
 
+import yaml
 from django.db.models import Manager, Q
 from django.test import TestCase
-
 from nautobot.dcim.models import Cable
 
 from nautobot_design_builder.design import Environment

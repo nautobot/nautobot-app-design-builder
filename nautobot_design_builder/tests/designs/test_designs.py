@@ -1,17 +1,15 @@
 """Design jobs used for unit testing."""
 
 from nautobot.apps.jobs import register_jobs
-
-from nautobot.dcim.models import Manufacturer, Device, Interface
-from nautobot.extras.jobs import StringVar, ObjectVar
+from nautobot.dcim.models import Device, Interface, Manufacturer
+from nautobot.extras.jobs import ObjectVar, StringVar
 
 from nautobot_design_builder.choices import DesignModeChoices
 from nautobot_design_builder.context import Context
-from nautobot_design_builder.design import Environment
-from nautobot_design_builder.design_job import DesignJob
-from nautobot_design_builder.design import ModelInstance
-from nautobot_design_builder.ext import Extension, AttributeExtension
 from nautobot_design_builder.contrib import ext
+from nautobot_design_builder.design import Environment, ModelInstance
+from nautobot_design_builder.design_job import DesignJob
+from nautobot_design_builder.ext import AttributeExtension, Extension
 from nautobot_design_builder.tests.designs.context import IntegrationTestContext
 
 

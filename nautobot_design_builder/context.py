@@ -1,13 +1,12 @@
 """Module that contains classes and functions for use with Design Builder context available when using Jinja templating."""
 
-from functools import cached_property
-from collections import UserList, UserDict, UserString
 import inspect
+from collections import UserDict, UserList, UserString
+from functools import cached_property
 from typing import Any
+
 import yaml
-
 from jinja2.nativetypes import NativeEnvironment
-
 from nautobot.extras.models import JobResult
 
 from nautobot_design_builder.errors import DesignValidationError

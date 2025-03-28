@@ -1,11 +1,12 @@
 """API URLs for design builder."""
 
 from nautobot.apps.api import OrderedDefaultRouter
+
 from nautobot_design_builder.api.views import (
-    DesignAPIViewSet,
-    DeploymentAPIViewSet,
-    ChangeSetAPIViewSet,
     ChangeRecordAPIViewSet,
+    ChangeSetAPIViewSet,
+    DeploymentAPIViewSet,
+    DesignAPIViewSet,
 )
 
 router = OrderedDefaultRouter()

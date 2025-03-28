@@ -1,6 +1,7 @@
 """Test ChangeSet."""
 
 from unittest.mock import PropertyMock, patch
+
 from nautobot.dcim.models import Manufacturer
 
 from .test_model_deployment import BaseDeploymentTest
