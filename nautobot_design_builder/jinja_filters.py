@@ -2,9 +2,10 @@
 
 import json
 from typing import Any
+
+import yaml
 from django_jinja import library
 from netaddr import AddrFormatError, IPNetwork
-import yaml
 
 
 @library.filter

@@ -8,8 +8,8 @@ from typing import Type
 from unittest.mock import PropertyMock, patch
 
 from django.test import TestCase
-
 from nautobot.extras.models import Job, JobResult
+
 from nautobot_design_builder.design_job import DesignJob
 
 logging.disable(logging.INFO)

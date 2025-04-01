@@ -1,17 +1,14 @@
 """Serializers for design builder."""
 
 from django.contrib.contenttypes.models import ContentType
-
 from drf_spectacular.utils import extend_schema_field
-
-from rest_framework.fields import SerializerMethodField, DictField
-from rest_framework.serializers import ReadOnlyField
-
 from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
 from nautobot.core.api import ContentTypeField
 from nautobot.core.api.utils import get_serializer_for_model
+from rest_framework.fields import DictField, SerializerMethodField
+from rest_framework.serializers import ReadOnlyField
 
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 
 
 class DesignSerializer(NautobotModelSerializer, TaggedModelSerializerMixin):

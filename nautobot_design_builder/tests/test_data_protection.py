@@ -3,11 +3,10 @@
 from contextlib import contextmanager
 
 from django.conf import settings
-from django.test import Client
-from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-
+from django.test import Client
+from django.urls import reverse
 from nautobot.dcim.models import Manufacturer
 from nautobot.extras.plugins import register_custom_validators
 from nautobot.extras.registry import registry

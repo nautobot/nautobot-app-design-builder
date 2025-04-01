@@ -1,46 +1,41 @@
 """UI Views for design builder."""
 
-from django_tables2 import RequestConfig
 from django.apps import apps as global_apps
-from django.shortcuts import render
 from django.core.exceptions import FieldDoesNotExist
-
-from rest_framework.decorators import action
-
+from django.shortcuts import render
+from django_tables2 import RequestConfig
+from nautobot.apps.models import count_related
+from nautobot.apps.views import EnhancedPaginator, get_paginate_count
+from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import (
+    PERMISSIONS_ACTION_MAP,
+    ObjectChangeLogViewMixin,
+    ObjectDestroyViewMixin,
     ObjectDetailViewMixin,
     ObjectListViewMixin,
-    ObjectChangeLogViewMixin,
     ObjectNotesViewMixin,
-    ObjectDestroyViewMixin,
 )
-from nautobot.apps.views import EnhancedPaginator, get_paginate_count
-from nautobot.apps.models import count_related
-from nautobot.core.views.generic import ObjectView
-from nautobot.core.views.mixins import PERMISSIONS_ACTION_MAP
+from rest_framework.decorators import action
 
-from nautobot_design_builder import choices
+from nautobot_design_builder import choices, models, tables
 from nautobot_design_builder.api.serializers import (
-    DesignSerializer,
-    DeploymentSerializer,
-    ChangeSetSerializer,
     ChangeRecordSerializer,
+    ChangeSetSerializer,
+    DeploymentSerializer,
+    DesignSerializer,
 )
 from nautobot_design_builder.filters import (
-    DesignFilterSet,
-    DeploymentFilterSet,
-    ChangeSetFilterSet,
     ChangeRecordFilterSet,
+    ChangeSetFilterSet,
+    DeploymentFilterSet,
+    DesignFilterSet,
 )
 from nautobot_design_builder.forms import (
-    DesignFilterForm,
-    DeploymentFilterForm,
-    ChangeSetFilterForm,
     ChangeRecordFilterForm,
+    ChangeSetFilterForm,
+    DeploymentFilterForm,
+    DesignFilterForm,
 )
-from nautobot_design_builder import models
-from nautobot_design_builder import tables
-
 
 PERMISSIONS_ACTION_MAP.update(
     {

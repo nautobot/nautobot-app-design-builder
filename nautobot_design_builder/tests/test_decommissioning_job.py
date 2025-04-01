@@ -3,12 +3,11 @@
 from unittest import mock
 
 from django.contrib.contenttypes.models import ContentType
+from nautobot.extras.models import JobResult, Secret, Status
 
-from nautobot.extras.models import JobResult, Status, Secret
+from nautobot_design_builder import choices, models
 from nautobot_design_builder.errors import DesignValidationError
-
 from nautobot_design_builder.jobs import DeploymentDecommissioning
-from nautobot_design_builder import models, choices
 from nautobot_design_builder.tests.test_model_design import BaseDesignTest
 
 

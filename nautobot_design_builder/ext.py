@@ -1,13 +1,13 @@
 """Extensions API for the object creator."""
 
+import inspect
 import os
+import sys
 from abc import ABC, abstractmethod
 from functools import reduce
+from types import ModuleType
 from typing import TYPE_CHECKING, Any, List
 
-import inspect
-import sys
-from types import ModuleType
 import yaml
 
 from nautobot_design_builder import NautobotDesignBuilderConfig
@@ -15,7 +15,7 @@ from nautobot_design_builder.errors import DesignImplementationError
 from nautobot_design_builder.git import GitRepo
 
 if TYPE_CHECKING:
-    from design import ModelInstance, Environment
+    from design import Environment, ModelInstance
 
 
 def is_extension(cls):

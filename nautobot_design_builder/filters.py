@@ -1,16 +1,15 @@
 """Filters for the design builder app."""
 
 from django_filters import CharFilter
-
 from nautobot.apps.filters import (
-    NautobotFilterSet,
     NaturalKeyOrPKMultipleChoiceFilter,
-    StatusModelFilterSetMixin,
+    NautobotFilterSet,
     SearchFilter,
+    StatusModelFilterSetMixin,
 )
 from nautobot.extras.models import Job, JobResult
 
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 
 
 class DesignFilterSet(NautobotFilterSet):

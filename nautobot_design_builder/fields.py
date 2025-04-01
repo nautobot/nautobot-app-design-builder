@@ -40,20 +40,18 @@ See also: https://docs.python.org/3/howto/descriptor.html
 
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Any, Mapping, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Mapping, Type
 
-from django.db import models as django_models
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import fields as ct_fields
-
-from taggit.managers import TaggableManager
-
+from django.contrib.contenttypes.models import ContentType
+from django.db import models as django_models
 from nautobot.core.graphql.utils import str_to_var_name
 from nautobot.extras.models import Relationship, RelationshipAssociation
+from taggit.managers import TaggableManager
 
 from nautobot_design_builder.changes import change_log
-from nautobot_design_builder.errors import DesignImplementationError, FieldNameError
 from nautobot_design_builder.debug import debug_set
+from nautobot_design_builder.errors import DesignImplementationError, FieldNameError
 
 if TYPE_CHECKING:
     from .design import ModelInstance

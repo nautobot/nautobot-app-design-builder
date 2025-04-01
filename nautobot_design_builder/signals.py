@@ -1,20 +1,19 @@
 """Signal handlers that fire on various Django model signals."""
 
-from itertools import chain
 import logging
+from itertools import chain
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
 from nautobot.apps import nautobot_database_ready
 from nautobot.apps.choices import ColorChoices
 from nautobot.extras.models import Job, Status
 
-from .design_job import DesignJob
-from .models import Design, Deployment
 from . import choices
+from .design_job import DesignJob
+from .models import Deployment, Design
 
 _LOGGER = logging.getLogger(__name__)
 

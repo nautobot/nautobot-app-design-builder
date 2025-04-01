@@ -6,7 +6,6 @@ from nautobot.apps.ui import (
     NavMenuTab,
 )
 
-
 menu_items = (
     NavMenuTab(
         name="Designs",

@@ -10,21 +10,20 @@ import pkgutil
 import sys
 from importlib.machinery import ModuleSpec
 from types import ModuleType
-from typing import Iterator, Tuple, Type, TYPE_CHECKING
-from packaging.version import Version
-from packaging.specifiers import Specifier
-import yaml
-
-from django.conf import settings
+from typing import TYPE_CHECKING, Iterator, Tuple, Type
 
 import nautobot
-
+import yaml
+from django.conf import settings
 from nautobot.apps.utils import get_changes_for_model
 from nautobot.extras.models import GitRepository
+from packaging.specifiers import Specifier
+from packaging.version import Version
 
 if TYPE_CHECKING:
-    from nautobot_design_builder.design_job import DesignJob
     from typing import Dict, List
+
+    from nautobot_design_builder.design_job import DesignJob
 
 logger = logging.getLogger(__name__)
 
