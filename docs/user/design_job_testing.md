@@ -1,6 +1,6 @@
 # Design Job Testing Framework
 
-The Design Testing Framework allows for low-level testing of designs, but not a full `DesignJob`. Understanding the checks reviewed in the prior section is essential, as the classes we will review work with `DesignJob`.
+The Design Testing Framework allows for low-level testing of designs, but not a full `DesignJob`. Understanding the checks reviewed in the [prior section](./design_testing.md) is essential, as the classes we will review work with `DesignJob`.
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ The advantage of this solution is that the `check_file` uses the same check syst
 
 ## VerifyDesignTestCase Overview
 
-While the hard work, such as monkey patching various methods, happens in `DesignTestCase`, the `VerifyDesignTestCase` is intended to orchestrate the most common use case: kicking off a DesignJob with specific data and verifying it with the checks system.
+While the hard work, such as monkey patching various methods, happens in `DesignTestCase`, the `VerifyDesignTestCase` is intended to orchestrate the most common use case: kicking off a DesignJob with specific data and verifying it with the [check system](./design_testing.md#validating-data-with-checks).
 
 There are three attributes that must be filled out:
 
@@ -36,7 +36,7 @@ Additionally, you need to call the `run_design_test` method from a `test_*` meth
 
 ### Checks
 
-Refer to the Design Testing framework for detailed information on how checks work and are defined.
+Refer to the [Design Testing framework](./design_testing.md#validating-data-with-checks) for detailed information on how checks work and are defined.
 
 ## DesignTestCase Overview
 

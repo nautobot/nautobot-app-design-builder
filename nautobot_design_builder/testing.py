@@ -285,7 +285,7 @@ class VerifyDesignTestCase(DesignTestCase, RunChecksMixin):
 
     job_design = None
     check_file = None
-    job_data = None
+    job_data = {}
 
     def run_design_test(self):
         """This is what class's that inherit from `VerifyDesignTestCase` call to setup and run."""
@@ -293,12 +293,12 @@ class VerifyDesignTestCase(DesignTestCase, RunChecksMixin):
             raise ValueError("The class attribute `job_design` was not defined")
         if self.check_file is None:
             raise ValueError("The class attribute `check_file` was not defined")
-        if self.job_data is None:
-            raise ValueError("The class attribute `job_data` was not defined, set to `{}` if not needed")
 
         job = self.get_mocked_job(self.job_design)
         job.run(data=self.job_data, dryrun=False)
         with open(self.check_file, "r", encoding="utf-8") as file:
             checks_data = yaml.safe_load(file)
             checks = checks_data.get("checks", [])
+            if not checks:
+                raise ValueError(f"Check file {self.check_file} does not contain any checks")
         self.run_checks(checks)
