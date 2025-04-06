@@ -2,7 +2,7 @@
 
 import copy
 import os
-from unittest.mock import patch, Mock, ANY, MagicMock
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -12,9 +12,8 @@ from nautobot.ipam.models import VRF, IPAddress, Prefix
 
 from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
 from nautobot_design_builder.models import ChangeRecord, Deployment
-from nautobot_design_builder.tests.designs import test_designs
 from nautobot_design_builder.testing import DesignTestCase, VerifyDesignTestCase
-
+from nautobot_design_builder.tests.designs import test_designs
 
 # pylint: disable=unused-argument
 

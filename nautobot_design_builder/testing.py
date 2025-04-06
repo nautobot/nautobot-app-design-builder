@@ -1,24 +1,21 @@
 """This module provides a framework for testing designs."""
 
-import shutil
-import tempfile
 import importlib
 import logging
 import os
-
+import shutil
+import tempfile
 from typing import Type
 from unittest.mock import PropertyMock, patch
 
 import yaml
-
 from django.db.models import Manager, Q
 from django.test import TestCase
-
-from nautobot.extras.models import Job, JobResult
 from nautobot.dcim.models import Cable
+from nautobot.extras.models import Job, JobResult
 
-from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.design import Environment
+from nautobot_design_builder.design_job import DesignJob
 
 
 class BuilderChecks:
