@@ -28,7 +28,7 @@ While the hard work, such as monkey patching various methods, happens in `Design
 
 There are three attributes that must be filled out:
 
-- `job_design`: The design you are testing.
+- `job_design`: The design job you are testing.
 - `check_file`: The file with the definition of the checks in YAML format.
 - `job_data`: The data you are sending in the Job Form. Set this to `{}` if there is no data to be sent.
 
