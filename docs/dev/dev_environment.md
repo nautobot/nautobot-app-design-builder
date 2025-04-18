@@ -410,7 +410,7 @@ namespace.configure(
     {
         "nautobot_design_builder": {
             ...
-            "nautobot_ver": "1.6.0",
+            "nautobot_ver": "3.0.0",
 	    ...
         }
     }

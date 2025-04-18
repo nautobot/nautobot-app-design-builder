@@ -2,7 +2,7 @@
 nautobot_design_builder:
   project_name: "nautobot-design-builder"
   python_ver: "3.11"
-  nautobot_ver: "2.2"
+  nautobot_ver: "next"  # TODO: Change to 3.0.0 after v3.0.0 is released
   local: false
   compose_dir: "development"
   compose_files:
