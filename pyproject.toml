@@ -106,7 +106,7 @@ notes = """,
 
 [tool.pylint-nautobot]
 supported_nautobot_versions = [
-    "2.0.0"
+    "3.0.0"
 ]
 
 [tool.ruff]
