@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from nautobot.extras.models import Job as JobModel
 
-from nautobot_design_builder.tests import DesignTestCase
+from nautobot_design_builder.testing import DesignTestCase
 
 from .. import models
 from .designs import test_designs

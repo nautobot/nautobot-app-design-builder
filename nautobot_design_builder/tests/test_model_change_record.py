@@ -185,7 +185,6 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         )
         design_secret.save()
         change_record = self.create_change_record(secret, design_secret.design_metadata.changes)
-        print(design_secret.design_metadata.changes)
         secret.refresh_from_db()
         self.assertDictEqual(
             secret.parameters,

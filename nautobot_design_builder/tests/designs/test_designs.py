@@ -10,7 +10,7 @@ from nautobot_design_builder.contrib import ext
 from nautobot_design_builder.design import Environment, ModelInstance
 from nautobot_design_builder.design_job import DesignJob
 from nautobot_design_builder.ext import AttributeExtension, Extension
-from nautobot_design_builder.tests.designs.context import IntegrationTestContext
+from nautobot_design_builder.tests.designs.context import IntegrationTestContext, VerifyDesignContext
 
 
 class SimpleDesign(DesignJob):
@@ -52,6 +52,17 @@ class SimpleDesignReport(DesignJob):
         name = "Simple Design with Report"
         design_file = "templates/simple_design.yaml.j2"
         report = "templates/simple_report.md.j2"
+
+
+class VerifyDesign(DesignJob):
+    """Simple design job."""
+
+    additional_manufacturer_1 = StringVar()
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Verify Design"
+        design_file = "templates/verify_design.yaml.j2"
+        context_class = VerifyDesignContext
 
 
 class MultiDesignJob(DesignJob):
@@ -231,4 +242,5 @@ register_jobs(
     SimpleDesignDeploymentModeMultipleObjects,
     SimpleDesignDeploymentModeUpdate,
     SimpleDesignWithPostImplementation,
+    VerifyDesign,
 )
