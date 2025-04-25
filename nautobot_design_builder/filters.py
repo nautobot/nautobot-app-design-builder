@@ -5,7 +5,7 @@ from nautobot.apps.filters import NameSearchFilterSet, NautobotFilterSet
 from nautobot_design_builder import models
 
 
-class DesignFilterSet(NautobotFilterSet, NameSearchFilterSet):  # pylint: disable=too-many-ancestors
+class DesignFilterSet(NameSearchFilterSet, NautobotFilterSet):  # pylint: disable=too-many-ancestors
     """Filter for Design."""
 
     class Meta:
@@ -14,4 +14,4 @@ class DesignFilterSet(NautobotFilterSet, NameSearchFilterSet):  # pylint: disabl
         model = models.Design
 
         # add any fields from the model that you would like to filter your searches by using those
-        fields = ["id", "name", "description"]
+        fields = "__all__"

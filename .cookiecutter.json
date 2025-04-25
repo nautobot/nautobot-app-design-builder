@@ -17,11 +17,11 @@
         "model_class_name": "Design",
         "open_source_license": "Apache-2.0",
         "docs_base_url": "https://docs.nautobot.com",
-        "docs_app_url": "https://docs.nautobot.com/projects/nautobot-design-builder/en/latest",
+        "docs_app_url": "https://docs.nautobot.com/projects/design-builder/en/latest",
         "_drift_manager": {
             "template": "https://github.com/nautobot/cookiecutter-nautobot-app.git",
             "template_dir": "nautobot-app",
-            "template_ref": "refs/tags/nautobot-app-v2.4.2",
+            "template_ref": "refs/tags/nautobot-app-v2.5.0",
             "cookie_dir": "",
             "branch_prefix": "drift-manager",
             "pull_request_strategy": "create",
