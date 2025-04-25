@@ -6,7 +6,31 @@ from nautobot.core.forms.constants import BOOLEAN_WITH_BLANK_CHOICES
 from nautobot.extras.forms import NautobotFilterForm
 from nautobot.extras.models import Job, JobResult
 
-from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
+from nautobot_design_builder import models
+
+
+class DesignForm(NautobotModelForm):  # pylint: disable=too-many-ancestors
+    """Design creation/edit form."""
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.Design
+        fields = "__all__"
+
+
+class DesignBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylint: disable=too-many-ancestors
+    """Design bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.Design.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
 
 
 class DesignFilterForm(NautobotFilterForm):
@@ -47,6 +71,6 @@ class ChangeRecordFilterForm(NautobotFilterForm):
     change_set = DynamicModelChoiceField(queryset=ChangeSet.objects.all())
     full_control = NullBooleanField(
         required=False,
-        label="Does the design have full control over the object?",
-        widget=StaticSelect2(choices=BOOLEAN_WITH_BLANK_CHOICES),
+        label="Search",
+        help_text="Search within Name.",
     )

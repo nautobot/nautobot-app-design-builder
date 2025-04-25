@@ -8,13 +8,21 @@ from nautobot_design_builder.tests.util import create_test_view_data
 # pylint: disable=missing-class-docstring
 
 
-class TestCaseDesign(
-    ViewTestCases.GetObjectViewTestCase,
-    ViewTestCases.GetObjectChangelogViewTestCase,
-    ViewTestCases.GetObjectNotesViewTestCase,
-    ViewTestCases.ListObjectsViewTestCase,
-):
-    model = Design
+class DesignViewTest(ViewTestCases.PrimaryObjectViewTestCase):
+    # pylint: disable=too-many-ancestors
+    """Test the Design views."""
+
+    model = models.Design
+    bulk_edit_data = {"description": "Bulk edit views"}
+    form_data = {
+        "name": "Test 1",
+        "description": "Initial model",
+    }
+
+    update_data = {
+        "name": "Test 2",
+        "description": "Updated model",
+    }
 
     @classmethod
     def setUpTestData(cls):

@@ -2,75 +2,44 @@
 
 from nautobot.apps.testing import APIViewTestCases
 
-from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
-from nautobot_design_builder.tests.util import create_test_view_data
-
-# pylint: disable=missing-class-docstring
+from nautobot_design_builder import models
+from nautobot_design_builder.tests import fixtures
 
 
-class TestDesign(
-    APIViewTestCases.GetObjectViewTestCase,
-    APIViewTestCases.ListObjectsViewTestCase,
-    APIViewTestCases.NotesURLViewTestCase,
-):
-    model = Design
-    brief_fields = ["display", "id", "name", "url"]
+class DesignAPIViewTest(APIViewTestCases.APIViewTestCase):
+    # pylint: disable=too-many-ancestors
+    """Test the API viewsets for Design."""
 
-    @classmethod
-    def setUpTestData(cls):
-        create_test_view_data()
-
-    def test_list_objects_descending_ordered(self):
-        """This test fails because of the name annotation."""
-
-    def test_list_objects_ascending_ordered(self):
-        """This test fails because of the name annotation."""
-
-
-class TestDeployment(
-    APIViewTestCases.GetObjectViewTestCase,
-    APIViewTestCases.ListObjectsViewTestCase,
-    APIViewTestCases.NotesURLViewTestCase,
-):
-    model = Deployment
-    brief_fields = ["display", "id", "name", "url"]
+    model = models.Design
+    # Any choice fields will require the choices_fields to be set
+    # to the field names in the model that are choice fields.
+    choices_fields = ()
 
     @classmethod
     def setUpTestData(cls):
-        create_test_view_data()
-
-
-class TestChangeSet(
-    APIViewTestCases.GetObjectViewTestCase,
-    APIViewTestCases.ListObjectsViewTestCase,
-    APIViewTestCases.NotesURLViewTestCase,
-):
-    model = ChangeSet
-    brief_fields = ["display", "id", "url"]
-
-    @classmethod
-    def setUpTestData(cls):
-        create_test_view_data()
-
-
-class TestChangeRecord(
-    APIViewTestCases.GetObjectViewTestCase,
-    APIViewTestCases.ListObjectsViewTestCase,
-    APIViewTestCases.NotesURLViewTestCase,
-):
-    model = ChangeRecord
-    brief_fields = None
-
-    @classmethod
-    def setUpTestData(cls):
-        create_test_view_data()
-
-    def test_list_objects_brief(self):
-        """Brief is not supported for change records."""
-
-    def test_list_objects_depth_0(self):
-        """
-        Depth 0 is not supported for change records.
-        The core test checks that the response_data has only three fields: id/object_type/url. The
-        ChangeRecord model has more fields than that, so the test will fail.
-        """
+        """Create test data for Design API viewset."""
+        super().setUpTestData()
+        # Create 3 objects for the generic API test cases.
+        fixtures.create_design()
+        # Create 3 objects for the api test cases.
+        cls.create_data = [
+            {
+                "name": "API Test One",
+                "description": "Test One Description",
+            },
+            {
+                "name": "API Test Two",
+                "description": "Test Two Description",
+            },
+            {
+                "name": "API Test Three",
+                "description": "Test Three Description",
+            },
+        ]
+        cls.update_data = {
+            "name": "Update Test Two",
+            "description": "Test Two Description",
+        }
+        cls.bulk_update_data = {
+            "description": "Test Bulk Update Description",
+        }

@@ -15,7 +15,23 @@
 
 Design Builder is a Nautobot application for easily populating data within Nautobot using standardized design files. These design files are just Jinja templates that describe the Nautobot objects to be created or updated.
 
-It also introduces the concept of a design-oriented Source of Truth with a complete lifecycle management of the design deployments (i.e., an instantiation of a design with concrete input data). With this approach, the users of the application can not only create (or populate) data within Nautobot but also update or decommission it while enforcing data protection and dependency.
+### Screenshots
+
+> Developer Note: Add any representative screenshots of the App in action. These images should also be added to the `docs/user/app_use_cases.md` section.
+
+> Developer Note: Place the files in the `docs/images/` folder and link them using only full URLs from GitHub, for example: `![Overview](https://raw.githubusercontent.com/nautobot/nautobot-app-design-builder/develop/docs/images/app-overview.png)`. This absolute static linking is required to ensure the README renders properly in GitHub, the docs site, and any other external sites like PyPI.
+
+More screenshots can be found in the [Using the App](https://docs.nautobot.com/projects/design-builder/en/latest/user/app_use_cases/) page in the documentation. Here's a quick overview of some of the app's added functionality:
+
+![](https://raw.githubusercontent.com/nautobot/nautobot-app-design-builder/develop/docs/images/placeholder.png)
+
+## Try it out!
+
+> Developer Note: Only keep this section if appropriate. Update link to correct sandbox.
+
+This App is installed in the Nautobot Community Sandbox found over at [demo.nautobot.com](https://demo.nautobot.com/)!
+
+> For a full list of all the available always-on sandbox environments, head over to the main page on [networktocode.com](https://www.networktocode.com/nautobot/sandbox-environments/).
 
 ## Documentation
 
@@ -31,7 +47,7 @@ Full documentation for this App can be found over on the [Nautobot Docs](https:/
 
 You can find all the Markdown source for the App documentation under the [`docs`](https://github.com/nautobot/nautobot-app-design-builder/tree/develop/docs) folder in this repository. For simple edits, a Markdown capable editor is sufficient: clone the repository and edit away.
 
-If you need to view the fully-generated documentation site, you can build it with [MkDocs](https://www.mkdocs.org/). A container hosting the documentation can be started using the `invoke` commands (details in the [Development Environment Guide](https://docs.nautobot.com/projects/design-builder/en/latest/dev/dev_environment/#full-docker-development-environment)) on [http://localhost:8001](http://localhost:8001). Using this container, as your changes to the documentation are saved, they will be automatically rebuilt and any pages currently being viewed will be reloaded in your browser.
+If you need to view the fully-generated documentation site, you can build it with [MkDocs](https://www.mkdocs.org/). A container hosting the documentation can be started using the `invoke` commands (details in the [Development Environment Guide](https://docs.nautobot.com/projects/design-builder/en/latest/dev/dev_environment/#docker-development-environment)) on [http://localhost:8001](http://localhost:8001). Using this container, as your changes to the documentation are saved, they will be automatically rebuilt and any pages currently being viewed will be reloaded in your browser.
 
 Any PRs with fixes or improvements are very welcome!
 

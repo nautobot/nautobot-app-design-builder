@@ -15,10 +15,10 @@ from nautobot_design_builder.views import (
 
 app_name = "nautobot_design_builder"
 router = NautobotUIViewSetRouter()
-router.register("designs", DesignUIViewSet)
-router.register("deployments", DeploymentUIViewSet)
-router.register("change-sets", ChangeSetUIViewSet)
-router.register("change-records", ChangeRecordUIViewSet)
+
+# The standard is for the route to be the hyphenated version of the model class name plural.
+# for example, ExampleModel would be example-models.
+router.register("designs", views.DesignUIViewSet)
 
 
 urlpatterns = [
