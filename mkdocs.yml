@@ -131,6 +131,7 @@ nav:
           - v1.4: "admin/release_notes/version_1.4.md"
           - v2.0: "admin/release_notes/version_2.0.md"
           - v2.1: "admin/release_notes/version_2.1.md"
+          - v2.2: "admin/release_notes/version_2.2.md"
   - Developer Guide:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
@@ -148,4 +149,5 @@ nav:
           - Template Extensions: "dev/code_reference/ext.md"
           - Testing: "dev/code_reference/testing.md"
           - Util: "dev/code_reference/util.md"
+          - Abbreviations: "assets/abbreviations.md"
   - Nautobot Docs Home ↗︎: "https://docs.nautobot.com"
