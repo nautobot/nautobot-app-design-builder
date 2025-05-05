@@ -116,9 +116,7 @@ nav:
       - Design Testing: "user/design_testing.md"
       - Design Job Testing: "user/design_job_testing.md"
       - Frequently Asked Questions: "user/faq.md"
-      - External Interactions: "user/external_interactions.md"
-      - Data Models:
-          - Design: "models/design.md"
+      - Git-based Config Context: "user/git_config_context.md"
   - Administrator Guide:
       - Install and Configure: "admin/install.md"
       - Upgrade: "admin/upgrade.md"

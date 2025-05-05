@@ -15,16 +15,21 @@ from nautobot.extras.models import Job as JobModel
 from nautobot.extras.models import JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 
-# Nautobot imports
-from nautobot.apps.models import PrimaryModel, extras_features
+from nautobot_design_builder.changes import revert_changed_dict
 
-# If you want to choose a specific model to overload in your class declaration, please reference the following documentation:
-# how to chose a database model: https://docs.nautobot.com/projects/core/en/stable/plugins/development/#database-models
-# If you want to use the extras_features decorator please reference the following documentation
-# https://docs.nautobot.com/projects/core/en/stable/development/core/model-checklist/#extras-features
-@extras_features("custom_links", "custom_validators", "export_templates", "graphql", "webhooks")
-class Design(PrimaryModel):  # pylint: disable=too-many-ancestors
-    """Base model for Nautobot Design Builder app."""
+from . import choices
+from .errors import DesignValidationError
+from .util import get_created_and_last_updated_usernames_for_model
+
+logger = logging.getLogger(__name__)
+
+
+# TODO: this method needs to be put in the custom validators module.
+# it will be used to enforce attributes managed by Design Builder
+def enforce_managed_fields(
+    new_model: models.Model, field_names: List[str], message="is managed by Design Builder and cannot be changed."
+):
+    """Raise a ValidationError if any field has changed that is non-editable.
 
     This method checks a model to determine if any managed fields have changed
     values. If there are changes to any of those fields then a ValidationError
