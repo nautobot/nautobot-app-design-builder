@@ -81,7 +81,43 @@ Primary Purpose:
 As previously stated, the entry point for all designs is the `DesignJob` class. New designs should include this class in their ancestry. Design Jobs are an extension of Nautobot Jobs with several additional metadata attributes. Here is the initial data job from our sample design:
 
 ```python
---8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/initial_data/__init__.py"
+"""Initial data required for core sites."""
+
+from nautobot.apps.jobs import register_jobs, IntegerVar
+
+from nautobot_design_builder.design_job import DesignJob
+
+from .context import InitialDesignContext
+
+
+class InitialDesign(DesignJob):
+    """Initialize the database with default values needed by the core site designs."""
+    has_sensitive_variables = False
+
+    has_sensitive_variables = False
+    routers_per_site = IntegerVar(min_value=1, max_value=6, default=2)
+
+    class Meta:
+        """Metadata needed to implement the backbone site design."""
+
+        name = "Initial Data"
+        commit_default = False
+        design_file = "designs/0001_design.yaml.j2"
+        context_class = InitialDesignContext
+        version = "1.0.0"
+        description = "Establish the devices and site information for four sites: IAD5, LGA1, LAX11, SEA11."
+        docs = """This design creates the following objects in the source of truth to establish the initia network environment in  four sites: IAD5, LGA1, LAX11, SEA11.
+
+These sites belong to the America region (and different subregions), and use Juniper PTX10016 devices.
+
+The user input data is:
+    - Number of routers per site (integer)
+    - The description for us-west-1 region (string)
+"""
+
+
+name = "Demo Designs"
+register_jobs(InitialDesign)
 ```
 
 This particular design job does not collect any input from the user, it will use `InitialDesignContext` for its render context and it will consume the `templates/initial_design.yaml.j2` file for its design. When this job is run, the Design Builder will create an instance of `InitialDesignContext`, read `templates/initial_design.yaml.j2` and then render the template with Jinja using the design context as a render context.
@@ -89,7 +125,41 @@ This particular design job does not collect any input from the user, it will use
 Here is another, more interesting design:
 
 ```python
---8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/core_site/__init__.py"
+"""Design to create a core backbone site."""
+from nautobot.apps.jobs import register_jobs, ObjectVar, StringVar, IPNetworkVar
+
+from nautobot.dcim.models import Location
+
+from nautobot_design_builder.design_job import DesignJob
+
+from .context import CoreSiteContext
+
+
+class CoreSiteDesign(DesignJob):
+    """Create a core backbone site."""
+
+    region = ObjectVar(
+        label="Region",
+        description="Region for the new backbone site",
+        model=Location,
+    )
+
+    site_name = StringVar(regex=r"\w{3}\d+")
+
+    site_prefix = IPNetworkVar(min_prefix_length=16, max_prefix_length=22)
+    has_sensitive_variables = False
+
+    class Meta:
+        """Metadata needed to implement the backbone site design."""
+
+        name = "Backbone Site Design"
+        commit_default = False
+        design_file = "designs/0001_design.yaml.j2"
+        context_class = CoreSiteContext
+        nautobot_version = ">=2"
+
+name = "Demo Designs"
+register_jobs(CoreSiteDesign)
 ```
 
 In this case, we have a design that will create a site, populate it with two racks, each rack will have a core router and each router will be populated with routing engines and switch fabric cards. The design job specifies that the user needs to supply a location for the new site, a site name and an IP prefix. These inputs will be combined in the design context to be used for building out a new site.
@@ -140,15 +210,44 @@ That's a lot to digest, so let's break it down to the net effect of the design c
 A context is essentially a mapping (similar to a dictionary) where the context's instance properties can be retrieved using the index operator (`[]`). YAML files that are included in the context will have their values added to the context as instance attributes. When design builder is rendering the design template it will use the context to resolve any unknown variables. One feature of the design context is that values in YAML contexts can include Jinja templates. For instance, consider the core site context from the design above:
 
 ```python
---8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/core_site/context/__init__.py"
+from nautobot.dcim.models import Location
+
+from netaddr import IPNetwork
+
+from nautobot_design_builder.errors import DesignValidationError
+from nautobot_design_builder.context import Context, context_file
+
+
+@context_file("context.yaml")
+class CoreSiteContext(Context):
+    """Render context for core site design"""
+
+    region: Location
+    site_name: str
+    site_prefix: IPNetwork
+
+    def validate_new_site(self):
+        try:
+            Location.objects.get(name__iexact=str(self.site_name))
+            raise DesignValidationError(f"Another site exist with the name {self.site_name}")
+        except Location.DoesNotExist:
+            return
+
+    def get_serial_number(self, device_name):
+        # ideally this would be an API call, or some external
+        # process, to determine the serial number. This is just to
+        # demonstrate var lookup from the context object
+        return str(abs(hash(device_name)))
 ```
 
 This context has instance variables `region`, `site_name` and `site_prefix`. These instance variables will be populated from the user input provided by the design job. Additionally note the class decorator `@context_file`. This decorator indicates that the `core_site_context.yaml` file should be used to also populate values of the design context. The context includes a method called `validate_new_site` to perform some pre-implementation validation (see the [next section](#context-validations) for details). The context also includes a method called `get_serial_number`. The implementation of this method is there only to demonstrate that some dynamic processing can occur to retrieve context values. For example, there may be an external CMDB that contains serial numbers for the devices. The `get_serial_number` method could connect to that system and lookup the serial number to populate the Nautobot object.
 
 Now let's inspect the context YAML file:
 
-```python
---8<-- "https://raw.githubusercontent.com/nautobot/demo-designs/main/jobs/core_site/context/context.yaml"
+```yaml
+---
+core_1_loopback: "{{ site_prefix | network_offset('0.0.0.1/32') }}"
+core_2_loopback: "{{ site_prefix | network_offset('0.0.1.1/32') }}"
 ```
 
 This context YAML creates two variables that will be added to the design context: `core_1_loopback` and `core_2_loopback`. The values of both of these variables are computed using a jinja template. The template uses a jinja filter from the `netutils` project to compute the address using the user-supplied `site_prefix`. When the design context is created, the variables will be added to the context. The values (from the jinja template) are rendered when the variables are looked up during the design template rendering process.
@@ -350,4 +449,3 @@ class DesignJobWithExtensions(DesignJob):
         design_file = "templates/simple_design.yaml.j2"
         extensions = [ext.BGPPeeringExtension]
 ```
-

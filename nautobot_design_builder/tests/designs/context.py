@@ -1,11 +1,11 @@
 """Base DesignContext for testing."""
 
 import ipaddress
+
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-
-
 from nautobot.dcim.models import Device
 from nautobot.ipam.models import VRF
+
 from nautobot_design_builder.context import Context, context_file
 
 # pylint: disable=missing-function-docstring, inconsistent-return-statements
@@ -50,3 +50,14 @@ class IntegrationTestContext(Context):
 
     def vrf_prefix_tag_name(self):
         return f"{self.deployment_name} VRF Prefix"
+
+
+@context_file("context/verify_design.yaml")
+class VerifyDesignContext(Context):
+    """Setup variables from context yaml and Python for testing"""
+
+    additional_manufacturer_1: str
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.additional_manufacturer_2 = "Manufacturer From Context"

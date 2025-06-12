@@ -1,7 +1,6 @@
 """Jinja2 related filters and environment methods."""
 
 from django.template import engines
-
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from jinja2.environment import Context as JinjaContext
 from jinja2.nativetypes import NativeEnvironment

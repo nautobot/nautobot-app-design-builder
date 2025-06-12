@@ -5,7 +5,7 @@ Design builder is primarily extended by creating new action tags. These action t
 ## Action Tag Extensions
 
 The action tags in Design Builder are provided by `design.Builder`. This component reads a design and then executes instructions that are specified in the design. Basic functions, provided out of the box, are
-`get`, `create`, `create_or_update` and `update`. These actions are self explanatory (for details on syntax see [this document](../user//design_development.md#special-syntax)). Two additional actions are provided, these are the `ref` and `git_context` actions. These two actions are provided as extensions to the builder.
+`get`, `create`, `create_or_update` and `update`. These actions are self explanatory (for details on syntax see [this document](../user/design_development.md#special-syntax-action-tag)). Two additional actions are provided, these are the `ref` and `git_context` actions. These two actions are provided as extensions to the builder.
 
 Extensions specify attribute and/or value actions to the object creator. Within a design template, these extensions can be used by specifying an exclamation point (!) followed by the extensions attribute or value tag. For instance, the `ref` extension implements both an attribute and a value extension. This extension can be used by specifying `!ref`. Extensions can add behavior to the object creator that is not supplied by the standard create and update actions.
 
@@ -30,10 +30,10 @@ device:
     name: "!device_name"
 ```
 
-In this case, when `!device_name` is encountered the object creator will look for an extension that implements the `device_name` value tag. If found, the corresponding `value` method will be called on the extension. Whatever `value` returns will be assigned to the attribute (`name` in this case). For a concrete example of an extension that implements both `attribute` and `value` see the [API docs](./code_reference/ext.md#design_builder.ext.ReferenceExtension) for the ReferenceExtension.
+In this case, when `!device_name` is encountered the object creator will look for an extension that implements the `device_name` value tag. If found, the corresponding `value` method will be called on the extension. Whatever `value` returns will be assigned to the attribute (`name` in this case). For a concrete example of an extension that implements both `attribute` and `value` see the [API docs](./code_reference/ext.md#nautobot_design_builder.ext.ReferenceExtension) for the ReferenceExtension.
 
 ### Writing a New Extension
 
-Adding functionality to `design.Builder` is as simple extending the [Extension](./code_reference/ext.md#design_builder.ext.Extension) class and supplying `attribute_tag` and/or `value_tag` class variables as well as the corresponding `attribute` and `value` instance methods. Extensions are singletons within a Builder instance. When an extension's tag is encountered an instance of the extension is created. Subsequent calls to the extension will use the instance created the first time.
+Adding functionality to `design.Builder` is as simple extending the [Extension](./code_reference/ext.md#nautobot_design_builder.ext.Extension) class and supplying `attribute_tag` and/or `value_tag` class variables as well as the corresponding `attribute` and `value` instance methods. Extensions are singletons within a Builder instance. When an extension's tag is encountered an instance of the extension is created. Subsequent calls to the extension will use the instance created the first time.
 
 Each extension may optionally implement `commit` or `roll_back` methods. The `commit` method is called once all of a design's objects have been created and updated in the database. Conversely, `roll_back` is called if any error occurs and the database transaction is aborted. These methods provide a means for an extension to perform additional work, or cleanup, based on the outcome of a design's database actions.

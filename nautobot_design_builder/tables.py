@@ -1,13 +1,12 @@
 """Tables for design builder."""
 
-from django.conf import settings
 import django_tables2 as tables
+from django.conf import settings
 from django_tables2.utils import Accessor
-from nautobot.apps.tables import StatusTableMixin, BaseTable
-from nautobot.apps.tables import BooleanColumn, ButtonsColumn
+from nautobot.apps.tables import BaseTable, BooleanColumn, ButtonsColumn, StatusTableMixin
 
 from nautobot_design_builder import choices
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 
 DESIGN_TABLE = """
 

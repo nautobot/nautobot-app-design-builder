@@ -5,26 +5,22 @@ import traceback
 from abc import ABC, abstractmethod
 from os import path
 from typing import Dict
-import yaml
 
-from django.core.files.base import ContentFile
+import yaml
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
-
 from jinja2 import TemplateError
-
-from nautobot.extras.models import Status
-from nautobot.apps.jobs import Job, DryRunVar, StringVar, BooleanVar
-from nautobot.extras.models import FileProxy
+from nautobot.apps.jobs import BooleanVar, DryRunVar, Job, StringVar
 from nautobot.extras.jobs import JobForm
+from nautobot.extras.models import FileProxy, Status
 
+from nautobot_design_builder import choices, models
+from nautobot_design_builder.context import Context
+from nautobot_design_builder.design import Environment
 from nautobot_design_builder.errors import DesignImplementationError, DesignModelError
 from nautobot_design_builder.jinja2 import new_template_environment
-from nautobot_design_builder.design import Environment
-from nautobot_design_builder.context import Context
-from nautobot_design_builder import models
-from nautobot_design_builder import choices
 
 
 class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes

@@ -4,12 +4,11 @@ from django.apps import apps
 from django.conf import settings
 from django.db.models import ProtectedError
 from django.db.models.signals import pre_delete
-
-from nautobot.extras.registry import registry
 from nautobot.apps.models import CustomValidator
+from nautobot.extras.registry import registry
 
-from nautobot_design_builder.models import ChangeRecord
 from nautobot_design_builder.middleware import GlobalRequestMiddleware
+from nautobot_design_builder.models import ChangeRecord
 
 
 def validate_delete(instance, **kwargs):

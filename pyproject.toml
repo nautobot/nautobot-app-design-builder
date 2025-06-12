@@ -7,7 +7,8 @@ license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/nautobot/nautobot-app-design-builder"
 repository = "https://github.com/nautobot/nautobot-app-design-builder"
-keywords = ["nautobot", "nautobot-plugin"]
+documentation = "https://docs.nautobot.com/projects/design-builder/en/latest/"
+keywords = ["nautobot", "nautobot-app", "nautobot-plugin"]
 classifiers = [
     "Intended Audience :: Developers",
     "Development Status :: 5 - Production/Stable",
@@ -19,8 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 include = [
-    "LICENSE",
-    "README.md",
+    # Poetry by default will exclude files that are in .gitignore
+    { path = "nautobot_design_builder/static/nautobot_design_builder/docs/**/*", format = ["sdist", "wheel"] }
 ]
 packages = [
     { include = "nautobot_design_builder" },
@@ -29,7 +30,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.8.1,<3.13"
 # Used for local development
-nautobot = ">=2.0.3,<3.0"
+nautobot = ">=2.2.0,<3.0"
 
 [tool.poetry.group.dev.dependencies]
 coverage = "*"
@@ -42,7 +43,11 @@ pylint-nautobot = "*"
 ruff = "0.5.5"
 yamllint = "*"
 toml = "*"
-
+# Python implementation of markdownlint
+pymarkdownlnt = [
+    {version = "0.9.26", python = "~3.8.0"},
+    {version = "~0.9.29", python = ">=3.9,<3.13"},
+]
 Markdown = "*"
 # Render custom markdown for version added/changed/remove notes
 markdown-version-annotations = "1.0.1"
@@ -55,7 +60,7 @@ mkdocstrings = "0.25.2"
 mkdocstrings-python = "1.10.8"
 mkdocs-autorefs = "1.2.0"
 griffe = "1.1.1"
-towncrier = "~23.6.0"
+towncrier = ">=23.6.0,<=24.8.0"
 to-json-schema = "*"
 jsonschema = "*"
 
@@ -67,28 +72,9 @@ black = "*"
 flake8 = "*"
 pydocstyle = "*"
 
-[tool.black]
-line-length = 120
-target-version = ['py38', 'py39', 'py310', 'py311']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | settings.py     # This is where you define files that should not be stylized by black
-                     # the root of the project
-)
-'''
+[tool.poetry.extras]
+all = [
+]
 
 [tool.pylint.master]
 # Include the pylint_django plugin to avoid spurious warnings about Django patterns
@@ -125,20 +111,8 @@ notes = """,
 
 [tool.pylint-nautobot]
 supported_nautobot_versions = [
-    "1"
+    "2.0.0"
 ]
-
-[tool.pydocstyle]
-convention = "google"
-inherit = false
-match = "(?!__init__).*\\.py"
-match-dir = "(?!tests|migrations|development)[^\\.].*"
-# D212 is enabled by default in google convention, and complains if we have a docstring like:
-# """
-# My docstring is on the line after the opening quotes instead of on the same line as them.
-# """
-# We've discussed and concluded that we consider this to be a valid style choice.
-add_ignore = "D212"
 
 [tool.ruff]
 line-length = 120
@@ -147,6 +121,9 @@ target-version = "py38"
 [tool.ruff.lint]
 select = [
     "D",  # pydocstyle
+    "F", "E", "W",  # flake8
+    "S",  # bandit
+    "I",  # isort
 ]
 ignore = [
     "D106",  # Missing docstring in public nested class - We have Meta and _meta and other similar
@@ -166,6 +143,7 @@ ignore = [
     "D401",  # First line of docstring should be in imperative mood
     "D407",  # Missing dashed underline after section
     "D416",  # Section name ends in colon
+    "E501", # Line too long
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -173,11 +151,80 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "nautobot_design_builder/migrations/*" = [
-    "D",  # pydocstyle
+    "D",
 ]
 "nautobot_design_builder/tests/*" = [
-    "D",  # pydocstyle
+    "D",
+    "S"
 ]
+
+[tool.coverage.run]
+disable_warnings = ["already-imported"]
+relative_files = true
+omit = [
+    # Skip Tests
+    "*/tests/*",
+]
+include = [
+    "nautobot_design_builder/*",
+]
+
+[tool.pymarkdown]
+# Seems to be not support for whitelisting rules: https://github.com/jackdewinter/pymarkdown/issues/1396
+plugins.md001.enabled = false
+plugins.md002.enabled = false
+plugins.md003.enabled = false
+plugins.md004.enabled = false
+plugins.md005.enabled = false
+plugins.md006.enabled = false
+plugins.md007.enabled = false
+plugins.md008.enabled = false
+plugins.md009.enabled = false
+plugins.md010.enabled = false
+plugins.md011.enabled = false
+plugins.md012.enabled = false
+plugins.md013.enabled = false
+plugins.md014.enabled = false
+plugins.md015.enabled = false
+plugins.md016.enabled = false
+plugins.md017.enabled = false
+plugins.md018.enabled = false
+plugins.md019.enabled = false
+plugins.md020.enabled = false
+plugins.md021.enabled = false
+plugins.md022.enabled = false
+plugins.md023.enabled = false
+plugins.md024.enabled = false
+plugins.md025.enabled = false
+plugins.md026.enabled = false
+plugins.md027.enabled = false
+plugins.md028.enabled = false
+plugins.md029.enabled = false
+plugins.md030.enabled = false
+plugins.md031.enabled = false
+plugins.md032.enabled = true # blanks-around-lists
+plugins.md033.enabled = false
+plugins.md034.enabled = false
+plugins.md035.enabled = false
+plugins.md036.enabled = false
+plugins.md037.enabled = false
+plugins.md038.enabled = false
+plugins.md039.enabled = false
+plugins.md040.enabled = false
+plugins.md041.enabled = false
+plugins.md042.enabled = false
+plugins.md043.enabled = false
+plugins.md044.enabled = false
+plugins.md045.enabled = false
+plugins.md046.enabled = false
+plugins.md047.enabled = false
+plugins.md048.enabled = false
+plugins.md049.enabled = false
+plugins.md050.enabled = false
+plugins.pml100.enabled = false
+plugins.pml101.enabled = true # list-anchored-indent
+plugins.pml102.enabled = false
+plugins.pml103.enabled = false
 
 [build-system]
 requires = ["poetry_core>=1.0.0"]

@@ -3,22 +3,23 @@
 import logging
 from typing import List, Optional
 from uuid import UUID
-from django.contrib.contenttypes.models import ContentType
+
 from django.contrib.contenttypes import fields as ct_fields
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.dispatch import Signal
-
-from nautobot.apps.models import PrimaryModel, BaseModel, RestrictedQuerySet
+from nautobot.apps.models import BaseModel, PrimaryModel, RestrictedQuerySet
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
+from nautobot.extras.models import Job as JobModel
+from nautobot.extras.models import JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 
 from nautobot_design_builder.changes import revert_changed_dict
 
-from .util import get_created_and_last_updated_usernames_for_model
 from . import choices
 from .errors import DesignValidationError
+from .util import get_created_and_last_updated_usernames_for_model
 
 logger = logging.getLogger(__name__)
 

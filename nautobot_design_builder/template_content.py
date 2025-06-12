@@ -1,10 +1,8 @@
 """Template content for nautobot_design_builder."""
 
-from django.urls import reverse
 from django.conf import settings
-
+from django.urls import reverse
 from nautobot.extras.plugins import TemplateExtension
-
 from nautobot.extras.utils import registry
 
 

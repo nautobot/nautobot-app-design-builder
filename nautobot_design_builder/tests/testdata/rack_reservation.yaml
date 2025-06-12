@@ -1,0 +1,20 @@
+---
+depends_on: "base_test.yaml"
+designs:
+  - users:
+      - username: "demo"
+        password: "password"
+
+  - racks:
+      - name: "Rack 1"
+        status__name: "Active"
+        location__name: "Site"
+
+  - rack_reservations:
+      - rack__name: "Rack 1"
+        user__username: "demo"
+        description: "Power Shelf"
+        units:
+          - 4
+          - 5
+          - 6
