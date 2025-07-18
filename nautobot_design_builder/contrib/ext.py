@@ -558,6 +558,12 @@ class BGPPeeringExtension(AttributeExtension):
     tag = "bgp_peering"
 
     def __init__(self, environment: Environment):
+        """Initialize the BGPPeeringExtension.
+        This initializer will import the necessary BGP models. If the
+        BGP models app is not installed then it raises a DesignImplementationError.
+        Raises:
+            DesignImplementationError: Raised when the BGP Models App is not installed.
+        """
         super().__init__(environment)
         try:
             from nautobot_bgp_models.models import (
