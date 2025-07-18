@@ -1,0 +1,36 @@
+# Changelog
+
+## [Unreleased]
+
+### Added
+- **Extended BGP Peering Support in `BGPPeeringExtension`:**
+  - Added support for assigning the following fields per PeerEndpoint:
+    - `peer_group`: Accepts direct reference (`!ref`) or a `peer_group__name` + `routing_instance` filter combo.
+    - `source_interface`: Assignable via reference, model instance, or filter dictionary.
+    - `source_ip`: Assignable via reference, model instance, or filter dictionary.
+    - `description`: Now available as an optional field on each endpoint to annotate BGP peerings with meaningful context.
+
+- **Dual Input Modes for PeerEndpoints:**
+  - `bgp_peering` extension supports both:
+    - `endpoint_a` / `endpoint_z` style (legacy)
+    - `endpoints: [a_dict, z_dict]` (preferred modern list syntax)
+
+- **Model Resolution Logic:**
+  - `resolve_or_create()` helper added to allow resolution of any PeerEndpoint component from:
+    - A `!ref:` string
+    - A `ModelInstance`
+    - A dictionary of filters
+
+### Changed
+- Refactored internal `build_peer_endpoint()` to modularly handle resolution of:
+  - `routing_instance`
+  - `peer_group`
+  - `source_interface`
+  - `source_ip`
+- Enhanced docstrings and YAML examples to demonstrate the use of `description`, peer groups, interfaces, and source IPs for peer endpoints.
+
+### Fixed
+- `bgp_peering` previously did not support interfaces, IPs, Descriptions, or peer group assignment — these now function correctly with proper model resolution and reference handling.
+
+### Removed
+- Nothing removed in this version.
