@@ -639,12 +639,6 @@ class BGPPeeringExtension(AttributeExtension):
                 endpoint["source_ip"],
             )
 
-        # Always set description if not already defined
-        if "description" not in endpoint:
-            dev = endpoint["routing_instance"].design_instance.device.name
-            intf = endpoint["source_interface"].design_instance.name
-            endpoint["description"] = f"{dev}_{intf}"
-
         return self.PeerEndpoint(self.environment, endpoint)
 
     def attribute(self, *args, value=None, model_instance: ModelInstance = None):
