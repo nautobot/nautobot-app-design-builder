@@ -27,11 +27,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-<<<<<<< HEAD
-python = ">=3.8.1,<3.13"
-=======
 python = ">=3.9.2,<3.13"
->>>>>>> 234ce30 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 # Used for local development
 nautobot = ">=2.2.0,<3.0"
 
