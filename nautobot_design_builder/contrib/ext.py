@@ -547,7 +547,7 @@ class BGPPeeringExtension(AttributeExtension):
         """
         super().__init__(environment)
         try:
-            from nautobot_bgp_models.models import (
+            from nautobot_bgp_models.models import (  # pylint:disable=import-outside-toplevel
                 PeerEndpoint,
                 Peering,
             )
@@ -694,7 +694,7 @@ class NextIpExtension(AttributeExtension):
         parent = value.pop("parent", None)
         if parent is None:
             raise DesignImplementationError("the child_prefix tag requires a parent")
-        elif isinstance(parent, ModelInstance):
+        if isinstance(parent, ModelInstance):
             prefix = str(parent.design_instance.prefix)
         elif isinstance(parent, str):
             prefix = parent.strip()
