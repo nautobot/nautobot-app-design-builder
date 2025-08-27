@@ -27,14 +27,11 @@ designs:
         "!ref": "server-prefix"
     ip_addresses:
       - "!next_available_ip":
-          prefix: "!ref:server-prefix"
-        mask_length: 30
-        parent: "!ref:server-prefix"
+          parent: "!ref:server-prefix"
         status__name: "Active"
         tenant__name: "Nautobot Airports"
       - "!next_available_ip":
-          prefix: "10.0.0.0/29"
-        parent: "!ref:server-prefix"
+          parent: "10.0.0.0/29"
         status__name: "Active"
         tenant__name: "Nautobot Airports"
 checks:

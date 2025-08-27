@@ -653,12 +653,12 @@ class NextIpExtension(AttributeExtension):
     tag = "next_available_ip"
 
     def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
-        """Provides the `!next_available_ip` attribute that will calculate the next available ip address in the provided prefix.
+        """Provides the `!next_available_ip` attribute that will calculate the next available ip address in the provided parent prefix.
 
         Args:
             *args: Any additional arguments following the tag name. These are `:` delimited.
 
-            value: A filter describing the parent prefix to provision from. If `prefix`
+            value: A filter describing the parent prefix to provision from. If `parent`
                 is one of the query keys then the network and prefix length will be
                 split and used as query arguments for the underlying Prefix object.
                 All other keys are passed on to the query filter directly.
@@ -672,56 +672,56 @@ class NextIpExtension(AttributeExtension):
 
         Returns:
             dict: Dictionary that can be used by the design.Builder to create the IP Address.
-                The dictionary will contain "host" and "mask_length" keys.
+                The dictionary will contain "host", "mask_length", and "parent__id" keys.
                 "mask_length" is the prefix length of the parent prefix.
 
         Example:
             ```yaml
             ip_addresses:
                 - "!next_available_ip":
-                        prefix: "!ref:server-prefix"
-                    parent: "!ref:server-prefix"
+                        parent: "!ref:server-prefix"
                     status__name: "Active"
                 - "!next_available_ip":
-                        prefix: "10.0.0.0/29"
-                    parent: "!ref:server-prefix"
+                        parent: "10.0.0.0/29"
                     status__name: "Active"
             ```
         """
-        if not isinstance(value, dict):
-            raise DesignImplementationError("the next_available_ip tag requires a dictionary of arguments")
-
-        if len(value) == 0:
-            raise DesignImplementationError("no search criteria specified for ip address")
-
-        query = Q(**value)
-        if "prefix" in value:
-            prefix = value.pop("prefix")
-            prefix_q = []
-            if isinstance(prefix, str):
-                pass
-            elif isinstance(prefix, ModelInstance):
-                prefix = str(prefix.design_instance.prefix)
-            else:
-                raise DesignImplementationError(
-                    "Prefix key should contain a string (CIDR notation) or a reference to a single prefix."
-                )
-
-            prefix_str = prefix.strip()
-            prefix = netaddr.IPNetwork(prefix_str)
-            prefix_q.append(
-                Q(
-                    prefix_length=prefix.prefixlen,
-                    network=prefix.network,
-                    broadcast=prefix.broadcast,
-                )
+        if not isinstance(value, dict) and value.keys() >= {"parent"}:
+            raise DesignImplementationError(
+                "the next_available_ip tag must be supplied a dictionary with the `parent` key"
             )
-            query = Q(**value) & reduce(operator.or_, prefix_q)
 
-        prefix = Prefix.objects.filter(query)
+        parent = value.pop("parent", None)
+        if parent is None:
+            raise DesignImplementationError("the child_prefix tag requires a parent")
+        elif isinstance(parent, ModelInstance):
+            prefix = str(parent.design_instance.prefix)
+        elif isinstance(parent, str):
+            prefix = parent.strip()
+        elif not isinstance(parent, str):
+            raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
+        else:
+            raise DesignImplementationError("unexpected error processing parent prefix")
+
+        prefix = netaddr.IPNetwork(prefix)
+        query = Q(**value)
+        prefix_q = []
+        prefix_q.append(
+            Q(
+                prefix_length=prefix.prefixlen,
+                network=prefix.network,
+                broadcast=prefix.broadcast,
+            )
+        )
+        query = Q(**value) & reduce(operator.or_, prefix_q)
+
+        prefix = Prefix.objects.filter(query).first()
+        if not prefix:
+            raise DesignImplementationError(f"No matching prefix found for query {query}")
         return {
-            "host": self._get_next(prefix.first()),
-            "mask_length": prefix.first().prefix_length,
+            "host": self._get_next(prefix),
+            "mask_length": prefix.prefix_length,
+            "parent__id": prefix.id,
         }
 
     @staticmethod
