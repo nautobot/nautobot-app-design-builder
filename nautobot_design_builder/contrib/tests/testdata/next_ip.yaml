@@ -26,11 +26,11 @@ designs:
       - "!get:prefix": "10.0.0.0/29"
         "!ref": "server-prefix"
     ip_addresses:
-      - "!next_available_ip":
+      - "!next_ip":
           parent: "!ref:server-prefix"
         status__name: "Active"
         tenant__name: "Nautobot Airports"
-      - "!next_available_ip":
+      - "!next_ip":
           parent: "10.0.0.0/29"
         status__name: "Active"
         tenant__name: "Nautobot Airports"

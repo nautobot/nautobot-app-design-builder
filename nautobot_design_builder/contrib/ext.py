@@ -650,10 +650,10 @@ class BGPPeeringExtension(AttributeExtension):
 class NextIpExtension(AttributeExtension):
     """Provision the next prefix for a given set of parent prefixes."""
 
-    tag = "next_available_ip"
+    tag = "next_ip"
 
     def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
-        """Provides the `!next_available_ip` attribute that will calculate the next available ip address in the provided parent prefix.
+        """Provides the `!next_ip` attribute that will calculate the next available ip address in the provided parent prefix.
 
         Args:
             *args: Any additional arguments following the tag name. These are `:` delimited.
@@ -678,17 +678,17 @@ class NextIpExtension(AttributeExtension):
         Example:
             ```yaml
             ip_addresses:
-                - "!next_available_ip":
+                - "!next_ip":
                         parent: "!ref:server-prefix"
                     status__name: "Active"
-                - "!next_available_ip":
+                - "!next_ip":
                         parent: "10.0.0.0/29"
                     status__name: "Active"
             ```
         """
         if not isinstance(value, dict) and value.keys() >= {"parent"}:
             raise DesignImplementationError(
-                "the next_available_ip tag must be supplied a dictionary with the `parent` key"
+                "the next_ip tag must be supplied a dictionary with the `parent` key"
             )
 
         parent = value.pop("parent", None)
