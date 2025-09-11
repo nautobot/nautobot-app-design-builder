@@ -54,9 +54,7 @@ class LookupMixin:
             queryset = model_class.objects
         except ContentType.DoesNotExist:
             # pylint: disable=raise-missing-from
-            raise DesignImplementationError(
-                f"Could not find model class for {model_class}"
-            )
+            raise DesignImplementationError(f"Could not find model class for {model_class}")
 
         return self.lookup(queryset, query)
 
@@ -149,9 +147,7 @@ class LookupMixin:
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
         except MultipleObjectsReturned:
             # pylint: disable=raise-missing-from
-            raise MultipleObjectsReturnedError(
-                queryset.model, query_filter=query, parent=parent
-            )
+            raise MultipleObjectsReturnedError(queryset.model, query_filter=query, parent=parent)
 
 
 class LookupExtension(AttributeExtension, LookupMixin):
@@ -159,9 +155,7 @@ class LookupExtension(AttributeExtension, LookupMixin):
 
     tag = "lookup"
 
-    def attribute(
-        self, *args, value, model_instance
-    ) -> None:  # pylint:disable=arguments-differ
+    def attribute(self, *args, value, model_instance) -> None:  # pylint:disable=arguments-differ
         """Provides the `!lookup` attribute that will lookup an instance.
 
         This action tag can be used to lookup an object in the database and
@@ -209,9 +203,7 @@ class LookupExtension(AttributeExtension, LookupMixin):
         elif isinstance(value, dict):
             query = value
         else:
-            raise DesignImplementationError(
-                "the lookup requires a query attribute and value or a query dictionary."
-            )
+            raise DesignImplementationError("the lookup requires a query attribute and value or a query dictionary.")
 
         content_type = query.pop("content-type", None)
         if content_type is None:
@@ -266,9 +258,7 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
 
         return query_managers
 
-    def attribute(
-        self, *args, value=None, model_instance: ModelInstance = None
-    ) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """Connect a cable termination to another cable termination.
 
         Args:
@@ -349,18 +339,13 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 Q(termination_a_id=model_instance.design_instance.id)
                 | Q(termination_b_id=remote_instance.design_instance.id)
             ).first()
-            Cable = self.environment.model_factory(
-                dcim.Cable
-            )  # pylint:disable=invalid-name
+            Cable = self.environment.model_factory(dcim.Cable)  # pylint:disable=invalid-name
             if existing_cable:
                 if (
                     existing_cable.termination_a_id != model_instance.design_instance.id
-                    or existing_cable.termination_b_id
-                    != remote_instance.design_instance.id
+                    or existing_cable.termination_b_id != remote_instance.design_instance.id
                 ):
-                    self.environment.decommission_object(
-                        existing_cable.id, f"Cable {existing_cable.id}"
-                    )
+                    self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
             cable = Cable(self.environment, cable_attributes)
             cable.save()
 
@@ -372,9 +357,7 @@ class NextPrefixExtension(AttributeExtension):
 
     tag = "next_prefix"
 
-    def attribute(
-        self, *args, value: dict = None, model_instance: ModelInstance = None
-    ) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
 
         Args:
@@ -410,23 +393,17 @@ class NextPrefixExtension(AttributeExtension):
             ```
         """
         if not isinstance(value, dict):
-            raise DesignImplementationError(
-                "the next_prefix tag requires a dictionary of arguments"
-            )
+            raise DesignImplementationError("the next_prefix tag requires a dictionary of arguments")
         identified_by = value.pop("identified_by", None)
         if identified_by:
             try:
-                model_instance.design_instance = (
-                    model_instance.relationship_manager.get(**identified_by)
-                )
+                model_instance.design_instance = model_instance.relationship_manager.get(**identified_by)
                 return None
             except ObjectDoesNotExist:
                 pass
         length = value.pop("length", None)
         if length is None:
-            raise DesignImplementationError(
-                "the next_prefix tag requires a prefix length"
-            )
+            raise DesignImplementationError("the next_prefix tag requires a prefix length")
 
         if len(value) == 0:
             raise DesignImplementationError("no search criteria specified for prefixes")
@@ -438,9 +415,7 @@ class NextPrefixExtension(AttributeExtension):
             if isinstance(prefixes, str):
                 prefixes = [prefixes]
             elif not isinstance(prefixes, list):
-                raise DesignImplementationError(
-                    "Prefixes should be a string (single prefix) or a list."
-                )
+                raise DesignImplementationError("Prefixes should be a string (single prefix) or a list.")
 
             for prefix_str in prefixes:
                 prefix_str = prefix_str.strip()
@@ -472,14 +447,10 @@ class NextPrefixExtension(AttributeExtension):
         """
         length = int(length)
         for requested_prefix in prefixes:
-            for (
-                available_prefix
-            ) in requested_prefix.get_available_prefixes().iter_cidrs():
+            for available_prefix in requested_prefix.get_available_prefixes().iter_cidrs():
                 if available_prefix.prefixlen <= length:
                     return f"{available_prefix.network}/{length}"
-        raise DesignImplementationError(
-            f"No available prefixes could be found from {list(map(str, prefixes))}"
-        )
+        raise DesignImplementationError(f"No available prefixes could be found from {list(map(str, prefixes))}")
 
 
 class ChildPrefixExtension(AttributeExtension):
@@ -487,9 +458,7 @@ class ChildPrefixExtension(AttributeExtension):
 
     tag = "child_prefix"
 
-    def attribute(
-        self, *args, value: dict = None, model_instance: "ModelInstance" = None
-    ) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: "ModelInstance" = None) -> None:
         """Provides the `!child_prefix` attribute.
 
         !child_prefix calculates a child prefix using a parent prefix
@@ -536,9 +505,7 @@ class ChildPrefixExtension(AttributeExtension):
             ```
         """
         if not isinstance(value, dict):
-            raise DesignImplementationError(
-                "the child_prefix tag requires a dictionary of arguments"
-            )
+            raise DesignImplementationError("the child_prefix tag requires a dictionary of arguments")
 
         action = value.pop("action", "")
 
@@ -548,9 +515,7 @@ class ChildPrefixExtension(AttributeExtension):
         if isinstance(parent, ModelInstance):
             parent = str(parent.design_instance.prefix)
         elif not isinstance(parent, str):
-            raise DesignImplementationError(
-                "parent prefix must be either a previously created object or a string."
-            )
+            raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
 
         offset = value.pop("offset", None)
         if offset is None:
@@ -561,9 +526,7 @@ class ChildPrefixExtension(AttributeExtension):
 
         if action:
             model_instance.design_metadata.action = action
-            model_instance.design_metadata.filter[attr] = str(
-                network_offset(parent, offset)
-            )
+            model_instance.design_metadata.filter[attr] = str(network_offset(parent, offset))
             return None
         return attr, str(network_offset(parent, offset))
 
@@ -589,21 +552,15 @@ class BGPPeeringExtension(AttributeExtension):
                 Peering,
             )
 
-            self.PeerEndpoint = self.environment.model_factory(
-                PeerEndpoint
-            )  # pylint:disable=invalid-name
-            self.Peering = self.environment.model_factory(
-                Peering
-            )  # pylint:disable=invalid-name
+            self.PeerEndpoint = self.environment.model_factory(PeerEndpoint)  # pylint:disable=invalid-name
+            self.Peering = self.environment.model_factory(Peering)  # pylint:disable=invalid-name
         except ModuleNotFoundError:
             # pylint:disable=raise-missing-from
             raise DesignImplementationError(
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
 
-    def attribute(
-        self, *args, value=None, model_instance: ModelInstance = None
-    ) -> None:
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
         """This attribute tag creates or updates a BGP peering for two endpoints.
 
         !bgp_peering will take an `endpoint_a` and `endpoint_z` argument to correctly
@@ -646,9 +603,7 @@ class BGPPeeringExtension(AttributeExtension):
           status__name: "Active"
         ```
         """
-        if not (
-            isinstance(value, dict) and value.keys() >= {"endpoint_a", "endpoint_z"}
-        ):
+        if not (isinstance(value, dict) and value.keys() >= {"endpoint_a", "endpoint_z"}):
             raise DesignImplementationError(
                 "bgp peerings must be supplied a dictionary with `endpoint_a` and `endpoint_z`."
             )
@@ -698,9 +653,7 @@ class NextIpExtension(AttributeExtension):
     tag = "next_ip"
     tag = "next_ip"
 
-    def attribute(
-        self, *args, value: dict = None, model_instance: ModelInstance = None
-    ) -> None:
+    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
         """Provides the `!next_ip` attribute that will calculate the next available ip address in the provided parent prefix.
 
         Args:
@@ -750,9 +703,7 @@ class NextIpExtension(AttributeExtension):
         elif isinstance(parent, str):
             prefix = parent.strip()
         elif not isinstance(parent, str):
-            raise DesignImplementationError(
-                "parent prefix must be either a previously created object or a string."
-            )
+            raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
         else:
             raise DesignImplementationError("unexpected error processing parent prefix")
 
@@ -770,9 +721,7 @@ class NextIpExtension(AttributeExtension):
 
         prefix = Prefix.objects.filter(query).first()
         if not prefix:
-            raise DesignImplementationError(
-                f"No matching prefix found for query {query}"
-            )
+            raise DesignImplementationError(f"No matching prefix found for query {query}")
         return {
             "host": self._get_next(prefix),
             "mask_length": prefix.prefix_length,
@@ -791,7 +740,5 @@ class NextIpExtension(AttributeExtension):
         """
         available_ips = prefix.get_available_ips()
         if not available_ips:
-            raise DesignImplementationError(
-                f"No available ip address could be found from {prefix}"
-            )
+            raise DesignImplementationError(f"No available ip address could be found from {prefix}")
         return f"{next(iter(available_ips))}"
