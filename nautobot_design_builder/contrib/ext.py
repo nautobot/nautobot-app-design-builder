@@ -695,9 +695,9 @@ class NextIpExtension(AttributeExtension):
                 "the next_ip tag must be supplied a dictionary with the `parent` key"
             )
 
-        parent = value.pop("parent", None)
+        parent = value.pop("prefix", None)
         if parent is None:
-            raise DesignImplementationError("the child_prefix tag requires a parent")
+            raise DesignImplementationError("the next_ip tag requires a parent")
         if isinstance(parent, ModelInstance):
             prefix = str(parent.design_instance.prefix)
         elif isinstance(parent, str):
