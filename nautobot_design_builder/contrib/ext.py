@@ -689,7 +689,6 @@ class NextIpExtension(AttributeExtension):
         if not isinstance(value, dict) and value.keys() >= {"parent"}:
             raise DesignImplementationError(
                 "the next_ip tag must be supplied a dictionary with the `parent` key"
-                "the next_ip tag must be supplied a dictionary with the `parent` key"
             )
 
         parent = value.pop("prefix", None)
