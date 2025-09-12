@@ -651,7 +651,6 @@ class NextIpExtension(AttributeExtension):
     """Provision the next prefix for a given set of parent prefixes."""
 
     tag = "next_ip"
-    tag = "next_ip"
 
     def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
         """Provides the `!next_ip` attribute that will calculate the next available ip address in the provided parent prefix.
@@ -680,10 +679,8 @@ class NextIpExtension(AttributeExtension):
             ```yaml
             ip_addresses:
                 - "!next_ip":
-                - "!next_ip":
                         parent: "!ref:server-prefix"
                     status__name: "Active"
-                - "!next_ip":
                 - "!next_ip":
                         parent: "10.0.0.0/29"
                     status__name: "Active"
