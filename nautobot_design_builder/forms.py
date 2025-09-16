@@ -1,5 +1,6 @@
 """Forms for the design builder app."""
 
+<<<<<<< HEAD
 from django.forms import CharField, NullBooleanField
 from nautobot.apps.forms import DynamicModelChoiceField, StaticSelect2, TagFilterField
 from nautobot.core.forms.constants import BOOLEAN_WITH_BLANK_CHOICES
@@ -7,6 +8,37 @@ from nautobot.extras.forms import NautobotFilterForm
 from nautobot.extras.models import Job, JobResult
 
 from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
+=======
+from django import forms
+from nautobot.apps.constants import CHARFIELD_MAX_LENGTH
+from nautobot.apps.forms import NautobotBulkEditForm, NautobotFilterForm, NautobotModelForm, TagsBulkEditFormMixin
+
+from nautobot_design_builder import models
+
+
+class DesignForm(NautobotModelForm):  # pylint: disable=too-many-ancestors
+    """Design creation/edit form."""
+
+    class Meta:
+        """Meta attributes."""
+
+        model = models.Design
+        fields = "__all__"
+
+
+class DesignBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylint: disable=too-many-ancestors
+    """Design bulk edit form."""
+
+    pk = forms.ModelMultipleChoiceField(queryset=models.Design.objects.all(), widget=forms.MultipleHiddenInput)
+    description = forms.CharField(required=False, max_length=CHARFIELD_MAX_LENGTH)
+
+    class Meta:
+        """Meta attributes."""
+
+        nullable_fields = [
+            "description",
+        ]
+>>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 
 class DesignFilterForm(NautobotFilterForm):

@@ -1,5 +1,6 @@
 """UI Views for design builder."""
 
+<<<<<<< HEAD
 from django.apps import apps as global_apps
 from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import render
@@ -16,6 +17,11 @@ from nautobot.core.views.mixins import (
     ObjectNotesViewMixin,
 )
 from rest_framework.decorators import action
+=======
+from nautobot.apps.views import NautobotUIViewSet
+from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, ObjectTablePanel, SectionChoices
+from nautobot.core.templatetags import helpers
+>>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 from nautobot_design_builder import choices, models, tables
 from nautobot_design_builder.api.serializers import (
@@ -58,6 +64,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
     queryset = models.Design.objects.annotate(deployment_count=count_related(models.Deployment, "design"))
     serializer_class = DesignSerializer
     table_class = tables.DesignTable
+<<<<<<< HEAD
     action_buttons = ()
     lookup_field = "pk"
 
@@ -226,3 +233,36 @@ class DesignProtectionObjectView(ObjectView):
                         pass
 
         return {"active_tab": request.GET["tab"], "design_protection": content}
+=======
+
+    # Here is an example of using the UI  Component Framework for the detail view.
+    # More information can be found in the Nautobot documentation:
+    # https://docs.nautobot.com/projects/core/en/stable/development/core/ui-component-framework/
+    object_detail_content = ObjectDetailContent(
+        panels=[
+            ObjectFieldsPanel(
+                weight=100,
+                section=SectionChoices.LEFT_HALF,
+                fields="__all__",
+                # Alternatively, you can specify a list of field names:
+                # fields=[
+                #     "name",
+                #     "description",
+                # ],
+                # Some fields may require additional configuration, we can use value_transforms
+                # value_transforms={
+                #     "name": [helpers.bettertitle]
+                # },
+            ),
+            # If there is a ForeignKey or M2M with this model we can use ObjectTablePanel
+            # to display them in a table format.
+            # ObjectTablePanel(
+                # weight=200,
+                # section=SectionChoices.RIGHT_HALF,
+                # table_class=tables.DesignTable,
+                # You will want to filter the table using the related_name
+                # filter="designs",
+            # ),
+        ],
+    )
+>>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)

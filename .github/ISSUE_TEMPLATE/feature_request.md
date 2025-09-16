@@ -6,7 +6,11 @@ labels:
 ---
 
 ### Environment
+<<<<<<< HEAD
 * Nautobot version:  <!-- Example: 1.6.8 -->
+=======
+* Nautobot version:  <!-- Example: 2.4.2 -->
+>>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 * nautobot-design-builder version:  <!-- Example: 1.0.0 -->
 
 <!--
