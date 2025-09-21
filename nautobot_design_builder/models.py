@@ -15,19 +15,12 @@ from nautobot.extras.models import Job as JobModel
 from nautobot.extras.models import JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 
-<<<<<<< HEAD
 from nautobot_design_builder.changes import revert_changed_dict
-=======
-# Nautobot imports
-from nautobot.apps.constants import CHARFIELD_MAX_LENGTH
-from nautobot.apps.models import PrimaryModel, extras_features
->>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 from . import choices
 from .errors import DesignValidationError
 from .util import get_created_and_last_updated_usernames_for_model
 
-<<<<<<< HEAD
 logger = logging.getLogger(__name__)
 
 
@@ -134,11 +127,6 @@ class Design(PrimaryModel):
     # TODO: Add a template mapping to get custom payload (future feature)
     job = models.ForeignKey(to=JobModel, on_delete=models.PROTECT, editable=False)
     objects = DesignManager.from_queryset(DesignQuerySet)()
-=======
-    name = models.CharField(max_length=CHARFIELD_MAX_LENGTH, unique=True)
-    description = models.CharField(max_length=CHARFIELD_MAX_LENGTH, blank=True)
-    # additional model fields
->>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
     class Meta:
         """Meta class."""

@@ -29,11 +29,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.9.2,<3.13"
 # Used for local development
-<<<<<<< HEAD
-nautobot = ">=2.2.0,<3.0"
-=======
 nautobot = ">=2.4.2,<3.0.0"
->>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 [tool.poetry.group.dev.dependencies]
 coverage = "*"
@@ -94,7 +90,6 @@ no-docstring-rgx="^(_|test_|Meta$)"
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
 disable = """,
     line-too-long,
-<<<<<<< HEAD
     duplicate-code,
     too-many-lines,
     too-many-ancestors,
@@ -105,12 +100,10 @@ disable = """,
     nb-code-location-changed,
     nb-code-location-changed-object,
     nb-use-fields-all,
-=======
     too-many-positional-arguments,
     nb-warn-dunder-filter-field,
     nb-no-search-function,
     nb-no-char-filter-q,
->>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 """
 
 [tool.pylint.miscellaneous]

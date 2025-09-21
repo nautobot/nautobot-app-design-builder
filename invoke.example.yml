@@ -1,12 +1,8 @@
 ---
 nautobot_design_builder:
-<<<<<<< HEAD
   project_name: "nautobot-design-builder"
-=======
-  nautobot_ver: "2.4.2"
->>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
   python_ver: "3.11"
-  nautobot_ver: "2.2"
+  nautobot_ver: "2.4.2"
   local: false
   compose_dir: "development"
   compose_files:

@@ -21,14 +21,13 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user.."
     base_url = "design-builder"
     required_settings = []
-<<<<<<< HEAD
-    min_version = "2.2.0"
-    max_version = "2.9999"
     default_settings = {
         "protected_models": [],
         "protected_superuser_bypass": True,
     }
     caching_config = {}
+    docs_view_name = "plugins:nautobot_design_builder:docs"
+    searchable_models = ["design"]
 
     def ready(self):
         """Callback after design builder is loaded."""
@@ -40,12 +39,6 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     def context_repository(cls):
         """Retrieve the Git Repository slug that has been configured for the Design Builder."""
         return settings.PLUGINS_CONFIG[cls.name]["context_repository"]
-=======
-    default_settings = {}
-    caching_config = {}
-    docs_view_name = "plugins:nautobot_design_builder:docs"
-    searchable_models = ["design"]
->>>>>>> ec1ace3 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 
 config = NautobotDesignBuilderConfig  # pylint:disable=invalid-name
