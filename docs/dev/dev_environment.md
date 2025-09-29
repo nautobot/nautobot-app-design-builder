@@ -13,7 +13,7 @@ This is a quick reference guide if you're already familiar with the development 
 
 The [Invoke](http://www.pyinvoke.org/) library is used to provide some helper commands based on the environment. There are a few configuration parameters which can be passed to Invoke to override the default configuration:
 
-- `nautobot_ver`: the version of Nautobot to use as a base for any built docker containers (default: 1.6.0)
+- `nautobot_ver`: the version of Nautobot to use as a base for any built docker containers (default: 2.4.2)
 - `project_name`: the default docker compose project name (default: `nautobot-design-builder`)
 - `python_ver`: the version of Python to use as a base for any built docker containers (default: 3.11)
 - `local`: a boolean flag indicating if invoke tasks should be run on the host or inside the docker containers (default: False, commands will be run in docker containers)
@@ -35,6 +35,7 @@ This project is managed by [Python Poetry](https://python-poetry.org/) and has a
 Once you have Poetry and Docker installed you can run the following commands (in the root of the repository) to install all other development dependencies in an isolated Python virtual environment:
 
 ```shell
+poetry self add poetry-plugin-shell
 poetry shell
 poetry install
 invoke build
@@ -61,6 +62,7 @@ nautobot_design_builder:
 Run the following commands:
 
 ```shell
+poetry self add poetry-plugin-shell
 poetry shell
 poetry install --extras nautobot
 export $(cat development/development.env | xargs)
@@ -129,6 +131,8 @@ Each command can be executed with `invoke <command>`. All commands support the a
   markdownlint     Run pymarkdown linting.
   tests            Run all tests for this app.
   unittest         Run Django unit tests for the app.
+  djlint           Run djlint to perform django template linting.
+  djhtml           Run djhtml to perform django template formatting.
 ```
 
 ## Project Overview
@@ -155,6 +159,8 @@ The `poetry shell` command is used to create and enable a virtual environment ma
 
 For more details about Poetry and its commands please check out its [online documentation](https://python-poetry.org/docs/).
 
+In Poetry version 2, the shell command was moved out of the main Poetry project and into a plugin. For more details about the Poetry shell plugin, refer to its [GitHub repository](https://github.com/python-poetry/poetry-plugin-shell).
+
 ## Full Docker Development Environment
 
 This project is set up with a number of **Invoke** tasks consumed as simple CLI commands to get developing fast. You'll use a few `invoke` commands to get your environment up and running.
@@ -179,7 +185,7 @@ The first thing you need to do is build the necessary Docker image for Nautobot 
 #14 exporting layers
 #14 exporting layers 1.2s done
 #14 writing image sha256:2d524bc1665327faa0d34001b0a9d2ccf450612bf8feeb969312e96a2d3e3503 done
-#14 naming to docker.io/nautobot-design-builder/nautobot:1.6.0-py3.11 done
+#14 naming to docker.io/nautobot-design-builder/nautobot:2.4.2-py3.11 done
 ```
 
 ### Invoke - Starting the Development Environment
@@ -210,9 +216,9 @@ This will start all of the Docker containers used for hosting Nautobot. You shou
 ```bash
 ➜ docker ps
 ****CONTAINER ID   IMAGE                            COMMAND                  CREATED          STATUS          PORTS                                       NAMES
-ee90fbfabd77   nautobot-design-builder/nautobot:1.6.0-py3.11  "nautobot-server rqw…"   16 seconds ago   Up 13 seconds                                               nautobot_design_builder_worker_1
-b8adb781d013   nautobot-design-builder/nautobot:1.6.0-py3.11  "/docker-entrypoint.…"   20 seconds ago   Up 15 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   nautobot_design_builder_nautobot_1
-d64ebd60675d   nautobot-design-builder/nautobot:1.6.0-py3.11  "mkdocs serve -v -a …"   25 seconds ago   Up 18 seconds   0.0.0.0:8001->8080/tcp, :::8001->8080/tcp   nautobot_design_builder_docs_1
+ee90fbfabd77   nautobot-design-builder/nautobot:2.4.2-py3.11  "nautobot-server rqw…"   16 seconds ago   Up 13 seconds                                               nautobot_design_builder_worker_1
+b8adb781d013   nautobot-design-builder/nautobot:2.4.2-py3.11  "/docker-entrypoint.…"   20 seconds ago   Up 15 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   nautobot_design_builder_nautobot_1
+d64ebd60675d   nautobot-design-builder/nautobot:2.4.2-py3.11  "mkdocs serve -v -a …"   25 seconds ago   Up 18 seconds   0.0.0.0:8001->8080/tcp, :::8001->8080/tcp   nautobot_design_builder_docs_1
 e72d63129b36   postgres:13-alpine               "docker-entrypoint.s…"   25 seconds ago   Up 19 seconds   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   nautobot_design_builder_postgres_1
 96c6ff66997c   redis:6-alpine                   "docker-entrypoint.s…"   25 seconds ago   Up 21 seconds   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp   nautobot_design_builder_redis_1
 ```
@@ -345,7 +351,6 @@ Once completed, the new/updated environment variables should now be live.
 If you want your plugin to leverage another available Nautobot plugin or another Python package, you can easily add them into your Docker environment.
 
 ```bash
-➜ poetry shell
 ➜ poetry add <package_name>
 ```
 
@@ -362,7 +367,6 @@ Once the dependencies are resolved, stop the existing containers, rebuild the Do
 Let's say for example you want the new plugin you're creating to integrate into Slack. To do this, you will want to integrate into the existing Nautobot ChatOps Plugin.
 
 ```bash
-➜ poetry shell
 ➜ poetry add nautobot-chatops
 ```
 
@@ -410,7 +414,7 @@ namespace.configure(
     {
         "nautobot_design_builder": {
             ...
-            "nautobot_ver": "1.6.0",
+            "nautobot_ver": "2.4.2",
 	    ...
         }
     }
