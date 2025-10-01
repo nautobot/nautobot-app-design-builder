@@ -29,7 +29,8 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.9.2,<3.13"
 # Used for local development
-nautobot = ">=2.4.2,<3.0.0"
+nautobot = {git = "https://github.com/nautobot/nautobot.git", rev = "next"}
+# nautobot = "^3.0.0"  # TODO: Uncomment after v3.0.0 is released
 
 [tool.poetry.group.dev.dependencies]
 coverage = "*"
@@ -40,7 +41,7 @@ ipython = "*"
 pylint = "*"
 pylint-django = "*"
 pylint-nautobot = "*"
-ruff = "0.5.5"
+ruff = "~0.8.6"
 yamllint = "*"
 toml = "*"
 # Python implementation of markdownlint
@@ -56,18 +57,18 @@ djhtml = ">=3.0.8,<4.0.0"
 # Render custom markdown for version added/changed/remove notes
 markdown-version-annotations = "1.0.1"
 # Rendering docs to HTML
-mkdocs = "1.6.0"
+mkdocs = "1.6.1"
 # Material for MkDocs theme
-mkdocs-material = "9.5.32"
+mkdocs-material = "9.5.50"
 # Automatic documentation from sources, for MkDocs
-mkdocstrings = "0.25.2"
-mkdocstrings-python = "1.10.8"
+mkdocstrings = "0.27.0"
+mkdocstrings-python = "1.13.0"
 mkdocs-autorefs = "1.2.0"
 griffe = "1.1.1"
 
 # Local to this project
 snakeviz = "^2.2.0"
-nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "develop"}
+nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "next-3.0"} # TODO: Change back to develop once we have released 3.0
 bandit = "*"
 black = "*"
 flake8 = "*"
@@ -116,7 +117,7 @@ notes = """,
 
 [tool.pylint-nautobot]
 supported_nautobot_versions = [
-    "2"
+    "3"
 ]
 
 [tool.ruff]

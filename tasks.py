@@ -52,7 +52,7 @@ namespace = Collection("nautobot_design_builder")
 namespace.configure(
     {
         "nautobot_design_builder": {
-            "nautobot_ver": "2.4.2",
+            "nautobot_ver": "next",  # TODO: Change to 3.0.0 after v3.0.0 is released
             "project_name": "nautobot-design-builder",
             "python_ver": "3.11",
             "local": False,
