@@ -162,7 +162,7 @@ jobs:
           - python-version: "3.13"
             db-backend: "mysql"
             nautobot-version: "next"  # TODO: Change to stable after v3.0.0 is released
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-latest"
     env:
       INVOKE_NAUTOBOT_DESIGN_BUILDER_PYTHON_VER: "${{ matrix.python-version }}"
       INVOKE_NAUTOBOT_DESIGN_BUILDER_NAUTOBOT_VER: "${{ matrix.nautobot-version }}"
