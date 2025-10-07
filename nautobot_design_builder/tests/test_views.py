@@ -2,15 +2,13 @@
 
 import re
 
-from django.conf import global_settings
 from django.contrib.contenttypes.models import ContentType
-from django.template.defaultfilters import date
 from django.test import override_settings
 from django.test.testcases import assert_and_parse_html
 from django.utils.html import format_html
 from nautobot.apps.testing import ViewTestCases
-from nautobot.core.testing import utils
 from nautobot.core.templatetags import buttons, helpers
+from nautobot.core.testing import utils
 from nautobot.users import models as users_models
 
 from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
@@ -75,9 +73,7 @@ class TestCaseChangeRecord(
         instance = self._get_queryset().first()
 
         # Add model-level permission
-        obj_perm = users_models.ObjectPermission(
-            name="Test permission", actions=["view", "add", "change", "delete"]
-        )
+        obj_perm = users_models.ObjectPermission(name="Test permission", actions=["view", "add", "change", "delete"])
         obj_perm.save()
         obj_perm.users.add(self.user)
         obj_perm.object_types.add(ContentType.objects.get_for_model(self.model))
@@ -86,8 +82,8 @@ class TestCaseChangeRecord(
 
         # if hasattr(instance, "created") and hasattr(instance, "last_updated"):
         #     self.assertBodyContains(response, date(instance.created, global_settings.DATETIME_FORMAT), html=True)
-            # We don't assert the rendering of `last_updated` because it's relative time ("10 minutes ago") and
-            # therefore is subject to off-by-one timing failures.
+        # We don't assert the rendering of `last_updated` because it's relative time ("10 minutes ago") and
+        # therefore is subject to off-by-one timing failures.
 
         object_edit_url = buttons.edit_button(instance)["url"]
         object_delete_url = buttons.delete_button(instance)["url"]
