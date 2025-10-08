@@ -25,4 +25,4 @@ checks:
       - model: "nautobot.dcim.models.Device"
         query: {name: "device_1"}
         attribute: "primary_ip4.address.__str__"
-      - value: "192.168.56.1/24"
+      - value: ["192.168.56.1/24"]

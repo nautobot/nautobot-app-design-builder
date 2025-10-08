@@ -3,7 +3,7 @@ dev_addr: "127.0.0.1:8001"
 edit_uri: "edit/main/docs"
 site_dir: "nautobot_design_builder/static/nautobot_design_builder/docs"
 site_name: "Nautobot Design Builder Documentation"
-site_url: "https://docs.nautobot.com/projects/nautobot-design-builder/en/latest/"
+site_url: "https://docs.nautobot.com/projects/design-builder/en/latest/"
 repo_url: "https://github.com/nautobot/nautobot-app-design-builder"
 copyright: "Copyright &copy; The Authors"
 theme:
@@ -46,12 +46,6 @@ theme:
 extra_css:
   - "assets/extra.css"
 
-# needed for RTD version flyout menu
-# jquery is not (yet) injected by RTD automatically and it might be dropped
-# as a dependency in the future
-extra_javascript:
-  - "https://code.jquery.com/jquery-3.6.0.min.js"
-
 extra:
   generator: false
   ntc_sponsor: true
@@ -80,6 +74,7 @@ markdown_extensions:
       permalink: true
   - "attr_list"
   - "md_in_html"
+  - "pymdownx.details"
   - "pymdownx.highlight":
       anchor_linenums: true
   - "pymdownx.inlinehilite"
@@ -105,6 +100,12 @@ plugins:
 watch:
   - "README.md"
 
+validation:
+  omitted_files: "warn"
+  absolute_links: "warn"
+  unrecognized_links: "warn"
+  anchors: "warn"
+
 nav:
   - Overview: "index.md"
   - User Guide:
@@ -113,6 +114,8 @@ nav:
       - Design Quick Start: "user/design_quickstart.md"
       - Design Development: "user/design_development.md"
       - Design LifeCycle: "user/design_lifecycle.md"
+      - Design Testing: "user/design_testing.md"
+      - Design Job Testing: "user/design_job_testing.md"
       - Frequently Asked Questions: "user/faq.md"
       - Git-based Config Context: "user/git_config_context.md"
   - Administrator Guide:
@@ -129,6 +132,7 @@ nav:
           - v1.4: "admin/release_notes/version_1.4.md"
           - v2.0: "admin/release_notes/version_2.0.md"
           - v2.1: "admin/release_notes/version_2.1.md"
+          - v2.2: "admin/release_notes/version_2.2.md"
   - Developer Guide:
       - Extending the App: "dev/extending.md"
       - Contributing to the App: "dev/contributing.md"
@@ -144,5 +148,7 @@ nav:
           - Jinja Rendering: "dev/code_reference/jinja2.md"
           - Jinja Filters: "dev/code_reference/jinja_filters.md"
           - Template Extensions: "dev/code_reference/ext.md"
+          - Testing: "dev/code_reference/testing.md"
           - Util: "dev/code_reference/util.md"
+          - Abbreviations: "assets/abbreviations.md"
   - Nautobot Docs Home ↗︎: "https://docs.nautobot.com"

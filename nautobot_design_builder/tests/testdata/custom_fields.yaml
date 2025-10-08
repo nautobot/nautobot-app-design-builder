@@ -33,22 +33,22 @@ checks:
       - model: "nautobot.ipam.models.VLAN"
         query: {vid: 100}
         attribute: "cf.test_boolean"
-      - value: true
+      - value: [true]
 
   - equal:
       - model: "nautobot.ipam.models.VLAN"
         query: {vid: 101}
         attribute: "cf.test_boolean"
-      - value: false
+      - value: [false]
 
   - equal:
       - model: "nautobot.ipam.models.VLAN"
         query: {vid: 102}
         attribute: "cf.test_boolean"
-      - value: false
+      - value: [false]
 
   - equal:
       - model: "nautobot.ipam.models.VLAN"
         query: {vid: 103}
         attribute: "cf.test_boolean"
-      - value: true
+      - value: [true]

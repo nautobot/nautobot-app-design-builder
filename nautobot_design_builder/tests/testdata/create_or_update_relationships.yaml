@@ -12,7 +12,7 @@ checks:
       - model: "nautobot.dcim.models.DeviceType"
         query: {model: "model name"}
         attribute: "manufacturer.name"
-      - value: "manufacturer1"
+      - value: ["manufacturer1"]
   - equal:
       - model: "nautobot.dcim.models.DeviceType"
         query: {model: "model name"}

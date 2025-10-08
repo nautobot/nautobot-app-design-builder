@@ -594,7 +594,9 @@ class ChangeRecord(BaseModel):
 
     objects = ChangeRecordQuerySet.as_manager()
 
-    created = models.DateField(auto_now_add=True, null=True)
+    created = models.DateField(
+        auto_now_add=True, null=True
+    )  # TODO Change to DateTimeField to match Nautobot time conventions.
 
     last_updated = models.DateTimeField(auto_now=True, null=True)
 

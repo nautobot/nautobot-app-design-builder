@@ -52,12 +52,15 @@ designs:
         "access_type": "Generic"
         "secret_type": "password"
 checks:
-  - count:
-      model: "nautobot.extras.models.Secret"
-      count: 2
-  - count:
-      model: "nautobot.extras.models.SecretsGroup"
-      count: 1
-  - count:
-      model: "nautobot.extras.models.SecretsGroupAssociation"
-      count: 2
+  - equal:
+      - model: "nautobot.extras.models.Secret"
+        count: true
+      - value: 2
+  - equal:
+      - model: "nautobot.extras.models.SecretsGroup"
+        count: true
+      - value: 1
+  - equal:
+      - model: "nautobot.extras.models.SecretsGroupAssociation"
+        count: true
+      - value: 2

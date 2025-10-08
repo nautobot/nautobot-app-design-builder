@@ -1,0 +1,2 @@
+Added a public testing framework by updating and moving DesignTestCase, BuilderChecks.
+Added to public testing framework by creating a small convenience method VerifyDesignTestCase.

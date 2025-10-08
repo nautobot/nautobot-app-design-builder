@@ -21,13 +21,13 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user.."
     base_url = "design-builder"
     required_settings = []
-    min_version = "3.0.0a1"  # TODO: Update to 3.0.0 when Nautobot v3.0.0 is released
-    max_version = "3.9999"
     default_settings = {
         "protected_models": [],
         "protected_superuser_bypass": True,
     }
     caching_config = {}
+    docs_view_name = "plugins:nautobot_design_builder:docs"
+    searchable_models = ["design"]
 
     def ready(self):
         """Callback after design builder is loaded."""
