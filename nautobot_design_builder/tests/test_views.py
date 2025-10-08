@@ -69,7 +69,7 @@ class TestCaseChangeRecord(
 
     # TODO: Remove this entire method when we change to using DateTimeField for `created` field on ChangeRecord model.
     @override_settings(EXEMPT_VIEW_PERMISSIONS=[])
-    def test_has_timestamps_and_buttons(self):
+    def test_has_timestamps_and_buttons(self):  # pylint: disable=too-many-locals
         instance = self._get_queryset().first()
 
         # Add model-level permission
