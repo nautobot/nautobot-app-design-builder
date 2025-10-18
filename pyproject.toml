@@ -52,6 +52,10 @@ jsonschema = "*"
 djlint = ">=1.36.4,<2.0.0"
 djhtml = ">=3.0.8,<4.0.0"
 
+# Local to this project
+snakeviz = "^2.2.0"
+nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "develop"}
+
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
 markdown-version-annotations = "1.0.1"
@@ -64,14 +68,6 @@ mkdocstrings = "0.25.2"
 mkdocstrings-python = "1.10.8"
 mkdocs-autorefs = "1.2.0"
 griffe = "1.1.1"
-
-# Local to this project
-snakeviz = "^2.2.0"
-nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "develop"}
-bandit = "*"
-black = "*"
-flake8 = "*"
-pydocstyle = "*"
 
 [tool.poetry.extras]
 all = [
