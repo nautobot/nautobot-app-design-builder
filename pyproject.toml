@@ -27,9 +27,9 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9.2,<3.13"
+python = ">=3.10,<3.13"
 # Used for local development
-nautobot = ">=2.4.2,<3.0.0"
+nautobot = ">=2.4.20,<3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 coverage = "*"
@@ -39,7 +39,7 @@ invoke = "*"
 ipython = "*"
 pylint = "*"
 pylint-django = "*"
-pylint-nautobot = "*"
+pylint-nautobot = ">=0.3.1"
 ruff = "0.5.5"
 yamllint = "*"
 toml = "*"
