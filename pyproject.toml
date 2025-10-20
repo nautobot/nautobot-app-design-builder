@@ -40,7 +40,7 @@ invoke = "*"
 ipython = "*"
 pylint = "*"
 pylint-django = "*"
-pylint-nautobot = "*"
+pylint-nautobot = ">=0.3.1"
 ruff = "~0.8.6"
 yamllint = "*"
 toml = "*"
@@ -52,6 +52,10 @@ to-json-schema = "*"
 jsonschema = "*"
 djlint = ">=1.36.4,<2.0.0"
 djhtml = ">=3.0.8,<4.0.0"
+
+# Local to this project
+snakeviz = "^2.2.0"
+nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "next-3.0"}
 
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
@@ -65,14 +69,6 @@ mkdocstrings = "0.27.0"
 mkdocstrings-python = "1.13.0"
 mkdocs-autorefs = "1.2.0"
 griffe = "1.1.1"
-
-# Local to this project
-snakeviz = "^2.2.0"
-nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "next-3.0"} # TODO: Change back to develop once we have released 3.0
-bandit = "*"
-black = "*"
-flake8 = "*"
-pydocstyle = "*"
 
 [tool.poetry.extras]
 all = [
