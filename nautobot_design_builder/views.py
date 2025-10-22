@@ -3,9 +3,9 @@
 from django.apps import apps as global_apps
 from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import render
-from django_tables2 import RequestConfig
 from nautobot.apps.models import count_related
-from nautobot.apps.views import EnhancedPaginator, get_paginate_count
+from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, ObjectsTablePanel, ObjectTextPanel, SectionChoices
+from nautobot.apps.views import get_obj_from_context
 from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import (
     PERMISSIONS_ACTION_MAP,
@@ -44,6 +44,17 @@ PERMISSIONS_ACTION_MAP.update(
 )
 
 
+class DesignDeploymentTablePanel(ObjectsTablePanel):
+    """Custom panel to show the Design associated with a Deployment."""
+
+    def should_render(self, context):
+        """Only render if the Design instance has design_mode of deployment."""
+        if not super().should_render(context):
+            return False
+        instance = get_obj_from_context(context)
+        return instance.design_mode == choices.DesignModeChoices.DEPLOYMENT
+
+
 class DesignUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
     ObjectListViewMixin,
@@ -61,23 +72,45 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
     action_buttons = ()
     lookup_field = "pk"
 
-    def get_extra_context(self, request, instance=None):
-        """Extend UI."""
-        context = super().get_extra_context(request, instance)
-        if self.action == "retrieve":
-            context["is_deployment"] = instance.design_mode == choices.DesignModeChoices.DEPLOYMENT
-            deployments = models.Deployment.objects.restrict(request.user, "view").filter(design=instance)
-
-            deployments_table = tables.DeploymentTable(deployments)
-            deployments_table.columns.hide("design")
-
-            paginate = {
-                "paginator_class": EnhancedPaginator,
-                "per_page": get_paginate_count(request),
-            }
-            RequestConfig(request, paginate).configure(deployments_table)
-            context["deployments_table"] = deployments_table
-        return context
+    object_detail_content = ObjectDetailContent(
+        panels=(
+            ObjectFieldsPanel(
+                section=SectionChoices.LEFT_HALF,
+                weight=100,
+                fields=[
+                    "job",
+                    "job__last_updated",
+                    "version",
+                    "description",
+                    "design_mode",
+                ],
+                value_transforms={
+                    # Transform the design_mode field to its Human readable form, can be None if the Job has not loaded.
+                    "design_mode": [lambda value: choices.DesignModeChoices.as_dict()[value] if value else None],
+                },
+                key_transforms={
+                    "job__last_updated": "Job Last Synced",
+                },
+            ),
+            ObjectTextPanel(
+                section=SectionChoices.RIGHT_HALF,
+                weight=200,
+                label="Documentation",
+                object_field="docs",
+                render_as=ObjectTextPanel.RenderOptions.MARKDOWN,
+            ),
+            DesignDeploymentTablePanel(
+                weight=300,
+                section=SectionChoices.FULL_WIDTH,
+                table_class=tables.DeploymentTable,
+                table_filter="design",
+                related_field_name="design",
+                enable_bulk_actions=False,
+                exclude_columns=["design"],
+                include_paginator=True,
+            ),
+        ),
+    )
 
     @action(detail=True, methods=["get"])
     def docs(self, request, pk, *args, **kwargs):
@@ -110,6 +143,49 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
     verbose_name = "Design Deployment"
     verbose_name_plural = "Design Deployments"
 
+    object_detail_content = ObjectDetailContent(
+        panels=(
+            ObjectFieldsPanel(
+                section=SectionChoices.LEFT_HALF,
+                weight=100,
+                fields=[
+                    "name",
+                    "version",
+                    "created_by",
+                    "first_implemented",
+                    "last_updated_by",
+                    "last_implemented",
+                    "design",
+                    "status",
+                ],
+                key_transforms={
+                    "created_by": "Deployed by",
+                    "first_implemented": "Deployment Time",
+                    "last_implemented": "Last Update Time",
+                },
+            ),
+            ObjectsTablePanel(
+                section=SectionChoices.RIGHT_HALF,
+                weight=200,
+                table_title="ChangeSets",
+                context_table_key="change_sets_table",
+                related_field_name="deployment",
+                enable_bulk_actions=False,
+                exclude_columns=["deployment"],
+                include_paginator=True,
+            ),
+            ObjectsTablePanel(
+                weight=300,
+                section=SectionChoices.FULL_WIDTH,
+                table_title="Design Objects",
+                context_table_key="design_objects_table",
+                related_field_name="deployment",
+                enable_bulk_actions=False,
+                include_paginator=True,
+            ),
+        ),
+    )
+
     def get_extra_context(self, request, instance=None):
         """Extend UI."""
         context = super().get_extra_context(request, instance)
@@ -120,15 +196,7 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
                 .order_by("last_updated")
                 .annotate(record_count=count_related(models.ChangeRecord, "change_set"))
             )
-
             change_sets_table = tables.ChangeSetTable(change_sets)
-            change_sets_table.columns.hide("deployment")
-
-            paginate = {
-                "paginator_class": EnhancedPaginator,
-                "per_page": get_paginate_count(request),
-            }
-            RequestConfig(request, paginate).configure(change_sets_table)
             context["change_sets_table"] = change_sets_table
 
             design_objects = models.ChangeRecord.objects.restrict(request.user, "view").design_objects(instance)
@@ -153,6 +221,31 @@ class ChangeSetUIViewSet(  # pylint:disable=abstract-method
     action_buttons = ()
     lookup_field = "pk"
 
+    object_detail_content = ObjectDetailContent(
+        panels=(
+            ObjectFieldsPanel(
+                section=SectionChoices.LEFT_HALF,
+                weight=100,
+                label="Journal",
+                fields=[
+                    "job_result",
+                    "deployment",
+                    "active",
+                ],
+            ),
+            ObjectsTablePanel(
+                weight=200,
+                section=SectionChoices.FULL_WIDTH,
+                label="Change Records",
+                context_table_key="records_table",
+                related_field_name="change_set",
+                enable_bulk_actions=False,
+                include_paginator=True,
+                exclude_columns=["change_set"],
+            ),
+        ),
+    )
+
     def get_extra_context(self, request, instance=None):
         """Extend UI."""
         context = super().get_extra_context(request, instance)
@@ -164,13 +257,6 @@ class ChangeSetUIViewSet(  # pylint:disable=abstract-method
             )
 
             records_table = tables.ChangeRecordTable(records)
-            records_table.columns.hide("change_set")
-
-            paginate = {
-                "paginator_class": EnhancedPaginator,
-                "per_page": get_paginate_count(request),
-            }
-            RequestConfig(request, paginate).configure(records_table)
             context["records_table"] = records_table
         return context
 
@@ -189,6 +275,28 @@ class ChangeRecordUIViewSet(  # pylint:disable=abstract-method
     table_class = tables.ChangeRecordTable
     action_buttons = ()
     lookup_field = "pk"
+
+    object_detail_content = ObjectDetailContent(
+        panels=(
+            ObjectFieldsPanel(
+                section=SectionChoices.LEFT_HALF,
+                weight=100,
+                fields=[
+                    "design_object",
+                    "change_set",
+                    "full_control",
+                    "last_updated",
+                ],
+            ),
+            ObjectTextPanel(
+                section=SectionChoices.RIGHT_HALF,
+                weight=200,
+                label="Changes",
+                object_field="changes",
+                render_as=ObjectTextPanel.RenderOptions.JSON,
+            ),
+        ),
+    )
 
 
 class DesignProtectionObjectView(ObjectView):
