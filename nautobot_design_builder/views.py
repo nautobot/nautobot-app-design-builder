@@ -3,10 +3,9 @@
 from django.apps import apps as global_apps
 from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import render
-from django_tables2 import RequestConfig
 from nautobot.apps.models import count_related
 from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, ObjectsTablePanel, ObjectTextPanel, SectionChoices
-from nautobot.apps.views import EnhancedPaginator, get_paginate_count, get_obj_from_context
+from nautobot.apps.views import get_obj_from_context
 from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import (
     PERMISSIONS_ACTION_MAP,
@@ -44,6 +43,7 @@ PERMISSIONS_ACTION_MAP.update(
     }
 )
 
+
 class DesignDeploymentTablePanel(ObjectsTablePanel):
     """Custom panel to show the Design associated with a Deployment."""
 
@@ -53,6 +53,7 @@ class DesignDeploymentTablePanel(ObjectsTablePanel):
             return False
         instance = get_obj_from_context(context)
         return instance.design_mode == choices.DesignModeChoices.DEPLOYMENT
+
 
 class DesignUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
@@ -89,7 +90,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
                 },
                 key_transforms={
                     "job__last_updated": "Job Last Synced",
-                }
+                },
             ),
             ObjectTextPanel(
                 section=SectionChoices.RIGHT_HALF,
@@ -296,6 +297,7 @@ class ChangeRecordUIViewSet(  # pylint:disable=abstract-method
             ),
         ),
     )
+
 
 class DesignProtectionObjectView(ObjectView):
     """View for the Audit Results tab dynamically generated on specific object detail views."""
