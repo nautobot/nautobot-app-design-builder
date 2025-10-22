@@ -159,13 +159,14 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
                 ],
                 key_transforms={
                     "created_by": "Deployed by",
+                    "first_implemented": "Deployment Time",
                     "last_implemented": "Last Update Time",
                 },
             ),
             ObjectsTablePanel(
                 section=SectionChoices.RIGHT_HALF,
                 weight=200,
-                label="ChangeSets",
+                table_title="ChangeSets",
                 context_table_key="change_sets_table",
                 related_field_name="deployment",
                 enable_bulk_actions=False,
@@ -175,7 +176,7 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
             ObjectsTablePanel(
                 weight=300,
                 section=SectionChoices.FULL_WIDTH,
-                label="Design Objects",
+                table_title="Design Objects",
                 context_table_key="design_objects_table",
                 related_field_name="deployment",
                 enable_bulk_actions=False,
