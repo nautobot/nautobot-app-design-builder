@@ -19,7 +19,6 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     base_url = "design-builder"
     required_settings = []
     default_settings = {}
-    caching_config = {}
     docs_view_name = "plugins:nautobot_design_builder:docs"
     searchable_models = ["design"]
 
