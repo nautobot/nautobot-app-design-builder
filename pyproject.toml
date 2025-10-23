@@ -37,11 +37,7 @@ django-debug-toolbar = "<6.0.0"
 invoke = "*"
 ipython = "*"
 pylint = "*"
-<<<<<<< HEAD
-pylint-django = "*"
-=======
 pylint-django = ">=2.5.4"
->>>>>>> b815876 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 pylint-nautobot = ">=0.3.1"
 ruff = "0.5.5"
 yamllint = "*"

@@ -1,17 +1,5 @@
 ---
 nautobot_design_builder:
-<<<<<<< HEAD
-  project_name: "nautobot-design-builder"
-  python_ver: "3.11"
-  nautobot_ver: "2.4.2"
-  local: false
-  compose_dir: "development"
-  compose_files:
-    - "docker-compose.base.yml"
-    - "docker-compose.redis.yml"
-    - "docker-compose.postgres.yml"
-    - "docker-compose.dev.yml"
-=======
   nautobot_ver: "2.4.20"
   python_ver: "3.12"
   # local: false
@@ -25,4 +13,3 @@ nautobot_design_builder:
 #     - "docker-compose.redis.yml"
 #     - "docker-compose.mysql.yml"
 #     - "docker-compose.dev.yml"
->>>>>>> b815876 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)

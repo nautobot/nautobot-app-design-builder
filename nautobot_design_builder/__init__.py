@@ -21,15 +21,10 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
     description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user.."
     base_url = "design-builder"
     required_settings = []
-<<<<<<< HEAD
     default_settings = {
         "protected_models": [],
         "protected_superuser_bypass": True,
     }
-    caching_config = {}
-=======
-    default_settings = {}
->>>>>>> b815876 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     docs_view_name = "plugins:nautobot_design_builder:docs"
     searchable_models = ["design"]
 
