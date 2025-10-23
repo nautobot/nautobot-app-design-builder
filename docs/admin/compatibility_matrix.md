@@ -1,6 +1,7 @@
 # Compatibility Matrix
 
 | Nautobot Design Builder Version | Nautobot First Support Version | Nautobot Last Support Version |
+<<<<<<< HEAD
 |---------------------------------| ------------------------------ | ----------------------------- |
 | 0.4.4                           | 1.6.0                          | 2.99.99                       |
 | 1.0.0                           | 1.6.0                          | 2.99.99                       |
@@ -12,3 +13,7 @@
 | 2.1.X                           | 2.0.3                          | 2.99.99                       |
 | 2.2.X                           | 2.0.3                          | 2.99.99                       |
 | 2.3.X                           | 2.4.2                          | 2.99.99                       |
+=======
+| ------------- | -------------------- | ------------- |
+| 1.0.X         | 2.4.20                | 2.99.99        |
+>>>>>>> b815876 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)

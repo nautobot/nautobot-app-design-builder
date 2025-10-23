@@ -1,5 +1,6 @@
 """UI Views for design builder."""
 
+<<<<<<< HEAD
 from django.apps import apps as global_apps
 from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import render
@@ -16,6 +17,11 @@ from nautobot.core.views.mixins import (
     ObjectNotesViewMixin,
 )
 from rest_framework.decorators import action
+=======
+from nautobot.apps.views import NautobotUIViewSet
+from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, ObjectsTablePanel, SectionChoices
+from nautobot.core.templatetags import helpers
+>>>>>>> b815876 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
 
 from nautobot_design_builder import choices, models, tables
 from nautobot_design_builder.api.serializers import (
@@ -92,6 +98,7 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
                     "job__last_updated": "Job Last Synced",
                 },
             ),
+<<<<<<< HEAD
             ObjectTextPanel(
                 section=SectionChoices.RIGHT_HALF,
                 weight=200,
@@ -110,6 +117,18 @@ class DesignUIViewSet(  # pylint:disable=abstract-method
                 include_paginator=True,
             ),
         ),
+=======
+            # If there is a ForeignKey or M2M with this model we can use ObjectsTablePanel
+            # to display them in a table format.
+            # ObjectsTablePanel(
+                # weight=200,
+                # section=SectionChoices.RIGHT_HALF,
+                # table_class=tables.DesignTable,
+                # You will want to filter the table using the related_name
+                # filter="designs",
+            # ),
+        ],
+>>>>>>> b815876 (Cookie updated by NetworkToCode Cookie Drift Manager Tool)
     )
 
     @action(detail=True, methods=["get"])
