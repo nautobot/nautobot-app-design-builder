@@ -25,7 +25,6 @@ class NautobotDesignBuilderConfig(NautobotAppConfig):
         "protected_models": [],
         "protected_superuser_bypass": True,
     }
-    caching_config = {}
     docs_view_name = "plugins:nautobot_design_builder:docs"
     searchable_models = ["design"]
 
