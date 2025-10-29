@@ -323,6 +323,7 @@ class ChangeSet(PrimaryModel):
         on_delete=models.CASCADE,
         editable=False,
         related_name="change_sets",
+        verbose_name="Design Deployment",
     )
     job_result = models.OneToOneField(to=JobResult, on_delete=models.PROTECT, editable=False)
     active = models.BooleanField(editable=False, default=True)
