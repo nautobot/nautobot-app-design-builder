@@ -11,7 +11,7 @@ from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, 
 DESIGN_TABLE = """
 
 <li>
-    <a role="button" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="dropdown-item openBtn" data-bs-toggle="modal" data-bs-target="#db-docs-modal">
+    <a role="button" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#db-docs-modal">
         <span class="mdi mdi-file-document-outline"></span>
         Design Documentation
     </a>
