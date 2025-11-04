@@ -1,6 +1,8 @@
 """Navigation."""
 
 from nautobot.apps.ui import (
+    NavigationIconChoices,
+    NavigationWeightChoices,
     NavMenuGroup,
     NavMenuItem,
     NavMenuTab,
@@ -9,7 +11,8 @@ from nautobot.apps.ui import (
 menu_items = (
     NavMenuTab(
         name="Designs",
-        weight=1000,
+        weight=NavigationWeightChoices.DESIGN,
+        icon=NavigationIconChoices.DESIGN,
         groups=(
             NavMenuGroup(
                 name="Design Builder",
@@ -18,12 +21,14 @@ menu_items = (
                     NavMenuItem(
                         link="plugins:nautobot_design_builder:design_list",
                         name="Designs",
+                        weight=100,
                         permissions=["nautobot_design_builder.view_design"],
                         buttons=(),
                     ),
                     NavMenuItem(
                         link="plugins:nautobot_design_builder:deployment_list",
                         name="Design Deployments",
+                        weight=200,
                         permissions=["nautobot_design_builder.view_deployment"],
                         buttons=(),
                     ),
