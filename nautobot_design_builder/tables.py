@@ -10,15 +10,24 @@ from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, 
 
 DESIGN_TABLE = """
 
-<a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="btn btn-sm btn-secondary openBtn" data-bs-toggle="modal" data-bs-target="#db-docs-modal" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
-    <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
-</a>
-<a href="{% url 'extras:job_run_by_class_path' class_path=record.job.class_path %}" class="btn btn-sm btn-primary" title="Trigger Design Creation">
-    <i class="mdi mdi-play" title="Deploy Design"></i>
-</a>
-<a href="{% url 'extras:job_edit' pk=record.job.pk %}" class="btn btn-sm btn-warning" title="Edit Design Job">
-    <i class="mdi mdi-pencil"></i>
-</a>
+<li>
+    <a role="button" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="dropdown-item openBtn" data-bs-toggle="modal" data-bs-target="#db-docs-modal">
+        <span class="mdi mdi-file-document-outline"></span>
+        Design Documentation
+    </a>
+</li>
+<li>
+    <a href="{% url 'extras:job_run_by_class_path' class_path=record.job.class_path %}" class="dropdown-item text-primary">
+        <span class="mdi mdi-play"></span>
+        Deploy Design
+    </a>
+</li>
+<li>
+    <a href="{% url 'extras:job_edit' pk=record.job.pk %}" class="dropdown-item text-warning">
+        <span class="mdi mdi-pencil"></span>
+        Edit Design Job
+    </a>
+</li>
 """
 
 
