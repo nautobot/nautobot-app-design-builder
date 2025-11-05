@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "2.3.0a0"
+version = "3.0.0a1"
 description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user."
 authors = ["Network to Code, LLC <opensource@networktocode.com>"]
 license = "Apache-2.0"
@@ -29,7 +29,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.14"
 # Used for local development
-nautobot = {git = "https://github.com/nautobot/nautobot.git", rev = "next"}
+nautobot = ">=3.0.0a2,<3.0.0rc99"
 # nautobot = "^3.0.0"  # TODO: Uncomment after v3.0.0 is released
 
 [tool.poetry.group.dev.dependencies]
