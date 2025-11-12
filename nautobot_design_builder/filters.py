@@ -17,8 +17,6 @@ class DesignFilterSet(NautobotFilterSet):
 
     q = SearchFilter(filter_predicates={})
 
-    name = CharFilter(field_name="job_name")
-
     job = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Job.objects.all(),
         label="Job (ID or slug)",
@@ -28,7 +26,7 @@ class DesignFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = Design
-        fields = ["id", "name", "job"]
+        fields = ["id", "job"]
 
 
 class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):

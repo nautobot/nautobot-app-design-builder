@@ -16,7 +16,6 @@ class DesignFilterForm(NautobotFilterForm):
 
     job = DynamicModelChoiceField(queryset=Job.objects.all(), required=False)
     tag = TagFilterField(model)
-    version = CharField(max_length=20, required=False)
 
 
 class DeploymentFilterForm(NautobotFilterForm):
