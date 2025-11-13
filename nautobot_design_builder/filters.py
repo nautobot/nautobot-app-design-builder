@@ -1,6 +1,5 @@
 """Filters for the design builder app."""
 
-from django_filters import CharFilter
 from nautobot.apps.filters import (
     NaturalKeyOrPKMultipleChoiceFilter,
     NautobotFilterSet,
@@ -15,9 +14,11 @@ from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, 
 class DesignFilterSet(NautobotFilterSet):
     """Filter set for the design model."""
 
-    q = SearchFilter(filter_predicates={
-        "job__name": "icontains",
-    })
+    q = SearchFilter(
+        filter_predicates={
+            "job__name": "icontains",
+        }
+    )
 
     job = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Job.objects.all(),
@@ -34,11 +35,13 @@ class DesignFilterSet(NautobotFilterSet):
 class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
     """Filter set for the Deployment model."""
 
-    q = SearchFilter(filter_predicates={
-        "design__job__name": "icontains",
-        "name": "icontains",
-        "version": "icontains",
-    })
+    q = SearchFilter(
+        filter_predicates={
+            "design__job__name": "icontains",
+            "name": "icontains",
+            "version": "icontains",
+        }
+    )
 
     design = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Design.objects.all(),
