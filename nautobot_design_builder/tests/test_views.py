@@ -58,8 +58,6 @@ class TestCaseChangeSet(
 
 class TestCaseChangeRecord(
     ViewTestCases.GetObjectViewTestCase,
-    ViewTestCases.GetObjectChangelogViewTestCase,
-    ViewTestCases.GetObjectNotesViewTestCase,
 ):
     model = ChangeRecord
 

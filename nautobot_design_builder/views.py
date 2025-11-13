@@ -180,6 +180,7 @@ class DeploymentUIViewSet(  # pylint:disable=abstract-method
                 table_title="Design Objects",
                 context_table_key="design_objects_table",
                 related_field_name="deployment",
+                enable_related_link=False,
                 enable_bulk_actions=False,
                 include_paginator=True,
             ),
@@ -263,8 +264,6 @@ class ChangeSetUIViewSet(  # pylint:disable=abstract-method
 
 class ChangeRecordUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
-    ObjectChangeLogViewMixin,
-    ObjectNotesViewMixin,
 ):
     """UI views for the ChangeRecord model."""
 

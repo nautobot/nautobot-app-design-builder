@@ -15,7 +15,9 @@ from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, 
 class DesignFilterSet(NautobotFilterSet):
     """Filter set for the design model."""
 
-    q = SearchFilter(filter_predicates={})
+    q = SearchFilter(filter_predicates={
+        "job__name": "icontains",
+    })
 
     job = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Job.objects.all(),
@@ -26,16 +28,21 @@ class DesignFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = Design
-        fields = ["id", "job"]
+        fields = "__all__"
 
 
 class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
     """Filter set for the Deployment model."""
 
-    q = SearchFilter(filter_predicates={})
+    q = SearchFilter(filter_predicates={
+        "design__job__name": "icontains",
+        "name": "icontains",
+        "version": "icontains",
+    })
 
     design = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Design.objects.all(),
+        to_field_name="job__name",
         label="Design (ID or slug)",
     )
 
@@ -43,15 +50,7 @@ class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
         """Meta attributes for filter."""
 
         model = Deployment
-        fields = [
-            "id",
-            "design",
-            "name",
-            "first_implemented",
-            "last_implemented",
-            "status",
-            "version",
-        ]
+        fields = "__all__"
 
 
 class ChangeSetFilterSet(NautobotFilterSet):
@@ -73,7 +72,7 @@ class ChangeSetFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = ChangeSet
-        fields = ["id", "deployment", "job_result"]
+        fields = "__all__"
 
 
 class ChangeRecordFilterSet(NautobotFilterSet):
@@ -90,5 +89,4 @@ class ChangeRecordFilterSet(NautobotFilterSet):
         """Meta attributes for filter."""
 
         model = ChangeRecord
-        # TODO: Support design_object somehow?
-        fields = ["id", "change_set", "changes", "full_control"]
+        fields = "__all__"
