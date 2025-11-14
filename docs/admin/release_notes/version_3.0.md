@@ -1,13 +1,21 @@
 # v3.0 Release Notes
 
+This document describes all new features and changes in the release. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## Release Overview
 
-- Added support for Nautobot 3.0.
-- Added support for Python 3.13.
+This major release marks the compatibility of the Device Lifecycle Management App with Nautobot v3.0.0. Check out the full details of the major changes included in this new major release of Nautobot. Highlights:
 
-## [v3.0.0a1 (2025-10-05)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v3.0.0a1)
+Added support for Python 3.13.
+The minimum version of Nautobot required for this app is Nautobot 3.0. We will continue to support the previous major release for users of Nautobot LTM 2.4 only with bug and security fixes as per the LTM Policy. (Add note about previous major version compatible with LTM with link to website LTM policy.)
+
+<!-- towncrier release notes start -->
+
+## [v3.0.0 (2025-11-17)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v3.0.0)
 
 ### Added
 
 - Added support for Nautobot 3.0.
 - Added support for Python 3.13.
+
+## [v3.0.0a1 (2025-10-05)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v3.0.0a1)
