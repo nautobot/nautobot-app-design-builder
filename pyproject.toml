@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "2.3.0a0"
+version = "3.0.1a0"
 description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user."
 authors = ["Network to Code, LLC <opensource@networktocode.com>"]
 license = "Apache-2.0"
@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 include = [
     # Poetry by default will exclude files that are in .gitignore
@@ -26,9 +27,9 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.10,<3.14"
 # Used for local development
-nautobot = ">=2.4.20,<3.0.0"
+nautobot = ">=3.0.0,<4.0.0"
 
 [tool.poetry.group.dev.dependencies]
 coverage = "*"
@@ -39,13 +40,13 @@ ipython = "*"
 pylint = "*"
 pylint-django = ">=2.5.4"
 pylint-nautobot = ">=0.3.1"
-ruff = "0.5.5"
+ruff = "~0.8.6"
 yamllint = "*"
 toml = "*"
 # Python implementation of markdownlint
 pymarkdownlnt = "~0.9.30"
 Markdown = "*"
-towncrier = ">=23.6.0,<=24.8.0"
+towncrier = ">=24.8.0,<24.9.0"
 to-json-schema = "*"
 jsonschema = "*"
 djlint = ">=1.36.4,<2.0.0"
@@ -54,18 +55,18 @@ tomli = { version = "*", markers = "python_version < '3.11'" }  # tomli is inclu
 
 # Local to this project
 snakeviz = "^2.2.0"
-nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "develop"}
+nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "next-3.0"} # TODO: Change back to develop once we have released 3.0
 
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
 markdown-version-annotations = "1.0.1"
 # Rendering docs to HTML
-mkdocs = "1.6.0"
+mkdocs = "1.6.1"
 # Material for MkDocs theme
-mkdocs-material = "9.5.32"
+mkdocs-material = "9.5.50"
 # Automatic documentation from sources, for MkDocs
-mkdocstrings = "0.25.2"
-mkdocstrings-python = "1.10.8"
+mkdocstrings = "0.27.0"
+mkdocstrings-python = "1.13.0"
 mkdocs-autorefs = "1.2.0"
 griffe = "1.1.1"
 
@@ -112,7 +113,7 @@ notes = """,
 
 [tool.ruff]
 line-length = 120
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -178,7 +179,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.towncrier]
 package = "nautobot_design_builder"
 directory = "changes"
-filename = "docs/admin/release_notes/version_X.Y.md"
+filename = "docs/admin/release_notes/version_3.0.md"
 template = "development/towncrier_template.j2"
 start_string = "<!-- towncrier release notes start -->"
 issue_format = "[#{issue}](https://github.com/nautobot/nautobot-app-design-builder/issues/{issue})"

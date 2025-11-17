@@ -41,7 +41,7 @@
             <div id="db-docs-modal-body" class="modal-body">
             </div>
             <div class="modal-footer">
-                <button id="close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button id="close" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -52,18 +52,10 @@
 <script src="{% static 'js/tableconfig.js' %}"></script>
 <script>
     $( document ).ready(function(){
-        $('.openBtn').on('click',function(){
-            var ref = $(this).attr('value');
-            $('#detail_view').attr("href", ref);
-            $('#detail_view').attr("target", "_blank");
-            var dataURL = $(this).attr('data-href');
-            $('#db-docs-modal-body').load(dataURL,function(){
-                $('#db-docs-modal').modal({show:true});
-            });
+        $('#db-docs-modal').on('show.bs.modal',function(event){
+            var dataURL = event.relatedTarget.dataset.href;
+            $('#db-docs-modal-body').load(dataURL);
         });
-    });
-    $('.openBtn').hover(function(){
-        $(this).css('cursor', 'pointer');
     });
 </script>
 {% endblock %}
