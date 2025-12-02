@@ -263,8 +263,6 @@ class ChangeSetUIViewSet(  # pylint:disable=abstract-method
 
 class ChangeRecordUIViewSet(  # pylint:disable=abstract-method
     ObjectDetailViewMixin,
-    ObjectChangeLogViewMixin,
-    ObjectNotesViewMixin,
 ):
     """UI views for the ChangeRecord model."""
 
