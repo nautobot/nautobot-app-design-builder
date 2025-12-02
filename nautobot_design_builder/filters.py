@@ -46,7 +46,7 @@ class DeploymentFilterSet(NautobotFilterSet, StatusModelFilterSetMixin):
     design = NaturalKeyOrPKMultipleChoiceFilter(
         queryset=Design.objects.all(),
         to_field_name="job_name",
-        label="Design (ID or slug)",
+        label="Design (ID or name)",
     )
 
     class Meta:
