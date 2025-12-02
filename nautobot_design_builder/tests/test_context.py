@@ -49,8 +49,8 @@ class TestContext(unittest.TestCase):
         class PropertiesTest(Context):
             """Test class for context."""
 
-            def __init__(self, data):
-                super().__init__(data)
+            def __init__(self, data, **kwargs):
+                super().__init__(data, **kwargs)
                 self._my_prop = NestedPropertyClass()
 
             @property
@@ -77,6 +77,10 @@ class TestContext(unittest.TestCase):
     def test_nested_list(self):
         context = Context.load({"var1": {"var2": [True]}})
         self.assertTrue(context.var1["var2"][0])
+
+    def test_safe_load(self):
+        context = Context.load({"var1": "{{ True }}"}, safe_load=True)
+        self.assertEqual(context.var1, "{{ True }}")
 
 
 class TestUpdateDictNode(unittest.TestCase):
