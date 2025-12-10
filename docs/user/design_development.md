@@ -326,6 +326,8 @@ This syntax is used when you know an object already exists and indicates to desi
 
 This template will find the interface with the name `Ethernet1/1` and then set the `description` field.
 
+This tag should only be used for unique fields on a model. If multiple objects are returned when looking up the object to update, an error will be raised.
+
 #### Action Tag - Update or Create
 
 Syntax: `!create_or_update:<field>`
@@ -340,7 +342,9 @@ devices:
         description: "Uplink to provider"
 ```
 
-This template will cause design builder to attempt to first look up the device by the name `bb-rtr-1`, if not found it will be created. Subsequently, the device interface named `Ethernet1/1` will also be either created or updated. Note that when being created all required fields must be specified. The above example would fail during creation since both the device and the interface are missing required fields. Design Builder performs model validation prior to saving any model to the database.
+This template will cause design builder to attempt to first look up the device by the name `bb-rtr-1`, if not found it will be created. Subsequently, the device interface named `Ethernet1/1` will also be either created or updated. Note that if an object must be created, all of its required fields must be specified. The above example would fail during creation since both the device and the interface are missing required fields. Design Builder performs model validation prior to saving any model to the database.
+
+This tag should only be used for unique fields on a model. If multiple objects are returned when looking up the object to update or create, an error will be raised.
 
 #### Action Tag - Git Context
 
