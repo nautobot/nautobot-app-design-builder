@@ -138,6 +138,15 @@ class SimpleDesignDeploymentMode(DesignJob):
         design_mode = DesignModeChoices.DEPLOYMENT
 
 
+class RecreateDesign(DesignJob):
+    """TODO docstring."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design in deployment mode with recreate"
+        design_file = "templates/recreate_design.yaml.j2"
+        design_mode = DesignModeChoices.DEPLOYMENT
+
+
 class SimpleDesignDeploymentModeMultipleObjects(DesignJob):
     """Simple design job in deployment mode with multiple objects."""
 
@@ -238,6 +247,7 @@ register_jobs(
     DesignWithRefError,
     DesignWithValidationError,
     IntegrationDesign,
+    RecreateDesign,
     SimpleDesignDeploymentMode,
     SimpleDesignDeploymentModeMultipleObjects,
     SimpleDesignDeploymentModeUpdate,

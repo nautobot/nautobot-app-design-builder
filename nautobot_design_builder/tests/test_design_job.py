@@ -6,6 +6,8 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from nautobot.dcim.models import Device, DeviceType, Location, LocationType, Manufacturer
 from nautobot.extras.models import Role, Status
 from nautobot.ipam.models import VRF, IPAddress, Prefix
@@ -99,6 +101,22 @@ class TestDesignJob(DesignTestCase):
             change_set=ANY,
             import_mode=False,
         )
+
+    def test_import_design_recreate(self):
+        """TODO docstring."""
+        job = self.get_mocked_job(test_designs.RecreateDesign)
+
+        # The object to be imported by the design deployment already exists
+        manufacturer = Manufacturer.objects.create(name="Test Manufacturer", description="Old description")
+        self.data["import_mode"] = True
+        with CaptureQueriesContext(connection) as ctx:
+            job.run(dryrun=False, **self.data)
+            captured_db_queries = [
+                query["sql"] for query in ctx.captured_queries if "dcim_manufacturer" in query["sql"]
+            ]
+        self.assertEqual(len([q for q in captured_db_queries if "DELETE FROM" in q]), 1)
+        self.assertEqual(ChangeRecord.objects.first().design_object, manufacturer)
+        self.assertEqual(ChangeRecord.objects.first().design_object.description, "Test description")
 
     def test_import_design_create_or_update(self):
         """Confirm that existing data can be imported with 'create_or_update'."""

@@ -121,10 +121,11 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
     # Object Actions
     GET = "get"
     CREATE = "create"
+    RECREATE = "recreate"
     UPDATE = "update"
     CREATE_OR_UPDATE = "create_or_update"
 
-    ACTION_CHOICES = [GET, CREATE, UPDATE, CREATE_OR_UPDATE]
+    ACTION_CHOICES = [GET, CREATE, RECREATE, UPDATE, CREATE_OR_UPDATE]
     # Actions that work with import mode
     IMPORTABLE_ACTION_CHOICES = [UPDATE, CREATE_OR_UPDATE]
 
@@ -192,7 +193,7 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
         """Set the action for a given model instance.
 
         Args:
-            action (str): The indicated action (`GET`, `CREATE`, `UPDATE`, `CREATE_OR_UPDATE`)
+            action (str): The indicated action (`GET`, `CREATE`, `RECREATE`, `UPDATE`, `CREATE_OR_UPDATE`)
 
         This setter confirms that exactly one action type is specified for a model instance.
         The setter may be called multiple times with the same action type. However, if the
@@ -354,7 +355,7 @@ class ModelMetadata:  # pylint: disable=too-many-instance-attributes
             self.model_instance.design_instance = self.model_instance.model_class.objects.get(**query_filter)
             return
 
-        if self.action in [ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
+        if self.action in [ModelMetadata.RECREATE, ModelMetadata.UPDATE, ModelMetadata.CREATE_OR_UPDATE]:
             # perform nested lookups. First collect all the
             # query params for top-level relationships, then
             # perform the actual lookup
@@ -616,6 +617,11 @@ class ModelInstance:
         """
         if self.design_metadata.action == ModelMetadata.GET:
             return
+
+        if self.design_metadata.action == ModelMetadata.RECREATE and not self.design_metadata.created:
+            original_pk = self.design_instance.pk
+            self.design_instance.delete()
+            self.design_instance.pk = original_pk
 
         self._send(ModelMetadata.PRE_SAVE)
 
