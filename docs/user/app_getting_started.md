@@ -16,16 +16,26 @@ The easiest way to experience Design Builder is to either add the [demo-designs]
 
 The Design Builder demo designs ship with some sample designs to demonstrate capabilities. Once the application stack is ready, you should have several jobs listed under the "Jobs" -> "Jobs" menu item.
 
-![Jobs list](../images/screenshots/sample-design-jobs-list.png)
 
-Note that the jobs are disabled. Nautobot automatically marks jobs as disabled when they are first loaded. In order to run these jobs, click the edit button ![edit button](../images/screenshots/edit-button.png) and check the "enabled" checkbox:
+<!-- updated-images -->
+![Jobs list](../images/screenshots/s-sample-design-jobs-list-light.png#only-light){ .on-glb }
+![Jobs list](../images/screenshots/s-sample-design-jobs-list-dark.png#only-dark){ .on-glb }
 
-![enabled checkbox](../images/screenshots/job-enabled-checkbox.png)
+Note that the jobs are disabled. Nautobot automatically marks jobs as disabled when they are first loaded. In order to run these jobs, click the edit button ![edit button](../images/screenshots/s-edit-button-light.png#only-light){ .on-glb } ![edit button](../images/screenshots/s-edit-button-dark.png#only-dark){ .on-glb }  and check the "enabled" checkbox:
+
+<!-- updated-images -->
+![enabled checkbox](../images/screenshots/s-job-enabled-checkbox-light.png#only-light){ .on-glb }
+![enabled checkbox](../images/screenshots/s-job-enabled-checkbox-dark.png#only-dark){ .on-glb }
+
 
 Once you click `save`, the jobs should be runnable.
 
-To implement any design, click the run button [run button](../images/screenshots/run-button.png). For example, run the "Initial Data" job, which will add a manufacturer, a device type, a device role, several regions and several sites. Additionally, each site will have two devices. If you run the job you should see output in the job result that shows the various objects being created:
+To implement any design, click the run button ![run button](../images/screenshots/s-run-button-light.png#only-light)![run button](../images/screenshots/s-run-button-dark.png#only-dark). For example, run the "Initial Data" job, which will add a manufacturer, a device type, a device role, several regions and several sites. Additionally, each site will have two devices. If you run the job you should see output in the job result that shows the various objects being created:
 
-![design job result](../images/screenshots/design-job-result.png)
+
+<!-- updated-images -->
+![design job result](../images/screenshots/s-design-job-result-light.png#only-light){ .on-glb }
+![design job result](../images/screenshots/s-design-job-result-dark.png#only-dark){ .on-glb }
+
 
 Once the initial data job has been run, try enabling and running the "Backbone Site Design" job to create a new site with racks and routers.
