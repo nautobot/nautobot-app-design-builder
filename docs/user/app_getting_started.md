@@ -30,7 +30,7 @@ Note that the jobs are disabled. Nautobot automatically marks jobs as disabled w
 
 Once you click `save`, the jobs should be runnable.
 
-To implement any design, click the run button ![run button](../images/screenshots/s-run-button-light.png#only-light)![run button](../images/screenshots/s-run-button-dark.png#only-dark). For example, run the "Initial Data" job, which will add a manufacturer, a device type, a device role, several regions and several sites. Additionally, each site will have two devices. If you run the job you should see output in the job result that shows the various objects being created:
+To implement any design, click the run button ![run button](../images/screenshots/s-run-button-light.png#only-light){ .on-glb }![run button](../images/screenshots/s-run-button-dark.png#only-dark){ .on-glb }. For example, run the "Initial Data" job, which will add a manufacturer, a device type, a device role, several regions and several sites. Additionally, each site will have two devices. If you run the job you should see output in the job result that shows the various objects being created:
 
 
 <!-- updated-images -->
