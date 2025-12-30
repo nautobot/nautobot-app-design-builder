@@ -17,19 +17,13 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-<<<<<<< HEAD
-=======
 ]
 packages = [
     { include = "nautobot_design_builder" },
->>>>>>> 6566f42 (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
 ]
 include = [
     # Poetry by default will exclude files that are in .gitignore
     { path = "nautobot_design_builder/static/nautobot_design_builder/docs/**/*", format = ["sdist", "wheel"] }
-]
-packages = [
-    { include = "nautobot_design_builder" },
 ]
 
 [tool.poetry.dependencies]
