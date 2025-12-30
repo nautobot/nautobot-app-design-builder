@@ -6,11 +6,7 @@
 # -------------------------------------------------------------------------------------
 # !!! USE CAUTION WHEN MODIFYING LINES BELOW
 
-<<<<<<< HEAD
-# Accepts a desired Nautobot version as build argument, default to 1.6.0
-=======
 # Accepts a desired Nautobot version as build argument, default to 3.0.0
->>>>>>> 6566f42 (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
 ARG NAUTOBOT_VER="3.0.0"
 
 # Accepts a desired Python version as build argument, default to 3.12
