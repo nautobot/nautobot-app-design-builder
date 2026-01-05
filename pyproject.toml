@@ -18,12 +18,12 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+packages = [
+    { include = "nautobot_design_builder" },
+]
 include = [
     # Poetry by default will exclude files that are in .gitignore
     { path = "nautobot_design_builder/static/nautobot_design_builder/docs/**/*", format = ["sdist", "wheel"] }
-]
-packages = [
-    { include = "nautobot_design_builder" },
 ]
 
 [tool.poetry.dependencies]
@@ -55,8 +55,7 @@ tomli = { version = "*", markers = "python_version < '3.11'" }  # tomli is inclu
 
 # Local to this project
 snakeviz = "^2.2.0"
-nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "next-3.0"} # TODO: Change back to develop once we have released 3.0
-
+nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "develop"}
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
 markdown-version-annotations = "1.0.1"
