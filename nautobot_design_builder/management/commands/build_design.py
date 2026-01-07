@@ -1,8 +1,8 @@
 """Management command to bootstrap development data for design builder app."""
 
 import sys
-import yaml
 
+import yaml
 from django.core.management.base import BaseCommand, CommandError
 
 from ...design import Environment

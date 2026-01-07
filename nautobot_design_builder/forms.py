@@ -1,12 +1,12 @@
 """Forms for the design builder app."""
 
-from django.forms import NullBooleanField, CharField
+from django.forms import CharField, NullBooleanField
+from nautobot.apps.forms import DynamicModelChoiceField, StaticSelect2, TagFilterField
+from nautobot.core.forms.constants import BOOLEAN_WITH_BLANK_CHOICES
 from nautobot.extras.forms import NautobotFilterForm
 from nautobot.extras.models import Job, JobResult
-from nautobot.apps.forms import TagFilterField, DynamicModelChoiceField, StaticSelect2
-from nautobot.core.forms.constants import BOOLEAN_WITH_BLANK_CHOICES
 
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 
 
 class DesignFilterForm(NautobotFilterForm):
@@ -16,7 +16,6 @@ class DesignFilterForm(NautobotFilterForm):
 
     job = DynamicModelChoiceField(queryset=Job.objects.all(), required=False)
     tag = TagFilterField(model)
-    version = CharField(max_length=20, required=False)
 
 
 class DeploymentFilterForm(NautobotFilterForm):
@@ -24,7 +23,7 @@ class DeploymentFilterForm(NautobotFilterForm):
 
     model = Deployment
 
-    design = DynamicModelChoiceField(queryset=Design.objects.all())
+    design = DynamicModelChoiceField(queryset=Design.objects.all(), required=False)
     tag = TagFilterField(model)
     version = CharField(max_length=20, required=False)
 

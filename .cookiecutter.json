@@ -1,6 +1,6 @@
 {
     "cookiecutter": {
-        "codeowner_github_usernames": "@abates @mzbroch",
+        "codeowner_github_usernames": "@mzbroch",
         "full_name": "Network to Code, LLC",
         "email": "opensource@networktocode.com",
         "github_org": "nautobot",
@@ -10,26 +10,22 @@
         "project_slug": "nautobot-app-design-builder",
         "repo_url": "https://github.com/nautobot/nautobot-app-design-builder",
         "base_url": "design-builder",
-        "min_nautobot_version": "1.6.8",
-        "max_nautobot_version": "2.9999",
         "camel_name": "NautobotDesignBuilder",
-        "project_short_description": "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user.",
-        "model_class_name": "None",
+        "project_short_description": "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user",
+        "model_class_name": "Design",
         "open_source_license": "Apache-2.0",
         "docs_base_url": "https://docs.nautobot.com",
         "docs_app_url": "https://docs.nautobot.com/projects/design-builder/en/latest",
         "_drift_manager": {
             "template": "https://github.com/nautobot/cookiecutter-nautobot-app.git",
             "template_dir": "nautobot-app",
-            "template_ref": "nautobot-app-v1.2",
+            "template_ref": "nautobot-app-v2.7.1",
             "cookie_dir": "",
             "branch_prefix": "drift-manager",
-            "pull_request_strategy": "create",
-            "post_actions": [
-                "black"
-            ],
+            "pull_request_strategy": "update-or-create",
+            "post_actions": [],
             "draft": false,
-            "baked_commit_ref": "b205e8e892aa9fa8dd665963cfdc2f30410d8695"
+            "baked_commit_ref": "e2c2303dba52147acf8c3b5c1de7515d5eb1e8c3"
         }
     }
 }

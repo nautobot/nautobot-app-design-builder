@@ -3,22 +3,23 @@
 import logging
 from typing import List, Optional
 from uuid import UUID
-from django.contrib.contenttypes.models import ContentType
+
 from django.contrib.contenttypes import fields as ct_fields
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.dispatch import Signal
-
-from nautobot.apps.models import PrimaryModel, BaseModel, RestrictedQuerySet
+from nautobot.apps.models import BaseModel, PrimaryModel, RestrictedQuerySet
 from nautobot.core.celery import NautobotKombuJSONEncoder
-from nautobot.extras.models import Job as JobModel, JobResult, Status, StatusField
+from nautobot.extras.models import Job as JobModel
+from nautobot.extras.models import JobResult, Status, StatusField
 from nautobot.extras.utils import extras_features
 
 from nautobot_design_builder.changes import revert_changed_dict
 
-from .util import get_created_and_last_updated_usernames_for_model
 from . import choices
 from .errors import DesignValidationError
+from .util import get_created_and_last_updated_usernames_for_model
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +323,7 @@ class ChangeSet(PrimaryModel):
         on_delete=models.CASCADE,
         editable=False,
         related_name="change_sets",
+        verbose_name="Design Deployment",
     )
     job_result = models.OneToOneField(to=JobResult, on_delete=models.PROTECT, editable=False)
     active = models.BooleanField(editable=False, default=True)
@@ -593,7 +595,9 @@ class ChangeRecord(BaseModel):
 
     objects = ChangeRecordQuerySet.as_manager()
 
-    created = models.DateField(auto_now_add=True, null=True)
+    created = models.DateField(
+        auto_now_add=True, null=True
+    )  # TODO Change to DateTimeField to match Nautobot time conventions.
 
     last_updated = models.DateTimeField(auto_now=True, null=True)
 

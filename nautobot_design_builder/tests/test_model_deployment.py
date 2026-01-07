@@ -1,14 +1,14 @@
 """Test Deployment."""
 
 from unittest import mock
+
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.contrib.contenttypes.models import ContentType
+from nautobot.extras.models import JobResult, Status
 
-from nautobot.extras.models import Status, JobResult
-
+from .. import choices, models
 from .test_model_design import BaseDesignTest
-from .. import models, choices
 
 
 class BaseDeploymentTest(BaseDesignTest):

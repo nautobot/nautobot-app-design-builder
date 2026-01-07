@@ -16,4 +16,4 @@ checks:
       - model: "nautobot.dcim.models.Device"
         query: {name: "test device"}
         attribute: "rack.name"
-      - value: "rack-1"
+      - value: ["rack-1"]

@@ -1,9 +1,8 @@
 """Generic Design Builder Jobs."""
 
-from nautobot.apps.jobs import Job, MultiObjectVar, register_jobs, BooleanVar
+from nautobot.apps.jobs import BooleanVar, Job, MultiObjectVar, register_jobs
 
 from .models import Deployment
-
 
 name = "Design Builder"  # pylint: disable=invalid-name
 

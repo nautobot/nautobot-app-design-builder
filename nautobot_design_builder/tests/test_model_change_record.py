@@ -1,14 +1,15 @@
 """Test ChangeRecord."""
 
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
+from nautobot.dcim.models import DeviceType, Manufacturer
 from nautobot.extras.models import Secret
-from nautobot.dcim.models import Manufacturer, DeviceType
 
 from nautobot_design_builder.design import Environment
 from nautobot_design_builder.errors import DesignValidationError
 
-from .test_model_deployment import BaseDeploymentTest
 from ..models import ChangeRecord
+from .test_model_deployment import BaseDeploymentTest
 
 
 class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance-attributes
@@ -184,7 +185,6 @@ class TestChangeRecord(BaseDeploymentTest):  # pylint: disable=too-many-instance
         )
         design_secret.save()
         change_record = self.create_change_record(secret, design_secret.design_metadata.changes)
-        print(design_secret.design_metadata.changes)
         secret.refresh_from_db()
         self.assertDictEqual(
             secret.parameters,

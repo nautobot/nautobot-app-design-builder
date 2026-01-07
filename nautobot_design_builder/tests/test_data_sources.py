@@ -83,9 +83,7 @@ class TestBase(TestCase):
         for path in self.repo_paths:
             rmdir(path)
 
-    def get_repo(
-        self, provided_contents, slug, create_design_directory=True
-    ):  # pylint: disable=missing-function-docstring
+    def get_repo(self, provided_contents, slug, create_design_directory=True):  # pylint: disable=missing-function-docstring
         repo_path = os.path.join(settings.GIT_ROOT, slug)
         if create_design_directory:
             design_path = os.path.join(repo_path, "designs")

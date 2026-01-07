@@ -1,7 +1,6 @@
 """Set up the demo designs git data source."""
 
 from django.core.management.base import BaseCommand
-
 from nautobot.extras.models import GitRepository
 
 

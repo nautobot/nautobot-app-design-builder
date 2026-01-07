@@ -4,12 +4,11 @@ from django.apps import apps
 from django.conf import settings
 from django.db.models import ProtectedError
 from django.db.models.signals import pre_delete
-
-from nautobot.extras.registry import registry
 from nautobot.apps.models import CustomValidator
+from nautobot.extras.registry import registry
 
-from nautobot_design_builder.models import ChangeRecord
 from nautobot_design_builder.middleware import GlobalRequestMiddleware
+from nautobot_design_builder.models import ChangeRecord
 
 
 def validate_delete(instance, **kwargs):
@@ -50,7 +49,7 @@ def validate_delete(instance, **kwargs):
 
 
 class BaseValidator(CustomValidator):
-    """Base PluginCustomValidator class that implements the core logic for enforcing validation rules defined in this app."""
+    """Base CustomValidator class that implements the core logic for enforcing validation rules defined in this app."""
 
     model = None
 
@@ -141,10 +140,10 @@ class BaseValidator(CustomValidator):
 
 
 class CustomValidatorIterator:  # pylint: disable=too-few-public-methods
-    """Iterator that generates PluginCustomValidator classes for each model registered in the extras feature query registry 'custom_validators'."""
+    """Iterator that generates CustomValidator classes for each model registered in the extras feature query registry 'custom_validators'."""
 
     def __iter__(self):
-        """Return a generator of PluginCustomValidator classes for each registered model."""
+        """Return a generator of CustomValidator classes for each registered model."""
         for app_label, models in registry["model_features"]["custom_validators"].items():
             for model in models:
                 if (app_label, model) in settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_models"]:

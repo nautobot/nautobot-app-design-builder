@@ -1,0 +1,15 @@
+---
+checks:
+  - equal:
+      - model: "nautobot.dcim.models.devices.Manufacturer"
+        count: true
+      - value: 5
+  - model_exists:
+      model: "nautobot.dcim.models.devices.Manufacturer"
+      query: {name: "Manufacturer From Data"}
+  - model_exists:
+      model: "nautobot.dcim.models.devices.Manufacturer"
+      query: {name: "Manufacturer From Context"}
+  - model_exists:
+      model: "nautobot.dcim.models.devices.Manufacturer"
+      query: {name: "Manufacturer From Context YAML"}

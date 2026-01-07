@@ -13,9 +13,9 @@ This is a quick reference guide if you're already familiar with the development 
 
 The [Invoke](http://www.pyinvoke.org/) library is used to provide some helper commands based on the environment. There are a few configuration parameters which can be passed to Invoke to override the default configuration:
 
-- `nautobot_ver`: the version of Nautobot to use as a base for any built docker containers (default: 1.6.0)
+- `nautobot_ver`: the version of Nautobot to use as a base for any built docker containers (default: 2.4.20)
 - `project_name`: the default docker compose project name (default: `nautobot-design-builder`)
-- `python_ver`: the version of Python to use as a base for any built docker containers (default: 3.11)
+- `python_ver`: the version of Python to use as a base for any built docker containers (default: 3.12)
 - `local`: a boolean flag indicating if invoke tasks should be run on the host or inside the docker containers (default: False, commands will be run in docker containers)
 - `compose_dir`: the full path to a directory containing the project compose files
 - `compose_files`: a list of compose files applied in order (see [Multiple Compose files](https://docs.docker.com/compose/extends/#multiple-compose-files) for more information)
@@ -35,9 +35,9 @@ This project is managed by [Python Poetry](https://python-poetry.org/) and has a
 Once you have Poetry and Docker installed you can run the following commands (in the root of the repository) to install all other development dependencies in an isolated Python virtual environment:
 
 ```shell
+poetry self add poetry-plugin-shell
 poetry shell
 poetry install
-cp development/creds.example.env development/creds.env
 invoke build
 invoke start
 ```
@@ -62,6 +62,7 @@ nautobot_design_builder:
 Run the following commands:
 
 ```shell
+poetry self add poetry-plugin-shell
 poetry shell
 poetry install --extras nautobot
 export $(cat development/development.env | xargs)
@@ -86,8 +87,6 @@ It is typically recommended to launch the Nautobot **runserver** command in a se
 ### Updating the Documentation
 
 Documentation dependencies are pinned to exact versions to ensure consistent results. For the development environment, they are defined in the `pyproject.toml` file.
-
-If you need to update any of the documentation dependencies to a newer version, make sure you copy the exact same versions pinned in `pyproject.toml` to the `docs/requirements.txt` file as well. The latter is used in the automated build pipeline on ReadTheDocs to build the live version of the documentation.
 
 ### CLI Helper Commands
 
@@ -127,8 +126,11 @@ Each command can be executed with `invoke <command>`. All commands support the a
   flake8           Run flake8 to check that Python files adhere to its style standards.
   pydocstyle       Run pydocstyle to validate docstring formatting adheres to NTC defined standards.
   pylint           Run pylint code analysis.
-  tests            Run all tests for this plugin.
-  unittest         Run Django unit tests for the plugin.
+  markdownlint     Run pymarkdown linting.
+  tests            Run all tests for this app.
+  unittest         Run Django unit tests for the app.
+  djlint           Run djlint to perform django template linting.
+  djhtml           Run djhtml to perform django template formatting.
 ```
 
 ## Project Overview
@@ -155,13 +157,15 @@ The `poetry shell` command is used to create and enable a virtual environment ma
 
 For more details about Poetry and its commands please check out its [online documentation](https://python-poetry.org/docs/).
 
+In Poetry version 2, the shell command was moved out of the main Poetry project and into a plugin. For more details about the Poetry shell plugin, refer to its [GitHub repository](https://github.com/python-poetry/poetry-plugin-shell).
+
 ## Full Docker Development Environment
 
 This project is set up with a number of **Invoke** tasks consumed as simple CLI commands to get developing fast. You'll use a few `invoke` commands to get your environment up and running.
 
 ### Copy the credentials file for Nautobot
 
-First, you need to create the `development/creds.env` file - it stores a bunch of private information such as passwords and tokens for your local Nautobot install. You can make a copy of the `development/creds.example.env` and modify it to suit you.
+First, you may create/overwrite the `development/creds.env` file - it stores a bunch of private information such as passwords and tokens for your local Nautobot install. You can make a copy of the `development/creds.example.env` and modify it to suit you.
 
 ```shell
 cp development/creds.example.env development/creds.env
@@ -179,7 +183,7 @@ The first thing you need to do is build the necessary Docker image for Nautobot 
 #14 exporting layers
 #14 exporting layers 1.2s done
 #14 writing image sha256:2d524bc1665327faa0d34001b0a9d2ccf450612bf8feeb969312e96a2d3e3503 done
-#14 naming to docker.io/nautobot-design-builder/nautobot:1.6.0-py3.11 done
+#14 naming to docker.io/nautobot-design-builder/nautobot:2.4.20-py3.12 done
 ```
 
 ### Invoke - Starting the Development Environment
@@ -210,9 +214,9 @@ This will start all of the Docker containers used for hosting Nautobot. You shou
 ```bash
 ➜ docker ps
 ****CONTAINER ID   IMAGE                            COMMAND                  CREATED          STATUS          PORTS                                       NAMES
-ee90fbfabd77   nautobot-design-builder/nautobot:1.6.0-py3.11  "nautobot-server rqw…"   16 seconds ago   Up 13 seconds                                               nautobot_design_builder_worker_1
-b8adb781d013   nautobot-design-builder/nautobot:1.6.0-py3.11  "/docker-entrypoint.…"   20 seconds ago   Up 15 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   nautobot_design_builder_nautobot_1
-d64ebd60675d   nautobot-design-builder/nautobot:1.6.0-py3.11  "mkdocs serve -v -a …"   25 seconds ago   Up 18 seconds   0.0.0.0:8001->8080/tcp, :::8001->8080/tcp   nautobot_design_builder_docs_1
+ee90fbfabd77   nautobot-design-builder/nautobot:2.4.20-py3.12  "nautobot-server rqw…"   16 seconds ago   Up 13 seconds                                               nautobot_design_builder_worker_1
+b8adb781d013   nautobot-design-builder/nautobot:2.4.20-py3.12  "/docker-entrypoint.…"   20 seconds ago   Up 15 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   nautobot_design_builder_nautobot_1
+d64ebd60675d   nautobot-design-builder/nautobot:2.4.20-py3.12  "mkdocs serve -v -a …"   25 seconds ago   Up 18 seconds   0.0.0.0:8001->8080/tcp, :::8001->8080/tcp   nautobot_design_builder_docs_1
 e72d63129b36   postgres:13-alpine               "docker-entrypoint.s…"   25 seconds ago   Up 19 seconds   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   nautobot_design_builder_postgres_1
 96c6ff66997c   redis:6-alpine                   "docker-entrypoint.s…"   25 seconds ago   Up 21 seconds   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp   nautobot_design_builder_redis_1
 ```
@@ -345,7 +349,6 @@ Once completed, the new/updated environment variables should now be live.
 If you want your plugin to leverage another available Nautobot plugin or another Python package, you can easily add them into your Docker environment.
 
 ```bash
-➜ poetry shell
 ➜ poetry add <package_name>
 ```
 
@@ -362,7 +365,6 @@ Once the dependencies are resolved, stop the existing containers, rebuild the Do
 Let's say for example you want the new plugin you're creating to integrate into Slack. To do this, you will want to integrate into the existing Nautobot ChatOps Plugin.
 
 ```bash
-➜ poetry shell
 ➜ poetry add nautobot-chatops
 ```
 
@@ -391,7 +393,7 @@ namespace.configure(
     {
         "nautobot_design_builder": {
             ...
-            "python_ver": "3.11",
+            "python_ver": "3.12",
 	    ...
         }
     }
@@ -410,7 +412,7 @@ namespace.configure(
     {
         "nautobot_design_builder": {
             ...
-            "nautobot_ver": "1.6.0",
+            "nautobot_ver": "3.0.0",
 	    ...
         }
     }
@@ -453,7 +455,7 @@ This is the same as running:
 
 ### Tests
 
-To run tests against your code, you can run all of the tests that TravisCI runs against any new PR with:
+To run tests against your code, you can run all of the tests that the CI runs against any new PR with:
 
 ```bash
 ➜ invoke tests
@@ -463,9 +465,24 @@ To run an individual test, you can run any or all of the following:
 
 ```bash
 ➜ invoke unittest
-➜ invoke bandit
-➜ invoke black
-➜ invoke flake8
-➜ invoke pydocstyle
+➜ invoke ruff
 ➜ invoke pylint
 ```
+
+### App Configuration Schema
+
+In the package source, there is the `nautobot_design_builder/app-config-schema.json` file, conforming to the [JSON Schema](https://json-schema.org/) format. This file is used to validate the configuration of the app in CI pipelines.
+
+If you make changes to `PLUGINS_CONFIG` or the configuration schema, you can run the following command to validate the schema:
+
+```bash
+invoke validate-app-config
+```
+
+To generate the `app-config-schema.json` file based on the current `PLUGINS_CONFIG` configuration, run the following command:
+
+```bash
+invoke generate-app-config-schema
+```
+
+This command can only guess the schema, so it's up to the developer to manually update the schema as needed.

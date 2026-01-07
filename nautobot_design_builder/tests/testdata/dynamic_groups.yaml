@@ -33,4 +33,4 @@ checks:
       - model: "nautobot.extras.models.groups.DynamicGroup"
         query: {name: "Reserved Prefixes"}
         attribute: "count"
-      - value: 3
+      - value: [3]

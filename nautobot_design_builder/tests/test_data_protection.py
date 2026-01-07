@@ -1,13 +1,13 @@
 """Test Data Protection features."""
 
 from contextlib import contextmanager
+from copy import deepcopy
 
 from django.conf import settings
-from django.test import Client
-from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-
+from django.test import Client
+from django.urls import reverse
 from nautobot.dcim.models import Manufacturer
 from nautobot.extras.plugins import register_custom_validators
 from nautobot.extras.registry import registry
@@ -29,7 +29,7 @@ def register_validators(*models):
     for the tests to run, and then will remove the custom validators when done.
     """
     validators_registry = registry["plugin_custom_validators"]
-    pre_validators = {**validators_registry}
+    pre_validators = deepcopy(validators_registry)
     validators = []
     for app_label, model in models:
         validators.append(BaseValidator.factory(app_label, model))
@@ -37,13 +37,9 @@ def register_validators(*models):
     yield
     for validator in validators:
         validator.disconnect()
-    post_models = set(validators_registry.keys())
-    for model in pre_validators:
-        validators_registry[model] = pre_validators[model]
-        post_models.remove(model)
-
-    for model in post_models:
-        validators_registry.pop(model)
+    for key in list(validators_registry):
+        validators_registry.pop(key)
+    validators_registry.update(pre_validators)
 
 
 class CustomValidatorTest(BaseDeploymentTest):

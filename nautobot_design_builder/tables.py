@@ -1,25 +1,33 @@
 """Tables for design builder."""
 
-from django.conf import settings
 import django_tables2 as tables
+from django.conf import settings
 from django_tables2.utils import Accessor
-from nautobot.apps.tables import StatusTableMixin, BaseTable
-from nautobot.apps.tables import BooleanColumn, ButtonsColumn
+from nautobot.apps.tables import BaseTable, BooleanColumn, ButtonsColumn, StatusTableMixin
 
 from nautobot_design_builder import choices
-from nautobot_design_builder.models import Design, Deployment, ChangeSet, ChangeRecord
+from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 
 DESIGN_TABLE = """
 
-<a value="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="btn btn-xs btn-default openBtn" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}?modal=true">
-    <i class="mdi mdi-file-document-outline" title="Design Documentation"></i>
-</a>
-<a href="{% url 'extras:job_run_by_class_path' class_path=record.job.class_path %}" class="btn btn-xs btn-primary" title="Trigger Design Creation">
-    <i class="mdi mdi-play" title="Deploy Design"></i>
-</a>
-<a href="{% url 'extras:job_edit' pk=record.job.pk %}" class="btn btn-xs btn-warning" title="Edit Design Job">
-    <i class="mdi mdi-pencil"></i>
-</a>
+<li>
+    <a role="button" data-href="{% url 'plugins:nautobot_design_builder:design_docs' pk=record.pk %}" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#db-docs-modal">
+        <span class="mdi mdi-file-document-outline"></span>
+        Design Documentation
+    </a>
+</li>
+<li>
+    <a href="{% url 'extras:job_run_by_class_path' class_path=record.job.class_path %}" class="dropdown-item text-primary">
+        <span class="mdi mdi-play"></span>
+        Deploy Design
+    </a>
+</li>
+<li>
+    <a href="{% url 'extras:job_edit' pk=record.job.pk %}" class="dropdown-item text-warning">
+        <span class="mdi mdi-pencil"></span>
+        Edit Design Job
+    </a>
+</li>
 """
 
 
@@ -56,11 +64,11 @@ class DesignTable(BaseTable):
 
 DEPLOYMENT_TABLE = """
 {% load utils %}
-<a href="{% url "extras:job_run_by_class_path" class_path="nautobot_design_builder.jobs.DeploymentDecommissioning" %}?deployments={{record.pk}}" class="btn btn-xs btn-primary" title="Decommission">
+<a href="{% url "extras:job_run_by_class_path" class_path="nautobot_design_builder.jobs.DeploymentDecommissioning" %}?deployments={{record.pk}}" class="btn btn-sm btn-primary" title="Decommission">
     <i class="mdi mdi-delete-sweep"></i>
 </a>
 <a href="{% url 'extras:job_run' pk=record.design.job.pk %}?kwargs_from_job_result={% with record|get_last_change_set as last_change_set %}{{ last_change_set.job_result.pk }}{% endwith %}"
-    class="btn btn-xs btn-success" title="Re-run job with same arguments.">
+    class="btn btn-sm btn-success" title="Re-run job with same arguments.">
     <i class="mdi mdi-repeat"></i>
 </a>
 """
