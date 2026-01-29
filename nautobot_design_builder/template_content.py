@@ -1,12 +1,13 @@
 """Template content for nautobot_design_builder."""
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from nautobot.apps.ui import ObjectsTablePanel, SectionChoices, TemplateExtension
 from nautobot.core.views.utils import get_obj_from_context
 from nautobot.extras.utils import registry
 
-from nautobot_design_builder.models import Deployment
+from nautobot_design_builder.models import ChangeRecord
 from nautobot_design_builder.tables import DeploymentTable
 
 
@@ -16,16 +17,14 @@ class DeploymentObjectsTablePanel(ObjectsTablePanel):
     def should_render(self, context):
         """Determine if the panel should be rendered based on the presence of data in context."""
         obj = get_obj_from_context(context)
+        design_object_type = ContentType.objects.get_for_model(obj)
+        change_records = ChangeRecord.objects.filter(_design_object_id=obj.pk, _design_object_type=design_object_type)
+        parent_deployments = [change_record.change_set.deployment for change_record in change_records]
 
-        # Calculate parent deployments for the object
-        parent_deployments = []
-        for deployment in Deployment.objects.all():
-            if obj in deployment.get_design_objects(type(obj)):
-                parent_deployments.append(deployment)
+        if not parent_deployments:
+            return False
 
         parent_deployments_table = DeploymentTable(parent_deployments)
-
-        # Hide columns not in include_columns
         for column in parent_deployments_table.columns.all():
             if column.name not in self.include_columns:
                 parent_deployments_table.columns.hide(column.name)
