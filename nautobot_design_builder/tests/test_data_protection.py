@@ -72,7 +72,6 @@ class CustomValidatorTest(BaseDeploymentTest):
 
         self.client = Client()
 
-        # self.password = User.objects.make_random_password()
         try:
             self.password = User.objects.make_random_password()
         except AttributeError:
