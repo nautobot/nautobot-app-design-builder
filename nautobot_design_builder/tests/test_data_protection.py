@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.test import Client
 from django.urls import reverse
+from django.utils.crypto import get_random_string
 from nautobot.dcim.models import Manufacturer
 from nautobot.extras.plugins import register_custom_validators
 from nautobot.extras.registry import registry
@@ -75,8 +76,6 @@ class CustomValidatorTest(BaseDeploymentTest):
         try:
             self.password = User.objects.make_random_password()
         except AttributeError:
-            from django.utils.crypto import get_random_string
-
             self.password = get_random_string(10)
 
         self.user = User.objects.create_user(username="test_user", email="test@example.com", password=self.password)
