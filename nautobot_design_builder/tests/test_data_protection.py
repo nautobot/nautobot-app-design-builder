@@ -72,7 +72,14 @@ class CustomValidatorTest(BaseDeploymentTest):
 
         self.client = Client()
 
-        self.password = User.objects.make_random_password()
+        # self.password = User.objects.make_random_password()
+        try:
+            self.password = User.objects.make_random_password()
+        except AttributeError:
+            from django.utils.crypto import get_random_string
+
+            self.password = get_random_string(10)
+
         self.user = User.objects.create_user(username="test_user", email="test@example.com", password=self.password)
         self.admin = User.objects.create_user(
             username="test_user_admin", email="admin@example.com", password=self.password, is_superuser=True
