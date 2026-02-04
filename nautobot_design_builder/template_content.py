@@ -7,7 +7,7 @@ from nautobot.apps.ui import ObjectsTablePanel, SectionChoices, TemplateExtensio
 from nautobot.core.views.utils import get_obj_from_context
 from nautobot.extras.utils import registry
 
-from nautobot_design_builder.models import ChangeRecord
+from nautobot_design_builder.models import Deployment
 from nautobot_design_builder.tables import DeploymentTable
 
 
@@ -18,8 +18,10 @@ class DeploymentObjectsTablePanel(ObjectsTablePanel):
         """Determine if the panel should be rendered based on the presence of data in context."""
         obj = get_obj_from_context(context)
         design_object_type = ContentType.objects.get_for_model(obj)
-        change_records = ChangeRecord.objects.filter(_design_object_id=obj.pk, _design_object_type=design_object_type)
-        parent_deployments = [change_record.change_set.deployment for change_record in change_records]
+
+        parent_deployments = Deployment.objects.filter(
+            change_sets__records___design_object_id=obj.pk, change_sets__records___design_object_type=design_object_type
+        ).distinct()
 
         if not parent_deployments:
             return False
