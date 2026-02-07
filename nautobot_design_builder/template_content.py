@@ -39,26 +39,25 @@ def tab_factory(content_type_label):
             context.update({"parent_deployments": parent_deployments_table})
             return super().get_extra_context(context)
 
-    class ProtectedAttributesPanel(DataTablePanel):
-        """ObjectsTablePanel for displaying protected attributes."""
+    class AffectedAttributesPanel(DataTablePanel):
+        """ObjectsTablePanel for displaying affected attributes."""
 
         def get_extra_context(self, context):
             obj = get_obj_from_context(context)
             model = (obj._meta.app_label, obj._meta.model_name)
-            if model in settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_models"]:
-                records = ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True).exclude_decommissioned()
-                protected_attributes = [
-                    {
-                        "attribute": attribute,
-                        "deployment": linkify(record.change_set.deployment),
-                        "full_control": render_boolean(record.full_control),
-                    }
-                    for record in records
-                    for attribute in record.changes
-                ]
-            else:
-                protected_attributes = [{"attribute": "N/A", "deployment": "--- Model not protected ---"}]
-            context.update({"protected_attributes": protected_attributes})
+            protected = model in settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_models"]
+            records = ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True).exclude_decommissioned()
+            affected_attributes = [
+                {
+                    "attribute": attribute,
+                    "deployment": linkify(record.change_set.deployment),
+                    "protected": render_boolean(protected),
+                    "full_control": render_boolean(record.full_control),
+                }
+                for record in records
+                for attribute in record.changes
+            ]
+            context.update({"affected_attributes": affected_attributes})
             return super().get_extra_context(context)
 
     class DesignBuilderExtension(TemplateExtension):  # pylint: disable=abstract-method
@@ -79,12 +78,12 @@ def tab_factory(content_type_label):
                         table_title="Design Deployments using this object",
                         paginate=True,
                     ),
-                    ProtectedAttributesPanel(
+                    AffectedAttributesPanel(
                         weight=200,
                         section=SectionChoices.FULL_WIDTH,
-                        context_data_key="protected_attributes",
-                        columns=["attribute", "deployment", "full_control"],
-                        column_headers=["Protected Attribute", "Controlling Deployment", "Full Control"],
+                        context_data_key="affected_attributes",
+                        columns=["attribute", "deployment", "protected", "full_control"],
+                        column_headers=["Attribute", "Controlling Design Deployment", "Protected", "Full Control"],
                     ),
                 ],
             ),
