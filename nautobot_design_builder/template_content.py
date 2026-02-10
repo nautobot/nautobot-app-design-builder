@@ -16,49 +16,56 @@ def linkify(deployment):
     return format_html(f'<a href="{deployment.get_absolute_url()}">{deployment}</a>')
 
 
+class DesignBuilderTab(Tab):
+    """Custom Tab class to conditionally render based on change record existence."""
+
+    def should_render(self, context):
+        """Render the tab only if change records exist for the object."""
+        obj = get_obj_from_context(context)
+        return ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True).exclude_decommissioned().exists()
+
+
+class ParentDeploymentsTablePanel(ObjectsTablePanel):
+    """DataTablePanel for displaying parent Deployments data."""
+
+    def get_extra_context(self, context):
+        """Add parent Deployments to the context."""
+        obj = get_obj_from_context(context)
+        parent_deployments = Deployment.objects.filter(change_sets__records___design_object_id=obj.pk).distinct()
+        parent_deployments_table = DeploymentTable(parent_deployments)
+        context.update({"parent_deployments": parent_deployments_table})
+        return super().get_extra_context(context)
+
+
+class AffectedAttributesPanel(DataTablePanel):
+    """ObjectsTablePanel for displaying affected attributes."""
+
+    def get_extra_context(self, context):
+        """Add affected attributes to the context."""
+        obj = get_obj_from_context(context)
+        model = (obj._meta.app_label, obj._meta.model_name)
+        protected = model in settings.PLUGINS_CONFIG.get("nautobot_design_builder", {}).get("protected_models", [])
+        records = (
+            ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True)
+            .exclude_decommissioned()
+            .select_related("change_set__deployment")
+        )
+        affected_attributes = [
+            {
+                "attribute": attribute,
+                "deployment": linkify(record.change_set.deployment),
+                "protected": render_boolean(protected),
+                "full_control": render_boolean(record.full_control),
+            }
+            for record in records
+            for attribute in record.changes
+        ]
+        context.update({"affected_attributes": affected_attributes})
+        return super().get_extra_context(context)
+
+
 def tab_factory(content_type_label):
     """Generate a Design Builder tab for a given content type."""
-
-    class DesignBuilderTab(Tab):
-        """Custom Tab class to conditionally render based on parent deployment existence."""
-
-        def should_render(self, context):
-            """Render the tab only if deployments exist for the object."""
-            obj = get_obj_from_context(context)
-            if Deployment.objects.filter(change_sets__records___design_object_id=obj.pk).exists():
-                return super().should_render(context)
-            return False
-
-    class ParentDeploymentsTablePanel(ObjectsTablePanel):
-        """DataTablePanel for displaying parent Deployments data."""
-
-        def get_extra_context(self, context):
-            obj = get_obj_from_context(context)
-            parent_deployments = Deployment.objects.filter(change_sets__records___design_object_id=obj.pk).distinct()
-            parent_deployments_table = DeploymentTable(parent_deployments)
-            context.update({"parent_deployments": parent_deployments_table})
-            return super().get_extra_context(context)
-
-    class AffectedAttributesPanel(DataTablePanel):
-        """ObjectsTablePanel for displaying affected attributes."""
-
-        def get_extra_context(self, context):
-            obj = get_obj_from_context(context)
-            model = (obj._meta.app_label, obj._meta.model_name)
-            protected = model in settings.PLUGINS_CONFIG["nautobot_design_builder"]["protected_models"]
-            records = ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True).exclude_decommissioned()
-            affected_attributes = [
-                {
-                    "attribute": attribute,
-                    "deployment": linkify(record.change_set.deployment),
-                    "protected": render_boolean(protected),
-                    "full_control": render_boolean(record.full_control),
-                }
-                for record in records
-                for attribute in record.changes
-            ]
-            context.update({"affected_attributes": affected_attributes})
-            return super().get_extra_context(context)
 
     class DesignBuilderExtension(TemplateExtension):  # pylint: disable=abstract-method
         """Dynamically generated DesignBuilderExtension class."""
@@ -93,11 +100,11 @@ def tab_factory(content_type_label):
 
 
 class DesignBuilderTemplateIterator:  # pylint: disable=too-few-public-methods
-    """Iterator that generates ObjectsTablePanel classes for all objects beloging to a Design Deployment."""
+    """Iterator that generates ObjectsTablePanel classes for all objects belonging to a Design Deployment."""
 
     def __iter__(self):
         """Return a generator of ObjectsTablePanel classes for each registered model."""
-        for app_label, models in registry["model_features"]["custom_validators"].items():
+        for app_label, models in registry.get("model_features", {}).get("custom_validators", {}).items():
             for model in models:
                 yield tab_factory(f"{app_label}.{model}")
 
