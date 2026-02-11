@@ -276,9 +276,9 @@ def sanitize_user_input(data: Any):
     if isinstance(data, str):
         # This prevents `str` objects from being converted to `_TemplateNode`
         return UserString(data)
-    elif isinstance(data, Mapping):
+    if isinstance(data, Mapping):
         return {k: sanitize_user_input(v) for k, v in data.items()}
-    elif isinstance(data, (list, UserList)):
+    if isinstance(data, (list, UserList)):
         return [sanitize_user_input(item) for item in data]
     return data
 
