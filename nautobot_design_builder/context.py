@@ -270,6 +270,7 @@ def context_file(*ctx_files):
 
     return wrapper
 
+
 def sanitize_user_input(data: Any):
     """Prevent strings in the input from being converted to jinja templates."""
     if isinstance(data, str):
@@ -280,6 +281,7 @@ def sanitize_user_input(data: Any):
     elif isinstance(data, (list, UserList)):
         return [sanitize_user_input(item) for item in data]
     return data
+
 
 class Context(_DictNode):
     """A context represents a tree of variables that can include templates for values.
