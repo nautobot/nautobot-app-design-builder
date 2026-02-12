@@ -294,7 +294,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         design_files = None
 
         if hasattr(self.Meta, "context_class"):
-            context = self.Meta.context_class(data=data, job_result=self.job_result)
+            context = self.Meta.context_class(data=data, safe_load=True, job_result=self.job_result)
             context.validate()
         else:
             context = {}
