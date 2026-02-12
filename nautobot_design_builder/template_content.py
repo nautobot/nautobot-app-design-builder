@@ -2,8 +2,14 @@
 
 from django.conf import settings
 from django.utils.html import format_html
-from nautobot.apps.templatetags import render_boolean
-from nautobot.apps.ui import DataTablePanel, ObjectsTablePanel, SectionChoices, Tab, TemplateExtension
+from nautobot.apps.ui import (
+    DataTablePanel,
+    KeyValueTablePanel,
+    ObjectsTablePanel,
+    SectionChoices,
+    Tab,
+    TemplateExtension,
+)
 from nautobot.core.views.utils import get_obj_from_context
 from nautobot.extras.utils import registry
 
@@ -25,6 +31,43 @@ class DesignBuilderTab(Tab):
         return ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True).exclude_decommissioned().exists()
 
 
+class DesignObjectFieldsPanel(KeyValueTablePanel):
+    """Design-related fields for the object."""
+
+    def should_render(self, context):
+        """Only render if the object is part of an active change record."""
+        obj = get_obj_from_context(context)
+        model = (obj._meta.app_label, obj._meta.model_name)
+        is_protected = model in settings.PLUGINS_CONFIG.get("nautobot_design_builder", {}).get("protected_models", [])
+        full_control_records = ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True, full_control=True)
+        data = {
+            "type": f"{obj._meta.app_label}.{obj._meta.model_name}",
+            "protected": is_protected,
+            "full_control": full_control_records.exists(),
+        }
+        if full_control_records.exists():
+            data.update({"owner_deployment": linkify(full_control_records.first().change_set.deployment)})
+        context.update({"data": data})
+        return super().should_render(context)
+
+
+class AffectedAttributesPanel(DataTablePanel):
+    """ObjectsTablePanel for displaying affected attributes."""
+
+    def get_extra_context(self, context):
+        """Add affected attributes to the context."""
+        obj = get_obj_from_context(context)
+        records = (
+            ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True)
+            .exclude_decommissioned()
+            .select_related("change_set__deployment")
+        )
+        affected_set = {(attr, record.change_set.deployment) for record in records for attr in record.changes}
+        affected_list = [{"attribute": attr, "deployment": linkify(deployment)} for attr, deployment in affected_set]
+        context.update({"affected_attributes": affected_list})
+        return super().get_extra_context(context)
+
+
 class ParentDeploymentsTablePanel(ObjectsTablePanel):
     """DataTablePanel for displaying parent Deployments data."""
 
@@ -34,33 +77,6 @@ class ParentDeploymentsTablePanel(ObjectsTablePanel):
         parent_deployments = Deployment.objects.filter(change_sets__records___design_object_id=obj.pk).distinct()
         parent_deployments_table = DeploymentTable(parent_deployments)
         context.update({"parent_deployments": parent_deployments_table})
-        return super().get_extra_context(context)
-
-
-class AffectedAttributesPanel(DataTablePanel):
-    """ObjectsTablePanel for displaying affected attributes."""
-
-    def get_extra_context(self, context):
-        """Add affected attributes to the context."""
-        obj = get_obj_from_context(context)
-        model = (obj._meta.app_label, obj._meta.model_name)
-        protected = model in settings.PLUGINS_CONFIG.get("nautobot_design_builder", {}).get("protected_models", [])
-        records = (
-            ChangeRecord.objects.filter(_design_object_id=obj.pk, active=True)
-            .exclude_decommissioned()
-            .select_related("change_set__deployment")
-        )
-        affected_attributes = [
-            {
-                "attribute": attribute,
-                "deployment": linkify(record.change_set.deployment),
-                "protected": render_boolean(protected),
-                "full_control": render_boolean(record.full_control),
-            }
-            for record in records
-            for attribute in record.changes
-        ]
-        context.update({"affected_attributes": affected_attributes})
         return super().get_extra_context(context)
 
 
@@ -78,19 +94,25 @@ def tab_factory(content_type_label):
                 tab_id="design_builder_tab",
                 label="Design Builder",
                 panels=[
-                    ParentDeploymentsTablePanel(
+                    DesignObjectFieldsPanel(
                         weight=100,
+                        section=SectionChoices.LEFT_HALF,
+                        label="Data Protection",
+                        context_data_key="data",
+                    ),
+                    AffectedAttributesPanel(
+                        weight=200,
+                        section=SectionChoices.RIGHT_HALF,
+                        context_data_key="affected_attributes",
+                        columns=["attribute", "deployment"],
+                        column_headers=["Attribute", "Controlling Design Deployment"],
+                    ),
+                    ParentDeploymentsTablePanel(
+                        weight=300,
                         section=SectionChoices.FULL_WIDTH,
                         context_table_key="parent_deployments",
                         table_title="Design Deployments using this object",
                         paginate=True,
-                    ),
-                    AffectedAttributesPanel(
-                        weight=200,
-                        section=SectionChoices.FULL_WIDTH,
-                        context_data_key="affected_attributes",
-                        columns=["attribute", "deployment", "protected", "full_control"],
-                        column_headers=["Attribute", "Controlling Design Deployment", "Protected", "Full Control"],
                     ),
                 ],
             ),
