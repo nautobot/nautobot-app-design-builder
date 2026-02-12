@@ -47,7 +47,7 @@ The `jobs` directory contains everything that is needed for implementing a desig
 - Core Site
 - Edge Site
 
-Within the `jobs` directory, the naming of modules and files is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there is are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
+Within the `jobs` directory, the naming of modules and files is not important. However, it is recommended to use intuitive names to help understand each file's relationship with others. For instance, above there are design contexts specified as both Python modules as well as YAML files and each design has exactly one design template. The relationship of context YAML files and context Python modules will be discussed later.
 
 Designs are just specialized Nautobot jobs. Any design must inherit from `DesignJob`, and just like any other job, design jobs must be registered using `register_jobs`. An example design follows:
 
@@ -83,8 +83,7 @@ As previously stated, the entry point for all designs is the `DesignJob` class. 
 ```python
 """Initial data required for core sites."""
 
-from nautobot.apps.jobs import register_jobs, IntegerVar
-
+from nautobot.apps.jobs import IntegerVar, register_jobs
 from nautobot_design_builder.design_job import DesignJob
 
 from .context import InitialDesignContext
@@ -92,21 +91,20 @@ from .context import InitialDesignContext
 
 class InitialDesign(DesignJob):
     """Initialize the database with default values needed by the core site designs."""
-    has_sensitive_variables = False
 
-    has_sensitive_variables = False
     routers_per_site = IntegerVar(min_value=1, max_value=6, default=2)
 
     class Meta:
         """Metadata needed to implement the backbone site design."""
 
         name = "Initial Data"
-        commit_default = False
+        dryrun_default = True
         design_file = "designs/0001_design.yaml.j2"
         context_class = InitialDesignContext
         version = "1.0.0"
+        has_sensitive_variables = False
         description = "Establish the devices and site information for four sites: IAD5, LGA1, LAX11, SEA11."
-        docs = """This design creates the following objects in the source of truth to establish the initia network environment in  four sites: IAD5, LGA1, LAX11, SEA11.
+        docs = """This design creates the following objects in the source of truth to establish the initial network environment in four sites: IAD5, LGA1, LAX11, SEA11.
 
 These sites belong to the America region (and different subregions), and use Juniper PTX10016 devices.
 
@@ -176,6 +174,13 @@ Design file specifies the Jinja template that should be used to produce the inpu
 
 Design files specifies a list of Jinja template that should be used to produce the input for the design builder. The builder will resolve the files' locations relative to the location of the design job class. Exactly one of `design_file` or `design_files` must be present in the design's Metadata. If `design_files` is used for a list of design templates, each one is evaluated in order. The same context and builder are used for all files. Since a single builder instance is used, references can be created in one design file and then accessed in a later design file.
 
+### `design_mode`
+
+Design mode specifies the design lifecycle methodology to be used when a design is executed. The choices are:
+
+- **Classic**: Adhoc design execution. Objects created are **NOT** associated to a particular deployment.
+- **Deployment**: Objects are associated with an instance of a design deployment and lifecycle of the objects created is controlled by the deployment instance.
+
 ### `context_class`
 
 The value of the `context_class` metadata attribute should be any Python class that inherits from the `nautobot_design_builder.Context` base class. Design builder will create an instance of this class and use it for the Jinja rendering environment in the first stage of implementation.
@@ -240,7 +245,7 @@ class CoreSiteContext(Context):
         return str(abs(hash(device_name)))
 ```
 
-This context has instance variables `region`, `site_name` and `site_prefix`. These instance variables will be populated from the user input provided by the design job. Additionally note the class decorator `@context_file`. This decorator indicates that the `core_site_context.yaml` file should be used to also populate values of the design context. The context includes a method called `validate_new_site` to perform some pre-implementation validation (see the [next section](#context-validations) for details). The context also includes a method called `get_serial_number`. The implementation of this method is there only to demonstrate that some dynamic processing can occur to retrieve context values. For example, there may be an external CMDB that contains serial numbers for the devices. The `get_serial_number` method could connect to that system and lookup the serial number to populate the Nautobot object.
+This context has instance variables `region`, `site_name` and `site_prefix`. These instance variables will be populated from the user input provided by the design job. Additionally note the class decorator `@context_file`. This decorator indicates that the `core_site_context.yaml` file should be used to also populate values of the design context. The context includes a method called `validate_new_site` to perform some pre-implementation validation (see the [next section](#context-validations) for details). The context also includes a method called `get_serial_number`. The implementation of this method is there only to demonstrate that some dynamic processing can occur to retrieve context values. For example, there may be an external CMDB that contains serial numbers for the devices. The `get_serial_number` method could connect to that system and look up the serial number to populate the Nautobot object.
 
 Now let's inspect the context YAML file:
 
@@ -295,7 +300,7 @@ devices:
     platform__name: "Arista EOS"
 ```
 
-This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`. The value for query fields can be a scalar or a dictionary. In the case above (`platform__name`) the scalar value `"Arista EOS"` expands the the equivalent ORM query: `Platform.objects.get(name="Arista EOS")` with the returned object being assigned to the `platform` attribute of the device.
+This template will attempt to find the `platform` with the name `Arista EOS` and then assign the object to the `platform` field on the `device`. The value for query fields can be a scalar or a dictionary. In the case above (`platform__name`) the scalar value `"Arista EOS"` expands to the equivalent ORM query: `Platform.objects.get(name="Arista EOS")` with the returned object being assigned to the `platform` attribute of the device.
 
 If a query field's value is a dictionary, then more complex lookups can be performed. For instance:
 
@@ -311,7 +316,7 @@ The above query expands to the following ORM code: `Platform.objects.get(name="A
 
 ### Special Syntax - Action Tag
 
-In addition to the object mapping described above, some additional syntax, in what are called `Action Tags` are available in YAML design templates. These actions tags have special meaning to the design builder. Sometimes additional information is needed before the Design Builder can determine how to update the database or how to map a relationship. These special cases are handled with action tags within the YAML design templates. Any mapping key that begins with an exclamation point (`!`) is considered an action tag and carries special meaning in the design template. An example of a situation where an action tag is required is when updating, rather than creating, an object in the database. If Nautobot already has an instance of a data model and a design only requires updating that model then the `update:` action tag can be used. This instructs the builder to update the object, rather than try to create it. The available action tags are documented below.
+In addition to the object mapping described above, some additional syntax, in what are called `Action Tags` are available in YAML design templates. These action tags have special meaning to the design builder. Sometimes additional information is needed before the Design Builder can determine how to update the database or how to map a relationship. These special cases are handled with action tags within the YAML design templates. Any mapping key that begins with an exclamation point (`!`) is considered an action tag and carries special meaning in the design template. An example of a situation where an action tag is required is when updating, rather than creating, an object in the database. If Nautobot already has an instance of a data model and a design only requires updating that model then the `update:` action tag can be used. This instructs the builder to update the object, rather than try to create it. The available action tags are documented below.
 
 > Note: Any YAML key that begins with an exclamation point (`!`) must be quoted or a YAML syntax error will be raised.
 
@@ -328,6 +333,8 @@ This syntax is used when you know an object already exists and indicates to desi
 
 This template will find the interface with the name `Ethernet1/1` and then set the `description` field.
 
+This tag should only be used for unique fields on a model. If multiple objects are returned when looking up the object to update, an error will be raised.
+
 #### Action Tag - Update or Create
 
 Syntax: `!create_or_update:<field>`
@@ -342,7 +349,9 @@ devices:
         description: "Uplink to provider"
 ```
 
-This template will cause design builder to attempt to first lookup the device by the name `bb-rtr-1`, if not found it will be created. Subsequently, the device interface named `Ethernet1/1` will also be either created or updated. Note that when being created all required fields must be specified. The above example would fail during creation since both the device and the interface are missing required fields. Design Builder performs model validation prior to saving any model to the database.
+This template will cause design builder to attempt to first look up the device by the name `bb-rtr-1`, if not found it will be created. Subsequently, the device interface named `Ethernet1/1` will also be either created or updated. Note that if an object must be created, all of its required fields must be specified. The above example would fail during creation since both the device and the interface are missing required fields. Design Builder performs model validation prior to saving any model to the database.
+
+This tag should only be used for unique fields on a model. If multiple objects are returned when looking up the object to update or create, an error will be raised.
 
 #### Action Tag - Git Context
 
@@ -357,7 +366,7 @@ Nautobot supports assigning config contexts from a git repository. Therefore the
     {% include 'templates/spine_switch_config_context.yaml.j2' %}
 ```
 
-In this example, the included template will be rendered and a new file will be created named `config_context/devices/{{ device_name }}.yml`, and the content of the rendered data template will be written to the file. Note that the `context_repository` configuration key must be set in the `nautobot_config.py` in order for this feature to work. More information can be found in the [Git-Based Config Context documentation](git_config_context.md)
+In this example, the included template will be rendered and a new file will be created named `config_contexts/devices/{{ device_name }}.yml`, and the content of the rendered data template will be written to the file. Note that the `context_repository` configuration key must be set in the `nautobot_config.py` in order for this feature to work. More information can be found in the [Git-Based Config Context documentation](git_config_context.md)
 
 #### Action Tag - Reference
 
@@ -384,7 +393,7 @@ In addition to the special syntax provided for mapping keys, there are also some
 
 Syntax: `!ref`
 
-When used as the value for a key `!ref:<reference_name>` will return the the previously stored object. In our example of cabling the reference lookup will look something like this:
+When used as the value for a key `!ref:<reference_name>` will return the previously stored object. In our example of cabling the reference lookup will look something like this:
 
 ```jinja
 # Looking up a reference to previously created spine interfaces.

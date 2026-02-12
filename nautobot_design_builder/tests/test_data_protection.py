@@ -1,5 +1,7 @@
 """Test Data Protection features."""
 
+import secrets
+import string
 from contextlib import contextmanager
 from copy import deepcopy
 
@@ -73,11 +75,8 @@ class CustomValidatorTest(BaseDeploymentTest):
 
         self.client = Client()
 
-        try:
-            self.password = User.objects.make_random_password()
-        except AttributeError:
-            self.password = get_random_string(10)
-
+        alphabet = string.ascii_letters + string.digits
+        self.password = "".join(secrets.choice(alphabet) for _ in range(8))
         self.user = User.objects.create_user(username="test_user", email="test@example.com", password=self.password)
         self.admin = User.objects.create_user(
             username="test_user_admin", email="admin@example.com", password=self.password, is_superuser=True
