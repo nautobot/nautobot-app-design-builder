@@ -1,7 +1,7 @@
 """Template content for nautobot_design_builder."""
 
 from django.conf import settings
-from django.utils.html import format_html
+from nautobot.apps.templatetags import hyperlinked_object as hyperlink
 from nautobot.apps.ui import (
     DataTablePanel,
     KeyValueTablePanel,
@@ -15,11 +15,6 @@ from nautobot.extras.utils import registry
 
 from nautobot_design_builder.models import ChangeRecord, Deployment
 from nautobot_design_builder.tables import DeploymentTable
-
-
-def linkify(deployment):
-    """Helper function to create an HTML link to a deployment."""
-    return format_html(f'<a href="{deployment.get_absolute_url()}">{deployment}</a>')
 
 
 class DesignBuilderTab(Tab):
@@ -46,7 +41,7 @@ class DesignObjectFieldsPanel(KeyValueTablePanel):
             "full_control": full_control_records.exists(),
         }
         if full_control_records.exists():
-            data.update({"owner_deployment": linkify(full_control_records.first().change_set.deployment)})
+            data.update({"owner_deployment": hyperlink(full_control_records.first().change_set.deployment)})
         context.update({"data": data})
         return super().should_render(context)
 
@@ -63,7 +58,7 @@ class AffectedAttributesPanel(DataTablePanel):
             .select_related("change_set__deployment")
         )
         affected_set = {(attr, record.change_set.deployment) for record in records for attr in record.changes}
-        affected_list = [{"attribute": attr, "deployment": linkify(deployment)} for attr, deployment in affected_set]
+        affected_list = [{"attribute": attr, "deployment": hyperlink(deployment)} for attr, deployment in affected_set]
         context.update({"affected_attributes": affected_list})
         return super().get_extra_context(context)
 
