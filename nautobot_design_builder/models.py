@@ -323,6 +323,7 @@ class ChangeSet(PrimaryModel):
         on_delete=models.CASCADE,
         editable=False,
         related_name="change_sets",
+        verbose_name="Design Deployment",
     )
     job_result = models.OneToOneField(to=JobResult, on_delete=models.PROTECT, editable=False)
     active = models.BooleanField(editable=False, default=True)
@@ -594,7 +595,9 @@ class ChangeRecord(BaseModel):
 
     objects = ChangeRecordQuerySet.as_manager()
 
-    created = models.DateField(auto_now_add=True, null=True)
+    created = models.DateField(
+        auto_now_add=True, null=True
+    )  # TODO Change to DateTimeField to match Nautobot time conventions.
 
     last_updated = models.DateTimeField(auto_now=True, null=True)
 

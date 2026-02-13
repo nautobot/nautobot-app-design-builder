@@ -1,0 +1,46 @@
+---
+extensions:
+  - "nautobot_design_builder.contrib.ext.NextIpExtension"
+designs:
+  - prefixes:
+      - prefix: "10.0.0.0/29"
+        status__name: "Active"
+        "!ref": "server-prefix"
+    ip_addresses:
+      - host: "10.0.0.1"
+        mask_length: 30
+        parent: "!ref:server-prefix"
+        status__name: "Active"
+  - tenants:
+      - name: "Nautobot Airports"
+    roles:
+      - name: "Video"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+      - name: "Servers"
+        content_types:
+          - "!get:app_label": "ipam"
+            "!get:model": "prefix"
+    prefixes:
+      - "!get:prefix": "10.0.0.0/29"
+        "!ref": "server-prefix"
+    ip_addresses:
+      - "!next_ip":
+          prefix: "!ref:server-prefix"
+        status__name: "Active"
+        tenant__name: "Nautobot Airports"
+      - "!next_ip":
+          prefix: "10.0.0.0/29"
+        status__name: "Active"
+        tenant__name: "Nautobot Airports"
+checks:
+  - model_exists:
+      model: "nautobot.ipam.models.IPAddress"
+      query: {address: "10.0.0.2/29"}
+  - model_exists:
+      model: "nautobot.ipam.models.IPAddress"
+      query: {address: "10.0.0.3/29"}
+  - model_not_exist:
+      model: "nautobot.ipam.models.IPAddress"
+      query: {address: "10.0.0.4/29"}

@@ -1,23 +1,6 @@
 {% load helpers %}
 {% load static %}
 
+<h2>{{ design_name }} design</h2>
 
-
-
-<style>
-    .d2h-tag {
-        display: none;
-    }
-    .d2h-file-collapse {
-        display:none;
-    }
-</style>
-
-<h1>{{ design_name }} design</h1>
-
-
-<div class="panel panel-default" style="padding-bottom: 5px">
-    <div style="padding-left: 10px">
-            <pre id="{{ design_name|slugify }}">{{ text_content | render_markdown }}</pre>
-    </div>
-</div>
+<div id="{{ design_name|slugify }}">{{ text_content | render_markdown }}</div>

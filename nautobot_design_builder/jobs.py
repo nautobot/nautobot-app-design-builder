@@ -12,7 +12,7 @@ class DeploymentDecommissioning(Job):
 
     deployments = MultiObjectVar(
         model=Deployment,
-        query_params={"status": "active"},
+        query_params={"status": "Active"},
         description="Design Deployments to decommission.",
     )
 

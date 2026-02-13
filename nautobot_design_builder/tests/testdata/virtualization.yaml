@@ -1,0 +1,39 @@
+---
+designs:
+  - roles:
+      - "!create_or_update:name": "web-virtual-server"
+        content_types:
+          - {"!get:model": "virtualmachine"}
+        "!ref": "role_web_virtual_server"
+    prefixes:
+      - "!create_or_update:prefix": "10.31.0.0/24"
+        type: "network"
+        status__name: "Active"
+        "!ref": "prefix_10_31_0_0_24"
+
+    cluster_types:
+      - "!create_or_update:name": "aws-ec2"
+        description: "AWS EC2 Cluster Type"
+        "!ref": "cluster_type_aws"
+
+    clusters:
+      - "!create_or_update:name": "aws-ec2-production"
+        cluster_type: "!ref:cluster_type_aws"
+        "!ref": "cluster_aws_production"
+        virtual_machines:
+          - "!create_or_update:name": "ec2-prod-web-100"
+            status__name: "Active"
+            role: "!ref:role_web_virtual_server"
+            interfaces:
+              - "!create_or_update:name": "eni0"
+                status__name: "Active"
+                ip_address_assignments:
+                  - ip_address:
+                      "!create_or_update:address": "10.31.0.100/32"
+                      "parent": "!ref:prefix_10_31_0_0_24"
+                      "status__name": "Active"
+
+checks:
+  - model_exists:
+      model: "nautobot.virtualization.models.VirtualMachine"
+      query: {name: "ec2-prod-web-100"}

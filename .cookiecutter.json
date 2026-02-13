@@ -10,8 +10,6 @@
         "project_slug": "nautobot-app-design-builder",
         "repo_url": "https://github.com/nautobot/nautobot-app-design-builder",
         "base_url": "design-builder",
-        "min_nautobot_version": "2.0.0",
-        "max_nautobot_version": "2.9999",
         "camel_name": "NautobotDesignBuilder",
         "project_short_description": "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user",
         "model_class_name": "Design",
@@ -21,16 +19,13 @@
         "_drift_manager": {
             "template": "https://github.com/nautobot/cookiecutter-nautobot-app.git",
             "template_dir": "nautobot-app",
-            "template_ref": "refs/tags/nautobot-app-v2.5.0",
+            "template_ref": "nautobot-app-v3.0.0",
             "cookie_dir": "",
-            "branch_prefix": "drift-manager",
             "pull_request_strategy": "create",
-            "post_actions": [
-                "ruff",
-                "poetry"
-            ],
+            "post_actions": [],
             "draft": false,
-            "baked_commit_ref": "a1017b630005512cf57ad0e2ed0a3c6a3f1b0dbb"
+            "baked_commit_ref": "a782f29050f7f27ee3b3941fd06aab9e993a6655",
+            "drift_managed_branch": "develop"
         }
     }
 }
