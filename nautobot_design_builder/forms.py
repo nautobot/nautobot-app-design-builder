@@ -31,7 +31,7 @@ class DesignBulkEditForm(TagsBulkEditFormMixin, NautobotBulkEditForm):  # pylint
         ]
 
 
-class DesignFilterForm(NautobotFilterForm):
+class DesignFilterForm(NautobotFilterForm):  # pylint: disable=too-many-ancestors
     """Filter form to filter searches."""
 
     model = models.Design
