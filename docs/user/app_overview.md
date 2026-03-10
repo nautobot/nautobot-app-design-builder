@@ -7,9 +7,14 @@ This document provides an overview of the App including critical information and
 
 ## Description
 
+<<<<<<< HEAD
 Design Builder provides a system where standardized network designs can be developed to produce or update collections of objects within Nautobot. These designs are text based templates that can create and update hierarchical data structures within Nautobot.
 
 The deployment of a design comes with a complete lifecycle management of all the changes connected as a single entity. Thus, the design deployment can be updated or decommissioned after its creation, and the all the changes introduced can be honored when accessing the data outside of the design builder app.
+=======
+![Main Page](../media/ss_main_page_light.png#only-light)
+![Main Page](../media/ss_main_page_dark.png#only-dark)
+>>>>>>> 2b3dd50 (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
 
 ## Audience (User Personas) - Who should use this App?
 

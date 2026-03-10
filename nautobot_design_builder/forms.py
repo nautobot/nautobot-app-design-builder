@@ -9,8 +9,13 @@ from nautobot.extras.models import Job, JobResult
 from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 
 
+<<<<<<< HEAD
 class DesignFilterForm(NautobotFilterForm):
     """Filter form for the design model."""
+=======
+class DesignFilterForm(NautobotFilterForm):  # pylint: disable=too-many-ancestors
+    """Filter form to filter searches."""
+>>>>>>> 2b3dd50 (Cookie updated targeting develop by NetworkToCode Cookie Drift Manager Tool)
 
     model = Design
 
