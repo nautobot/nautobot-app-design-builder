@@ -56,7 +56,7 @@ tomli = { version = "*", markers = "python_version < '3.11'" }  # tomli is inclu
 
 # Local to this project
 snakeviz = "^2.2.0"
-nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "develop"}
+nautobot-bgp-models = ">=3.0.0,<4.0.0"
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
 markdown-version-annotations = "1.0.1"
