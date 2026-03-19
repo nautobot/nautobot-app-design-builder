@@ -88,8 +88,10 @@ markdown_extensions:
           class: "mermaid"
           format: !!python/name:pymdownx.superfences.fence_code_format
   - "footnotes"
+  - "meta"
 plugins:
   - "search"
+  - "glightbox"
   - "mkdocstrings":
       default_handler: "python"
       handlers:
@@ -142,6 +144,7 @@ nav:
       - Code Reference:
           - "dev/code_reference/index.md"
           - Package: "dev/code_reference/package.md"
+          - API: "dev/code_reference/api.md"
           - Context: "dev/code_reference/context.md"
           - Design Builder: "dev/code_reference/design.md"
           - Field Descriptors: "dev/code_reference/fields.md"
