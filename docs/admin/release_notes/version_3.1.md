@@ -4,8 +4,7 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-- Major features or milestones
-- Changes to compatibility with Nautobot and/or other apps, libraries etc.
+Adds a `next_ip` action tag for automatic IP allocation, fixes a security vulnerability and several UI bugs, and improves documentation.
 
 <!-- towncrier release notes start -->
 
