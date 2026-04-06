@@ -1,12 +1,9 @@
 """UI Views for design builder."""
 
-from django.apps import apps as global_apps
-from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import render
 from nautobot.apps.models import count_related
 from nautobot.apps.ui import ObjectDetailContent, ObjectFieldsPanel, ObjectsTablePanel, ObjectTextPanel, SectionChoices
 from nautobot.apps.views import get_obj_from_context
-from nautobot.core.views.generic import ObjectView
 from nautobot.core.views.mixins import (
     PERMISSIONS_ACTION_MAP,
     ObjectChangeLogViewMixin,
@@ -296,40 +293,3 @@ class ChangeRecordUIViewSet(  # pylint:disable=abstract-method
             ),
         ),
     )
-
-
-class DesignProtectionObjectView(ObjectView):
-    """View for the Audit Results tab dynamically generated on specific object detail views."""
-
-    template_name = "nautobot_design_builder/designprotection_tab.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        """Set the queryset for the given object and call the inherited dispatch method."""
-        model = kwargs.pop("model")
-        if not self.queryset:
-            self.queryset = global_apps.get_model(model).objects.all()
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_extra_context(self, request, instance):
-        """Generate extra context for rendering the DesignProtection template."""
-        content = {}
-
-        records = models.ChangeRecord.objects.filter(
-            _design_object_id=instance.id, active=True
-        ).exclude_decommissioned()
-
-        if records:
-            design_owner = records.filter(full_control=True, _design_object_id=instance.pk)
-            if design_owner:
-                content["object"] = design_owner.first().change_set.deployment
-            for record in records:
-                for attribute in record.changes:
-                    try:
-                        field = instance._meta.get_field(attribute)
-                        content[field.name] = record.change_set.deployment
-                    except FieldDoesNotExist:
-                        # TODO: should this be logged? I can't think of when we would care
-                        # that a model's fields have changed since a design was implemented
-                        pass
-
-        return {"active_tab": request.GET["tab"], "design_protection": content}
