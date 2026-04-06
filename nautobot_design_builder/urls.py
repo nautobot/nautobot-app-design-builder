@@ -9,7 +9,6 @@ from nautobot_design_builder.views import (
     ChangeRecordUIViewSet,
     ChangeSetUIViewSet,
     DeploymentUIViewSet,
-    DesignProtectionObjectView,
     DesignUIViewSet,
 )
 
@@ -21,13 +20,6 @@ router.register("change-sets", ChangeSetUIViewSet)
 router.register("change-records", ChangeRecordUIViewSet)
 
 
-urlpatterns = [
-    path("docs/", RedirectView.as_view(url=static("nautobot_design_builder/docs/index.html")), name="docs"),
-    path(
-        "design-protection/<model>/<uuid:id>/",
-        DesignProtectionObjectView.as_view(),
-        name="design-protection-tab",
-    ),
-]
+urlpatterns = [path("docs/", RedirectView.as_view(url=static("nautobot_design_builder/docs/index.html")), name="docs")]
 
 urlpatterns += router.urls
