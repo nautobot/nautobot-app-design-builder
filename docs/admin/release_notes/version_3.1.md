@@ -4,7 +4,7 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-Adds a `next_ip` action tag for automatic IP allocation, fixes a security vulnerability and several UI bugs, and improves documentation.
+Adds a `next_ip` action tag for automatic IP allocation, adds `Design Builder` tab to deployment members, fixes a security vulnerability and several UI bugs, and improves documentation.
 
 <!-- towncrier release notes start -->
 
@@ -12,18 +12,19 @@ Adds a `next_ip` action tag for automatic IP allocation, fixes a security vulner
 
 ### Added
 
-- [#234](https://github.com/nautobot/nautobot-app-design-builder/issues/234) - Added `next_ip` action tag
+- [#234](https://github.com/nautobot/nautobot-app-design-builder/issues/234) - Added `next_ip` action tag.
+- [#270](https://github.com/nautobot/nautobot-app-design-builder/issues/270) - Added panels to various models to indicate Design Deployment membership.
 
 ### Fixed
 
 - [#212](https://github.com/nautobot/nautobot-app-design-builder/issues/212) - Fixed display of design model meta information.
-- [#258](https://github.com/nautobot/nautobot-app-design-builder/issues/258) - Fixed code injection vulnerability
+- [#258](https://github.com/nautobot/nautobot-app-design-builder/issues/258) - Fixed code injection vulnerability.
 - [#268](https://github.com/nautobot/nautobot-app-design-builder/issues/268) - Fixed dropdown menu under "Decommission Design Deployments" job.
 - [#273](https://github.com/nautobot/nautobot-app-design-builder/issues/273) - Fixed test using deprecated Django make_random_password function.
 
 ### Documentation
 
-- [#229](https://github.com/nautobot/nautobot-app-design-builder/issues/229) - Documented `design_mode` and how to enable deployment mode
+- [#229](https://github.com/nautobot/nautobot-app-design-builder/issues/229) - Documented `design_mode` and how to enable deployment mode.
 - [#264](https://github.com/nautobot/nautobot-app-design-builder/issues/264) - Added a note to only use unique model fields in the update and update_or_create tags.
 - [#265](https://github.com/nautobot/nautobot-app-design-builder/issues/265) - Updated Design builder documentation to include 3.0 screenshots.
 
