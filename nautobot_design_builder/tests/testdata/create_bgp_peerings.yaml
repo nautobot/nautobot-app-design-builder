@@ -1,0 +1,151 @@
+# File: nautobot_design_builder/tests/testdata/create_bgp_peerings.yaml
+---
+# Pre-requisite objects: devices, interfaces, IP addresses, routing instances, peer groups
+- "!create:Device":
+    name: "RR1"
+    device_type__model: "Cisco IOS-XR"
+    device_role__name: "Route Reflector"
+    site__name: "Site1"
+    status__name: "Active"
+    "!ref": "rr1_device"
+- "!create:Device":
+    name: "P1"
+    device_type__model: "Cisco IOS-XR"
+    device_role__name: "Provider Router"
+    site__name: "Site1"
+    status__name: "Active"
+    "!ref": "p1_device"
+- "!create:Interface":
+    device: "!ref:rr1_device"
+    name: "Loopback0"
+    type: "virtual"
+    status__name: "Active"
+    "!ref": "rr1_loopback0"
+- "!create:Interface":
+    device: "!ref:p1_device"
+    name: "Loopback0"
+    type: "virtual"
+    status__name: "Active"
+    "!ref": "p1_loopback0"
+- "!create:IPAddress":
+    address: "100.0.254.5/32"
+    status__name: "Active"
+    parent: "!ref:rr1_loopback0"
+    "!ref": "rr1_loopback0_ipv4"
+- "!create:IPAddress":
+    address: "100.0.254.1/32"
+    status__name: "Active"
+    parent: "!ref:p1_loopback0"
+    "!ref": "p1_loopback0_ipv4"
+- "!create:BGPRoutingInstance":
+    device: "!ref:rr1_device"
+    autonomous_system__asn: "65000"
+    description: "Backbone AS"
+    "!ref": "rr1_65000_ri"
+- "!create:BGPRoutingInstance":
+    device: "!ref:p1_device"
+    autonomous_system__asn: "65000"
+    description: "Backbone AS"
+    "!ref": "p1_65000_ri"
+- "!create:PeerGroup":
+    name: "BACKBONE-RR-IPV4-PEERS"
+    routing_instance: "!ref:rr1_65000_ri"
+    description: "BGP sessions to route reflectors"
+    autonomous_system__asn: "65000"
+    "!ref": "rr1_backbone_rr_ipv4_peers_pg"
+- "!create:PeerGroup":
+    name: "BACKBONE-RR-IPV4-PEERS"
+    routing_instance: "!ref:p1_65000_ri"
+    description: "BGP sessions to route reflectors"
+    autonomous_system__asn: "65000"
+    "!ref": "p1_backbone_rr_ipv4_peers_pg"
+# Test Case 1: BGP Peering with !ref: inputs to verify !ref: string pass-through
+- "!bgp_peering":
+    endpoint_a:
+      routing_instance: "!ref:rr1_65000_ri"
+      source_interface: "!ref:rr1_loopback0"
+      source_ip: "!ref:rr1_loopback0_ipv4"
+      peer_group: "!ref:rr1_backbone_rr_ipv4_peers_pg"
+    endpoint_z:
+      routing_instance: "!ref:p1_65000_ri"
+      source_interface: "!ref:p1_loopback0"
+      source_ip: "!ref:p1_loopback0_ipv4"
+      peer_group: "!ref:p1_backbone_rr_ipv4_peers_pg"
+    status__name: "Active"
+    "!verify":
+      - model: "Peering"
+        filters:
+          endpoint_a__source_ip__address: "100.0.254.5/32"
+          endpoint_z__source_ip__address: "100.0.254.1/32"
+          status__name: "Active"
+        count: 1
+      - model: "PeerEndpoint"
+        filters:
+          source_ip__address: "100.0.254.5/32"
+          peer_group__name: "BACKBONE-RR-IPV4-PEERS"
+          routing_instance__device__name: "RR1"
+        count: 1
+      - model: "PeerEndpoint"
+        filters:
+          source_ip__address: "100.0.254.1/32"
+          peer_group__name: "BACKBONE-RR-IPV4-PEERS"
+          routing_instance__device__name: "P1"
+        count: 1
+# Test Case 2: BGP Peering with filter dictionary for peer_group
+- "!bgp_peering":
+    endpoint_a:
+      routing_instance: "!ref:rr1_65000_ri"
+      source_interface: "!ref:rr1_loopback0"
+      source_ip: "!ref:rr1_loopback0_ipv4"
+      peer_group__name: "BACKBONE-RR-IPV4-PEERS"
+      routing_instance__device__name: "RR1"
+    endpoint_z:
+      routing_instance: "!ref:p1_65000_ri"
+      source_interface: "!ref:p1_loopback0"
+      source_ip: "!ref:p1_loopback0_ipv4"
+      peer_group__name: "BACKBONE-RR-IPV4-PEERS"
+      routing_instance__device__name: "P1"
+    status__name: "Active"
+    "!verify":
+      - model: "Peering"
+        filters:
+          endpoint_a__source_ip__address: "100.0.254.5/32"
+          endpoint_z__source_ip__address: "100.0.254.1/32"
+          status__name: "Active"
+        count: 1
+      - model: "PeerEndpoint"
+        filters:
+          source_ip__address: "100.0.254.5/32"
+          peer_group__name: "BACKBONE-RR-IPV4-PEERS"
+          routing_instance__device__name: "RR1"
+        count: 1
+      - model: "PeerEndpoint"
+        filters:
+          source_ip__address: "100.0.254.1/32"
+          peer_group__name: "BACKBONE-RR-IPV4-PEERS"
+          routing_instance__device__name: "P1"
+        count: 1
+# Test Case 3: Iterative BGP Peering (simulating multiple peers for RR1)
+- "!create:DesignInstance":
+    design_deployment__name: "Iterative BGP Peers"
+    objects:
+      # Peer 1 (RR1 to P1, reusing objects from Test Case 1)
+      - "!bgp_peering":
+          endpoint_a:
+            routing_instance: "!ref:rr1_65000_ri"
+            source_interface: "!ref:rr1_loopback0"
+            source_ip: "!ref:rr1_loopback0_ipv4"
+            peer_group: "!ref:rr1_backbone_rr_ipv4_peers_pg"
+          endpoint_z:
+            routing_instance: "!ref:p1_65000_ri"
+            source_interface: "!ref:p1_loopback0"
+            source_ip: "!ref:p1_loopback0_ipv4"
+            peer_group: "!ref:p1_backbone_rr_ipv4_peers_pg"
+          status__name: "Active"
+    "!verify":
+      - model: "Peering"
+        filters:
+          endpoint_a__source_ip__address: "100.0.254.5/32"
+          endpoint_z__source_ip__address: "100.0.254.1/32"
+          status__name: "Active"
+        count: 1
