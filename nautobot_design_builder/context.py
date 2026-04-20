@@ -3,7 +3,7 @@
 import inspect
 from collections import UserDict, UserList, UserString
 from functools import cached_property
-from typing import Any
+from typing import Any, Mapping
 
 import yaml
 from jinja2.nativetypes import NativeEnvironment
@@ -271,6 +271,18 @@ def context_file(*ctx_files):
     return wrapper
 
 
+def sanitize_user_input(data: Any):
+    """Prevent strings in the input from being converted to jinja templates."""
+    if isinstance(data, str):
+        # This prevents `str` objects from being converted to `_TemplateNode`
+        return UserString(data)
+    if isinstance(data, Mapping):
+        return {k: sanitize_user_input(v) for k, v in data.items()}
+    if isinstance(data, (list, UserList)):
+        return [sanitize_user_input(item) for item in data]
+    return data
+
+
 class Context(_DictNode):
     """A context represents a tree of variables that can include templates for values.
 
@@ -297,8 +309,11 @@ class Context(_DictNode):
               or their native type.
     """
 
-    def __init__(self, data: dict = None, job_result: JobResult = None):
+    def __init__(self, data: dict = None, safe_load=False, job_result: JobResult = None):
         """Constructor for Context class that creates data nodes from input data."""
+        if safe_load and data is not None:
+            data = sanitize_user_input(data)
+
         super().__init__(data)
         self.job_result = job_result
 
@@ -336,15 +351,15 @@ class Context(_DictNode):
         return base
 
     @classmethod
-    def load(cls, yaml_or_mapping):
+    def load(cls, yaml_or_mapping, safe_load=False):
         """Load a context from a yaml file or mapping."""
         if isinstance(yaml_or_mapping, dict):
-            return cls(data=yaml_or_mapping)
+            return cls(data=yaml_or_mapping, safe_load=safe_load)
 
         if isinstance(yaml_or_mapping, list):
             raise ValueError("Can only load mappings or yaml")
 
-        return cls.load(yaml.safe_load(yaml_or_mapping))
+        return cls.load(yaml.safe_load(yaml_or_mapping), safe_load=safe_load)
 
     def validate(self):
         """Validate that the context can be used to render a design.

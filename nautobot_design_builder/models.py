@@ -165,6 +165,10 @@ class Design(PrimaryModel):
     @property
     def description(self):
         """Get the description from the Job."""
+        if self.job:
+            from nautobot.extras.jobs import get_job  # pylint: disable=import-outside-toplevel
+
+            get_job(self.job.class_path, reload=True)
         if self.job.job_class and hasattr(self.job.job_class.Meta, "description"):
             return self.job.job_class.Meta.description
         return ""
@@ -172,6 +176,10 @@ class Design(PrimaryModel):
     @property
     def version(self):
         """Get the version from the Job."""
+        if self.job:
+            from nautobot.extras.jobs import get_job  # pylint: disable=import-outside-toplevel
+
+            get_job(self.job.class_path, reload=True)
         if self.job.job_class and hasattr(self.job.job_class.Meta, "version"):
             return self.job.job_class.Meta.version
         return ""
@@ -179,6 +187,10 @@ class Design(PrimaryModel):
     @property
     def docs(self):
         """Get the docs from the Job."""
+        if self.job:
+            from nautobot.extras.jobs import get_job  # pylint: disable=import-outside-toplevel
+
+            get_job(self.job.class_path, reload=True)
         if self.job.job_class and hasattr(self.job.job_class.Meta, "docs"):
             return self.job.job_class.Meta.docs
         return ""

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "nautobot-design-builder"
-version = "3.0.0"
-description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user."
+version = "3.1.0"
+description = "Nautobot app that uses design templates to easily create data objects in Nautobot with minimal input from a user"
 authors = ["Network to Code, LLC <opensource@networktocode.com>"]
 license = "Apache-2.0"
 readme = "README.md"
@@ -17,17 +17,18 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+packages = [
+    { include = "nautobot_design_builder" },
 ]
 include = [
     # Poetry by default will exclude files that are in .gitignore
     { path = "nautobot_design_builder/static/nautobot_design_builder/docs/**/*", format = ["sdist", "wheel"] }
 ]
-packages = [
-    { include = "nautobot_design_builder" },
-]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.14"
+python = ">=3.10,<3.15"
 # Used for local development
 nautobot = ">=3.0.0,<4.0.0"
 
@@ -55,8 +56,7 @@ tomli = { version = "*", markers = "python_version < '3.11'" }  # tomli is inclu
 
 # Local to this project
 snakeviz = "^2.2.0"
-nautobot-bgp-models = {git = "https://github.com/nautobot/nautobot-app-bgp-models.git", rev = "next-3.0"} # TODO: Change back to develop once we have released 3.0
-
+nautobot-bgp-models = ">=3.0.0,<4.0.0"
 [tool.poetry.group.docs.dependencies]
 # Render custom markdown for version added/changed/remove notes
 markdown-version-annotations = "1.0.1"
@@ -69,6 +69,8 @@ mkdocstrings = "0.27.0"
 mkdocstrings-python = "1.13.0"
 mkdocs-autorefs = "1.2.0"
 griffe = "1.1.1"
+# Image lightboxing in mkdocs
+mkdocs-glightbox = "~0.5.2"
 
 [tool.poetry.extras]
 all = [
@@ -179,7 +181,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.towncrier]
 package = "nautobot_design_builder"
 directory = "changes"
-filename = "docs/admin/release_notes/version_3.0.md"
+filename = "docs/admin/release_notes/version_3.1.md"
 template = "development/towncrier_template.j2"
 start_string = "<!-- towncrier release notes start -->"
 issue_format = "[#{issue}](https://github.com/nautobot/nautobot-app-design-builder/issues/{issue})"

@@ -6,14 +6,22 @@ from typing import Any, Dict, Iterator, Tuple
 
 import netaddr
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldError, MultipleObjectsReturned, ObjectDoesNotExist
+from django.core.exceptions import (
+    FieldError,
+    MultipleObjectsReturned,
+    ObjectDoesNotExist,
+)
 from django.db.models import Q
 from nautobot.circuits import models as circuits
 from nautobot.dcim import models as dcim
 from nautobot.ipam.models import Prefix
 
 from nautobot_design_builder.design import Environment, ModelInstance, ModelMetadata
-from nautobot_design_builder.errors import DesignImplementationError, DoesNotExistError, MultipleObjectsReturnedError
+from nautobot_design_builder.errors import (
+    DesignImplementationError,
+    DoesNotExistError,
+    MultipleObjectsReturnedError,
+)
 from nautobot_design_builder.ext import AttributeExtension
 from nautobot_design_builder.jinja_filters import network_offset
 
@@ -231,7 +239,12 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
         Returns:
             list: A list of query managers for types that can be connected to.
         """
-        interface_types = (dcim.FrontPort, dcim.RearPort, dcim.Interface, circuits.CircuitTermination)
+        interface_types = (
+            dcim.FrontPort,
+            dcim.RearPort,
+            dcim.Interface,
+            circuits.CircuitTermination,
+        )
         query_managers = None
         if issubclass(endpoint_type, interface_types):
             query_managers = [it.objects for it in interface_types]
@@ -303,7 +316,9 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 if not query_managers:
                     # pylint:disable=raise-missing-from
                     raise DoesNotExistError(
-                        model=model_instance.model_class, parent=model_instance, query_filter=termination_query
+                        model=model_instance.model_class,
+                        parent=model_instance,
+                        query_filter=termination_query,
                     )
 
         def connect():
@@ -532,7 +547,10 @@ class BGPPeeringExtension(AttributeExtension):
         """
         super().__init__(environment)
         try:
-            from nautobot_bgp_models.models import PeerEndpoint, Peering  # pylint:disable=import-outside-toplevel
+            from nautobot_bgp_models.models import (  # pylint:disable=import-outside-toplevel
+                PeerEndpoint,
+                Peering,
+            )
 
             self.PeerEndpoint = self.environment.model_factory(PeerEndpoint)  # pylint:disable=invalid-name
             self.Peering = self.environment.model_factory(Peering)  # pylint:disable=invalid-name
@@ -627,3 +645,94 @@ class BGPPeeringExtension(AttributeExtension):
 
         model_instance.connect(ModelMetadata.POST_SAVE, post_save)
         return retval
+
+
+class NextIpExtension(AttributeExtension):
+    """Provision the next prefix for a given set of parent prefixes."""
+
+    tag = "next_ip"
+
+    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
+        """Provides the `!next_ip` attribute that will calculate the next available ip address in the provided parent prefix.
+
+        Args:
+            *args: Any additional arguments following the tag name. These are `:` delimited.
+
+            value: A filter describing the parent prefix to provision from. If `parent`
+                is one of the query keys then the network and prefix length will be
+                split and used as query arguments for the underlying Prefix object.
+                All other keys are passed on to the query filter directly.
+
+            model_instance (ModelInstance): The IP address that is to be updated.
+
+        Raises:
+            DesignImplementationError: if value is not a dictionary, the prefix is improperly formatted
+                or no query arguments were given. This error is also raised if the supplied parent
+                prefixes are all full.
+
+        Returns:
+            dict: Dictionary that can be used by the design.Builder to create the IP Address.
+                The dictionary will contain "host", "mask_length", and "parent__id" keys.
+                "mask_length" is the prefix length of the parent prefix.
+
+        Example:
+            ```yaml
+            ip_addresses:
+                - "!next_ip":
+                        parent: "!ref:server-prefix"
+                    status__name: "Active"
+                - "!next_ip":
+                        parent: "10.0.0.0/29"
+                    status__name: "Active"
+            ```
+        """
+        if not isinstance(value, dict) and value.keys() >= {"parent"}:
+            raise DesignImplementationError("the next_ip tag must be supplied a dictionary with the `parent` key")
+
+        parent = value.pop("prefix", None)
+        if parent is None:
+            raise DesignImplementationError("the next_ip tag requires a parent")
+        if isinstance(parent, ModelInstance):
+            prefix = str(parent.design_instance.prefix)
+        elif isinstance(parent, str):
+            prefix = parent.strip()
+        elif not isinstance(parent, str):
+            raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
+        else:
+            raise DesignImplementationError("unexpected error processing parent prefix")
+
+        prefix = netaddr.IPNetwork(prefix)
+        query = Q(**value)
+        prefix_q = []
+        prefix_q.append(
+            Q(
+                prefix_length=prefix.prefixlen,
+                network=prefix.network,
+                broadcast=prefix.broadcast,
+            )
+        )
+        query = Q(**value) & reduce(operator.or_, prefix_q)
+
+        prefix = Prefix.objects.filter(query).first()
+        if not prefix:
+            raise DesignImplementationError(f"No matching prefix found for query {query}")
+        return {
+            "host": self._get_next(prefix),
+            "mask_length": prefix.prefix_length,
+            "parent__id": prefix.id,
+        }
+
+    @staticmethod
+    def _get_next(prefix) -> str:
+        """Return the next available ip from a parent prefix.
+
+        Args:
+            prefix (Prefix): prefix to search for available ips.
+
+        Returns:
+            str: The next available ip
+        """
+        available_ips = prefix.get_available_ips()
+        if not available_ips:
+            raise DesignImplementationError(f"No available ip address could be found from {prefix}")
+        return f"{next(iter(available_ips))}"

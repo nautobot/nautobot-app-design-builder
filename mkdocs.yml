@@ -88,8 +88,10 @@ markdown_extensions:
           class: "mermaid"
           format: !!python/name:pymdownx.superfences.fence_code_format
   - "footnotes"
+  - "meta"
 plugins:
   - "search"
+  - "glightbox"
   - "mkdocstrings":
       default_handler: "python"
       handlers:
@@ -125,6 +127,7 @@ nav:
       - Compatibility Matrix: "admin/compatibility_matrix.md"
       - Release Notes:
           - "admin/release_notes/index.md"
+          - v3.1: "admin/release_notes/version_3.1.md"
           - v1.0: "admin/release_notes/version_1.0.md"
           - v1.1: "admin/release_notes/version_1.1.md"
           - v1.2: "admin/release_notes/version_1.2.md"
@@ -142,6 +145,7 @@ nav:
       - Code Reference:
           - "dev/code_reference/index.md"
           - Package: "dev/code_reference/package.md"
+          - API: "dev/code_reference/api.md"
           - Context: "dev/code_reference/context.md"
           - Design Builder: "dev/code_reference/design.md"
           - Field Descriptors: "dev/code_reference/fields.md"

@@ -9,8 +9,8 @@ from nautobot.extras.models import Job, JobResult
 from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
 
 
-class DesignFilterForm(NautobotFilterForm):
-    """Filter form for the design model."""
+class DesignFilterForm(NautobotFilterForm):  # pylint: disable=too-many-ancestors
+    """Filter form to filter searches."""
 
     model = Design
 
