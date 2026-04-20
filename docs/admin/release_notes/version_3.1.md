@@ -4,8 +4,7 @@ This document describes all new features and changes in the release. The format 
 
 ## Release Overview
 
-- Major features or milestones
-- Changes to compatibility with Nautobot and/or other apps, libraries etc.
+Adds automatic IP allocation via the new `next_ip` tag and makes it easier to see which Design Deployment a model belongs to.
 
 <!-- towncrier release notes start -->
 
