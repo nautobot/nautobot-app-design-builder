@@ -225,10 +225,23 @@ class IntegrationDesign(DesignJob):
         description = "Connect via a direct cable two network devices using a P2P network."
 
 
+class SomeMixin:
+    """Unrelated mixin with no DesignJob relationship, used to test multiple inheritance in render()."""
+
+
+class SimpleDesignWithMixin(SomeMixin, SimpleDesign):
+    """SimpleDesign wrapped with an unrelated mixin to exercise MRO-based render() (issue #287)."""
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        name = "Simple Design With Mixin"
+        design_file = "templates/simple_design.yaml.j2"
+
+
 name = "Test Designs"  # pylint:disable=invalid-name
 
 register_jobs(
     SimpleDesign,
+    SimpleDesignWithMixin,
     SimpleDesign3,
     SimpleDesignReport,
     MultiDesignJob,

@@ -150,17 +150,22 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
             str: YAML data structure rendered from input Jinja template
         """
         search_paths = []
-        cls = self.__class__
         # We pass a list of directories to the jinja template environment
         # to be used for search paths in the FileSystemLoader. This list
         # of paths is compiled from the directory location of the current
-        # design job and its entire inheritance tree. In order to produce
-        # this list, we traverse the inheritance tree upwards until we
-        # get to the toplevel base class, `DesignJob`
-        while cls is not DesignJob:
-            class_dir = path.dirname(sys.modules[cls.__module__].__file__)
-            search_paths.append(class_dir)
-            cls = cls.__bases__[0]
+        # design job and its entire inheritance tree. We walk type(self).__mro__
+        # (the full Python MRO) and collect the directory of each class until
+        # we reach DesignJob itself. Using the MRO instead of __bases__[0] makes
+        # this compatible with multiple inheritance: any mixin that appears before
+        # a DesignJob subclass in the bases list is skipped safely because
+        # getattr(..., "__file__", None) returns None for built-in and abstract
+        # classes that have no source file.
+        for cls in type(self).__mro__:
+            if cls is DesignJob:
+                break
+            module_file = getattr(sys.modules.get(cls.__module__, None), "__file__", None)
+            if module_file:
+                search_paths.append(path.dirname(module_file))
 
         env = new_template_environment(context, search_paths)
 
