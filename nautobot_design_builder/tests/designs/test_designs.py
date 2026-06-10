@@ -225,7 +225,7 @@ class IntegrationDesign(DesignJob):
         description = "Connect via a direct cable two network devices using a P2P network."
 
 
-class SomeMixin:
+class SomeMixin:  # pylint: disable=too-few-public-methods
     """Unrelated mixin with no DesignJob relationship, used to test multiple inheritance in render()."""
 
 
