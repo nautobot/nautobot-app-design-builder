@@ -1,11 +1,11 @@
-{% extends 'generic/object_retrieve.html' %}
+{% extends "generic/object_retrieve.html" %}
 {% load helpers %}
 {% load tz %}
 {% load static %}
 
 
 <!-- {% if content|length > 0 %} -->
-{% block title %} {{ object }} - Design Protection {% endblock %}
+{% block title %} {{ object }} - Design Protection {% endblock title %}
 
 {% block content %}
 
@@ -37,5 +37,5 @@
 {% endfor %}
 </tbody>
 </table>
-{% endblock %}
+{% endblock content %}
 <!-- {% endif %} -->
