@@ -1,4 +1,4 @@
-{% extends 'generic/object_list.html' %}
+{% extends "generic/object_list.html" %}
 {% load buttons %}
 {% load static %}
 {% load helpers %}
@@ -28,7 +28,7 @@
     visibility: visible;
   }
   </style>
-{% endblock %}
+{% endblock extra_styles %}
 {% block content %}
   {{ block.super }}
 
@@ -46,7 +46,7 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}
 
 {% block javascript %}
 <script src="{% static 'js/tableconfig.js' %}"></script>
@@ -58,4 +58,4 @@
         });
     });
 </script>
-{% endblock %}
+{% endblock javascript %}

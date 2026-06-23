@@ -8,6 +8,16 @@ Adds automatic IP allocation via the new `next_ip` tag and makes it easier to se
 
 <!-- towncrier release notes start -->
 
+## [v3.1.1 (2026-06-23)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v3.1.1)
+
+### Fixed
+
+- [#287](https://github.com/nautobot/nautobot-app-design-builder/issues/287) - Fixed `DesignJob.render()` crash with `AttributeError` when a `DesignJob` subclass uses multiple inheritance.
+
+### Housekeeping
+
+- Fixed CI workflow to use stable Nautobot version for unittest_report stage.
+
 ## [v3.1.0 (2026-04-12)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v3.1.0)
 
 ### Added

@@ -2,6 +2,7 @@
 
 import copy
 import os
+import sys
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 from django.contrib.contenttypes.models import ContentType
@@ -375,6 +376,29 @@ class TestDesignJobIntegration(DesignTestCase):
 
             data["device_a"].refresh_from_db()
             self.assertIsNotNone(data["device_a"].local_config_context_data)
+
+
+class TestDesignJobRenderMultipleInheritance(DesignTestCase):
+    """Regression tests for DesignJob.render() with multiple inheritance (issue #287)."""
+
+    @patch("nautobot_design_builder.design_job.new_template_environment")
+    def test_render_does_not_raise_with_unrelated_mixin_as_first_base(self, mock_new_env):
+        """render() must not raise AttributeError when a non-DesignJob mixin is __bases__[0]."""
+        mock_new_env.return_value.get_template.return_value.render.return_value = "manufacturers: []"
+        job = self.get_mocked_job(test_designs.SimpleDesignWithMixin)
+        # Prior to the fix this raised: AttributeError: module 'builtins' has no attribute '__file__'
+        job.render(MagicMock(), "templates/simple_design.yaml.j2")
+
+    @patch("nautobot_design_builder.design_job.new_template_environment")
+    def test_render_search_paths_include_design_class_directory(self, mock_new_env):
+        """render() search paths must include the DesignJob subclass directory under multiple inheritance."""
+        mock_new_env.return_value.get_template.return_value.render.return_value = "manufacturers: []"
+        job = self.get_mocked_job(test_designs.SimpleDesignWithMixin)
+        job.render(MagicMock(), "templates/simple_design.yaml.j2")
+
+        search_paths = mock_new_env.call_args[0][1]
+        expected_dir = os.path.dirname(sys.modules[test_designs.SimpleDesign.__module__].__file__)
+        self.assertIn(expected_dir, search_paths)
 
 
 class TestVerifyDesignJob(VerifyDesignTestCase):
