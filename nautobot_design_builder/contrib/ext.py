@@ -54,7 +54,9 @@ class LookupMixin:
             queryset = model_class.objects
         except ContentType.DoesNotExist:
             # pylint: disable=raise-missing-from
-            raise DesignImplementationError(f"Could not find model class for {model_class}")
+            raise DesignImplementationError(
+                f"Could not find model class for {model_class}"
+            )
 
         return self.lookup(queryset, query)
 
@@ -147,7 +149,9 @@ class LookupMixin:
             raise DoesNotExistError(queryset.model, query_filter=query, parent=parent)
         except MultipleObjectsReturned:
             # pylint: disable=raise-missing-from
-            raise MultipleObjectsReturnedError(queryset.model, query_filter=query, parent=parent)
+            raise MultipleObjectsReturnedError(
+                queryset.model, query_filter=query, parent=parent
+            )
 
 
 class LookupExtension(AttributeExtension, LookupMixin):
@@ -155,7 +159,9 @@ class LookupExtension(AttributeExtension, LookupMixin):
 
     tag = "lookup"
 
-    def attribute(self, *args, value, model_instance) -> None:  # pylint:disable=arguments-differ
+    def attribute(
+        self, *args, value, model_instance
+    ) -> None:  # pylint:disable=arguments-differ
         """Provides the `!lookup` attribute that will lookup an instance.
 
         This action tag can be used to lookup an object in the database and
@@ -203,7 +209,9 @@ class LookupExtension(AttributeExtension, LookupMixin):
         elif isinstance(value, dict):
             query = value
         else:
-            raise DesignImplementationError("the lookup requires a query attribute and value or a query dictionary.")
+            raise DesignImplementationError(
+                "the lookup requires a query attribute and value or a query dictionary."
+            )
 
         content_type = query.pop("content-type", None)
         if content_type is None:
@@ -258,7 +266,9 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
 
         return query_managers
 
-    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
+    def attribute(
+        self, *args, value=None, model_instance: ModelInstance = None
+    ) -> None:
         """Connect a cable termination to another cable termination.
 
         Args:
@@ -339,13 +349,18 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 Q(termination_a_id=model_instance.design_instance.id)
                 | Q(termination_b_id=remote_instance.design_instance.id)
             ).first()
-            Cable = self.environment.model_factory(dcim.Cable)  # pylint:disable=invalid-name
+            Cable = self.environment.model_factory(
+                dcim.Cable
+            )  # pylint:disable=invalid-name
             if existing_cable:
                 if (
                     existing_cable.termination_a_id != model_instance.design_instance.id
-                    or existing_cable.termination_b_id != remote_instance.design_instance.id
+                    or existing_cable.termination_b_id
+                    != remote_instance.design_instance.id
                 ):
-                    self.environment.decommission_object(existing_cable.id, f"Cable {existing_cable.id}")
+                    self.environment.decommission_object(
+                        existing_cable.id, f"Cable {existing_cable.id}"
+                    )
             cable = Cable(self.environment, cable_attributes)
             cable.save()
 
@@ -357,7 +372,9 @@ class NextPrefixExtension(AttributeExtension):
 
     tag = "next_prefix"
 
-    def attribute(self, *args, value: dict = None, model_instance: ModelInstance = None) -> None:
+    def attribute(
+        self, *args, value: dict = None, model_instance: ModelInstance = None
+    ) -> None:
         """Provides the `!next_prefix` attribute that will calculate the next available prefix.
 
         Args:
@@ -393,17 +410,23 @@ class NextPrefixExtension(AttributeExtension):
             ```
         """
         if not isinstance(value, dict):
-            raise DesignImplementationError("the next_prefix tag requires a dictionary of arguments")
+            raise DesignImplementationError(
+                "the next_prefix tag requires a dictionary of arguments"
+            )
         identified_by = value.pop("identified_by", None)
         if identified_by:
             try:
-                model_instance.design_instance = model_instance.relationship_manager.get(**identified_by)
+                model_instance.design_instance = (
+                    model_instance.relationship_manager.get(**identified_by)
+                )
                 return None
             except ObjectDoesNotExist:
                 pass
         length = value.pop("length", None)
         if length is None:
-            raise DesignImplementationError("the next_prefix tag requires a prefix length")
+            raise DesignImplementationError(
+                "the next_prefix tag requires a prefix length"
+            )
 
         if len(value) == 0:
             raise DesignImplementationError("no search criteria specified for prefixes")
@@ -415,7 +438,9 @@ class NextPrefixExtension(AttributeExtension):
             if isinstance(prefixes, str):
                 prefixes = [prefixes]
             elif not isinstance(prefixes, list):
-                raise DesignImplementationError("Prefixes should be a string (single prefix) or a list.")
+                raise DesignImplementationError(
+                    "Prefixes should be a string (single prefix) or a list."
+                )
 
             for prefix_str in prefixes:
                 prefix_str = prefix_str.strip()
@@ -447,10 +472,14 @@ class NextPrefixExtension(AttributeExtension):
         """
         length = int(length)
         for requested_prefix in prefixes:
-            for available_prefix in requested_prefix.get_available_prefixes().iter_cidrs():
+            for (
+                available_prefix
+            ) in requested_prefix.get_available_prefixes().iter_cidrs():
                 if available_prefix.prefixlen <= length:
                     return f"{available_prefix.network}/{length}"
-        raise DesignImplementationError(f"No available prefixes could be found from {list(map(str, prefixes))}")
+        raise DesignImplementationError(
+            f"No available prefixes could be found from {list(map(str, prefixes))}"
+        )
 
 
 class ChildPrefixExtension(AttributeExtension):
@@ -458,7 +487,9 @@ class ChildPrefixExtension(AttributeExtension):
 
     tag = "child_prefix"
 
-    def attribute(self, *args, value: dict = None, model_instance: "ModelInstance" = None) -> None:
+    def attribute(
+        self, *args, value: dict = None, model_instance: "ModelInstance" = None
+    ) -> None:
         """Provides the `!child_prefix` attribute.
 
         !child_prefix calculates a child prefix using a parent prefix
@@ -505,7 +536,9 @@ class ChildPrefixExtension(AttributeExtension):
             ```
         """
         if not isinstance(value, dict):
-            raise DesignImplementationError("the child_prefix tag requires a dictionary of arguments")
+            raise DesignImplementationError(
+                "the child_prefix tag requires a dictionary of arguments"
+            )
 
         action = value.pop("action", "")
 
@@ -515,7 +548,9 @@ class ChildPrefixExtension(AttributeExtension):
         if isinstance(parent, ModelInstance):
             parent = str(parent.design_instance.prefix)
         elif not isinstance(parent, str):
-            raise DesignImplementationError("parent prefix must be either a previously created object or a string.")
+            raise DesignImplementationError(
+                "parent prefix must be either a previously created object or a string."
+            )
 
         offset = value.pop("offset", None)
         if offset is None:
@@ -526,13 +561,50 @@ class ChildPrefixExtension(AttributeExtension):
 
         if action:
             model_instance.design_metadata.action = action
-            model_instance.design_metadata.filter[attr] = str(network_offset(parent, offset))
+            model_instance.design_metadata.filter[attr] = str(
+                network_offset(parent, offset)
+            )
             return None
         return attr, str(network_offset(parent, offset))
 
 
 class BGPPeeringExtension(AttributeExtension):
-    """Create BGP peerings in the BGP Models App."""
+    """
+    Extension to create and manage BGP Peerings with peer_groups using nautobot-app-bgp-models.
+
+    Usage in YAML:
+      - "!bgp_peering":
+          endpoint_a:
+            routing_instance: "!ref:rr1_65000_ri"
+            source_interface: "!ref:rr1_loopback0"
+            source_ip: "!ref:rr1_loopback0_ipv4"
+            peer_group: "!ref:backbone_rr_ipv4_peers_pg"
+            description: rr1_loopback0
+          endpoint_z:
+            routing_instance: "!ref:p1_65000_ri"
+            source_interface: "!ref:p1_loopback0"
+            source_ip: "!ref:p1_loopback0_ipv4"
+            peer_group: "!ref:backbone_rr_ipv4_peers_pg"
+            description: p1_loopback0
+          status__name: "Active"
+
+    Without Peer_Groups
+    - "!bgp_peering":
+        endpoints:
+        - routing_instance: "!ref:rr1_65000_ri"
+          source_interface: "!ref:rr1_loopback0"
+          source_ip: "!ref:rr1_loopback0_ipv4"
+          afi_safis:
+          - ipv4_unicast
+          description: rr1_loopback0
+        - routing_instance: "!ref:p1_65000_ri"
+          source_interface: "!ref:p1_loopback0"
+          source_ip: "!ref:p1_loopback0_ipv4"
+          afi_safis:
+          - ipv4_unicast
+          description: p1_loopback0
+        status__name: "Active"
+    """
 
     tag = "bgp_peering"
 
@@ -547,81 +619,128 @@ class BGPPeeringExtension(AttributeExtension):
         """
         super().__init__(environment)
         try:
+            from nautobot.dcim.models import Interface  # pylint:disable=import-outside-toplevel
+            from nautobot.ipam.models import IPAddress  # pylint:disable=import-outside-toplevel
             from nautobot_bgp_models.models import (  # pylint:disable=import-outside-toplevel
+                BGPRoutingInstance,
                 PeerEndpoint,
+                PeerGroup,
                 Peering,
             )
 
-            self.PeerEndpoint = self.environment.model_factory(PeerEndpoint)  # pylint:disable=invalid-name
-            self.Peering = self.environment.model_factory(Peering)  # pylint:disable=invalid-name
+            self.PeerEndpoint = self.environment.model_factory(PeerEndpoint)
+            self.Peering = self.environment.model_factory(Peering)
+            self.PeerGroup = self.environment.model_factory(PeerGroup)
+            self.RoutingInstance = self.environment.model_factory(BGPRoutingInstance)
+            self.Interface = self.environment.model_factory(Interface)
+            self.IPAddress = self.environment.model_factory(IPAddress)
         except ModuleNotFoundError:
-            # pylint:disable=raise-missing-from
             raise DesignImplementationError(
                 "the `bgp_peering` tag can only be used when the bgp models app is installed."
             )
 
-    def attribute(self, *args, value=None, model_instance: ModelInstance = None) -> None:
-        """This attribute tag creates or updates a BGP peering for two endpoints.
+    def resolve_or_create(self, model_factory, filters):
+        """Look up or create a model instance by !ref, ModelInstance, or filters dict."""
+        if isinstance(filters, ModelInstance):
+            return filters
+        if isinstance(filters, str) and filters.startswith("!ref:"):
+            return filters
+        if isinstance(filters, dict):
+            try:
+                return model_factory(self.environment, filters)
+            except (ObjectDoesNotExist, MultipleObjectsReturned):
+                raise DesignImplementationError(
+                    f"Could not find or resolve {model_factory.model_class.__name__} with filters: {filters}"
+                )
+        raise DesignImplementationError(
+            f"Invalid type for {model_factory.model_class.__name__}: {type(filters)}"
+        )
 
-        !bgp_peering will take an `endpoint_a` and `endpoint_z` argument to correctly
-        create or update a BGP peering. Both endpoints can be specified using typical
-        Design Builder syntax.
+    def build_peer_endpoint(self, endpoint_data):
+        """Build or look up a PeerEndpoint using !refs, ModelInstances, or filters."""
+        endpoint = dict(endpoint_data)
 
-        Args:
-            *args: Any additional arguments following the tag name. These are `:` delimited.
-
-            value (dict): dictionary containing the keys `endpoint_a`
-                and `endpoint_z`. Both of these keys must be dictionaries
-                specifying a way to either lookup or create the appropriate
-                peer endpoints.
-
-            model_instance (ModelInstance): The BGP Peering that is to be updated.
-
-        Raises:
-            DesignImplementationError: if the supplied value is not a dictionary
-            or it does not include `endpoint_a` and `endpoint_z` as keys.
-
-
-        Returns:
-            dict: Dictionary that can be used by the design.Builder to create
-            the peerings.
-
-        Example:
-        ```yaml
-        bgp_peerings:
-        - "!bgp_peering":
-              endpoint_a:
-                  "!create_or_update:routing_instance__autonomous_system__asn": "64496"
-                  "!create_or_update:source_ip":
-                      "interface__device__name": "device1"
-                      "interface__name": "Ethernet1/1"
-              endpoint_z:
-                  "!create_or_update:routing_instance__autonomous_system__asn": "64500"
-                  "!create_or_update:source_ip":
-                      "interface__device__name": "device2"
-                      "interface__name": "Ethernet1/1"
-          status__name: "Active"
-        ```
-        """
-        if not (isinstance(value, dict) and value.keys() >= {"endpoint_a", "endpoint_z"}):
+        if "routing_instance" in endpoint:
+            endpoint["routing_instance"] = self.resolve_or_create(
+                self.RoutingInstance, endpoint["routing_instance"]
+            )
+        elif any(k.startswith("routing_instance__") for k in endpoint.keys()):
+            ri_filter = {
+                k.replace("routing_instance__", ""): endpoint.pop(k)
+                for k in list(endpoint)
+                if k.startswith("routing_instance__")
+            }
+            endpoint["routing_instance"] = self.resolve_or_create(
+                self.RoutingInstance, ri_filter
+            )
+        else:
             raise DesignImplementationError(
-                "bgp peerings must be supplied a dictionary with `endpoint_a` and `endpoint_z`."
+                "Missing routing_instance in PeerEndpoint definition."
             )
 
-        # copy the value so it won't be modified in later
-        # use
-        retval = {**value}
-        endpoint_a = self.PeerEndpoint(self.environment, retval.pop("endpoint_a"))
-        endpoint_z = self.PeerEndpoint(self.environment, retval.pop("endpoint_z"))
-        peering_a = None
-        peering_z = None
-        try:
-            peering_a = endpoint_a.design_instance.peering
-            peering_z = endpoint_z.design_instance.peering
-        except self.Peering.model_class.DoesNotExist:
-            pass
+        if "peer_group" in endpoint:
+            endpoint["peer_group"] = self.resolve_or_create(
+                self.PeerGroup, endpoint["peer_group"]
+            )
+        elif "peer_group__name" in endpoint:
+            ri = endpoint["routing_instance"]
+            endpoint["peer_group"] = self.resolve_or_create(
+                self.PeerGroup,
+                {
+                    "name": endpoint.pop("peer_group__name"),
+                    "routing_instance": ri,
+                },
+            )
 
-        # try to prevent empty peerings
+        if "source_interface" in endpoint:
+            endpoint["source_interface"] = self.resolve_or_create(
+                self.Interface,
+                endpoint["source_interface"],
+            )
+
+        if "source_ip" in endpoint:
+            endpoint["source_ip"] = self.resolve_or_create(
+                self.IPAddress,
+                endpoint["source_ip"],
+            )
+
+        return self.PeerEndpoint(self.environment, endpoint)
+
+    def attribute(self, *args, value=None, model_instance: ModelInstance = None):
+        """
+        Create a Peering with two PeerEndpoints, peer groups, source interfaces, and addresses.
+
+        Accepts:
+        - endpoint_a/endpoint_z keys (legacy)
+        - endpoints: [ endpoint_a_dict, endpoint_z_dict ] (preferred, modern)
+        """
+        if not isinstance(value, dict) or not (
+            (
+                ("endpoint_a" in value and "endpoint_z" in value)
+                or (
+                    "endpoints" in value
+                    and isinstance(value["endpoints"], list)
+                    and len(value["endpoints"]) == 2
+                )
+            )
+        ):
+            raise DesignImplementationError(
+                "bgp_peering requires either endpoint_a and endpoint_z keys or an endpoints list of length 2."
+            )
+
+        if "endpoints" in value:
+            endpoint_a_data, endpoint_z_data = value["endpoints"]
+        else:
+            endpoint_a_data = value["endpoint_a"]
+            endpoint_z_data = value["endpoint_z"]
+
+        endpoint_a = self.build_peer_endpoint(endpoint_a_data)
+        endpoint_z = self.build_peer_endpoint(endpoint_z_data)
+
+        peering_a = getattr(endpoint_a.design_instance, "peering", None)
+        peering_z = getattr(endpoint_z.design_instance, "peering", None)
+        retval = {**value}
+
         if peering_a == peering_z:
             if peering_a:
                 retval["!update:pk"] = peering_a.pk
