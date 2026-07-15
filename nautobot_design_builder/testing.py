@@ -9,7 +9,7 @@ from typing import Type
 from unittest.mock import PropertyMock, patch
 
 import yaml
-from django.db.models import Manager, Q
+from django.db.models import Manager
 from django.test import TestCase
 from nautobot.dcim.models import Cable
 from nautobot.extras.models import Job, JobResult
@@ -26,9 +26,11 @@ class BuilderChecks:
         """Check if two endpoints are connected with a cable."""
         value0 = _get_value(check[0])[0]
         value1 = _get_value(check[1])[0]
-        cables = Cable.objects.filter(
-            Q(termination_a_id=value0.id, termination_b_id=value1.id)
-            | Q(termination_a_id=value1.id, termination_b_id=value0.id)
+        # Q(termination_a_id=...) is unsupported in Nautobot 3.2+ due to the Cable data model changes in 3.2.0.
+        # .filter(termination_a_id=...) is explicitly supported for backwards compatibility and is the simplest
+        # approach for compatibility both pre-3.2 and post-3.2.
+        cables = Cable.objects.filter(termination_a_id=value0.id, termination_b_id=value1.id).union(
+            Cable.objects.filter(termination_a_id=value1.id, termination_b_id=value0.id)
         )
         test.assertEqual(1, cables.count(), msg=f"Check {index}")
 
