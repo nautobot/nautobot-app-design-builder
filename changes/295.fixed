@@ -1,0 +1,1 @@
+Fixed the original database error being masked by a secondary savepoint rollback failure when a design fails to implement; the underlying error is now surfaced.
