@@ -362,7 +362,8 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         A database-level error can leave the transaction in a broken state (e.g. a dead
         connection, or a savepoint that no longer exists). When that happens the savepoint
         rollback itself raises and obscures the root cause. Re-raise the original error
-        instead so the underlying failure is visible.
+        instead so the underlying failure is visible, while also reporting the rollback
+        failure so neither error is swallowed.
 
         Args:
             sid: The savepoint identifier returned by ``transaction.savepoint()``.
@@ -370,10 +371,11 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         """
         try:
             transaction.savepoint_rollback(sid)
-        except Exception:
+        except Exception as rollback_exc:
             raise RuntimeError(
                 f"A database-level error left the transaction in a broken state. "
-                f"Original error ({type(original_exc).__name__}): {original_exc}"
+                f"Original error ({type(original_exc).__name__}): {original_exc}. "
+                f"Rollback also failed ({type(rollback_exc).__name__}): {rollback_exc}"
             ) from original_exc
 
     def save_design_file(self, filename, content):
