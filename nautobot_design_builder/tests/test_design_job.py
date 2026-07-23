@@ -18,7 +18,7 @@ from nautobot_design_builder.models import ChangeRecord, Deployment
 from nautobot_design_builder.testing import DesignTestCase, VerifyDesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,protected-access
 
 
 class TestDesignJob(DesignTestCase):
