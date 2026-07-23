@@ -366,7 +366,7 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
         failure so neither error is swallowed.
 
         Args:
-            sid: The savepoint identifier returned by ``transaction.savepoint()``.
+            sid: The savepoint identifier returned by `transaction.savepoint()`.
             original_exc (Exception): The exception that triggered the rollback.
         """
         try:
