@@ -7,11 +7,13 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.db.transaction import TransactionManagementError
 from nautobot.dcim.models import Device, DeviceType, Location, LocationType, Manufacturer
 from nautobot.extras.models import Role, Status
 from nautobot.ipam.models import VRF, IPAddress, Prefix
 
-from nautobot_design_builder.errors import DesignImplementationError, DesignValidationError
+from nautobot_design_builder.design_job import DesignJob
+from nautobot_design_builder.errors import DesignImplementationError, DesignModelError, DesignValidationError
 from nautobot_design_builder.models import ChangeRecord, Deployment
 from nautobot_design_builder.testing import DesignTestCase, VerifyDesignTestCase
 from nautobot_design_builder.tests.designs import test_designs
@@ -201,6 +203,88 @@ class TestDesignJobLogging(DesignTestCase):
             job.run(dryrun=False, **self.data)
 
         self.assertEqual(str(want_error), str(raised.exception))
+
+
+class TestDesignJobRollbackErrorReporting(DesignTestCase):
+    """Regression tests for surfacing the original error during rollback (issue #295).
+
+    When a design fails and the transaction is already in a broken state, the
+    `transaction.savepoint_rollback` that cleans up used to raise its own
+    `TransactionManagementError` and completely mask the root cause. These tests
+    confirm the underlying error is now surfaced instead of being swallowed.
+    """
+
+    def test_safe_savepoint_rollback_success_reraises_nothing(self):
+        """When the rollback succeeds the helper is a no-op (caller re-raises the original error)."""
+        with patch("nautobot_design_builder.design_job.transaction.savepoint_rollback") as mock_rollback:
+            original = DesignImplementationError("Original design failure")
+            # Should not raise; the caller is responsible for re-raising the original error.
+            self.assertIsNone(DesignJob._safe_savepoint_rollback("sid_xyz", original))
+        mock_rollback.assert_called_once_with("sid_xyz")
+
+    def test_safe_savepoint_rollback_surfaces_original_error(self):
+        """When the rollback itself fails, the original error must be surfaced, not masked."""
+        original = ValidationError({"tagged_vlans": ["Mode must be set to tagged when specifying tagged_vlans"]})
+        with patch(
+            "nautobot_design_builder.design_job.transaction.savepoint_rollback",
+            side_effect=TransactionManagementError(
+                "An error occurred in the current transaction. You can't execute queries "
+                "until the end of the 'atomic' block."
+            ),
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                DesignJob._safe_savepoint_rollback("sid_xyz", original)
+
+        message = str(raised.exception)
+        # The root cause must be visible in the message ...
+        self.assertIn("Original error (ValidationError)", message)
+        self.assertIn("tagged_vlans", message)
+        # ... and so should the rollback failure (reviewer feedback on PR #296).
+        self.assertIn("Rollback also failed (TransactionManagementError)", message)
+        # The original exception is chained for full traceback context.
+        self.assertIs(raised.exception.__cause__, original)
+
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_broken_transaction_surfaces_design_implementation_error(self, environment: Mock):
+        """A failed rollback in the design-error branch surfaces the DesignImplementationError."""
+        environment.return_value.implement_design.side_effect = DesignImplementationError("Original design failure")
+        job = self.get_mocked_job(test_designs.SimpleDesign)
+        with patch(
+            "nautobot_design_builder.design_job.transaction.savepoint_rollback",
+            side_effect=TransactionManagementError("broken transaction"),
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                job.run(dryrun=False, **self.data)
+
+        self.assertIn("Original design failure", str(raised.exception))
+        self.assertIsInstance(raised.exception.__cause__, DesignImplementationError)
+
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_broken_transaction_surfaces_generic_error(self, environment: Mock):
+        """A failed rollback in the generic-exception branch surfaces the original error."""
+        environment.return_value.implement_design.side_effect = ValidationError(
+            {"tagged_vlans": ["Mode must be set to tagged when specifying tagged_vlans"]}
+        )
+        job = self.get_mocked_job(test_designs.SimpleDesign)
+        with patch(
+            "nautobot_design_builder.design_job.transaction.savepoint_rollback",
+            side_effect=TransactionManagementError("broken transaction"),
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                job.run(dryrun=False, **self.data)
+
+        message = str(raised.exception)
+        self.assertIn("Original error (ValidationError)", message)
+        self.assertIn("tagged_vlans", message)
+        self.assertIsInstance(raised.exception.__cause__, ValidationError)
+
+    @patch("nautobot_design_builder.design_job.Environment")
+    def test_successful_rollback_still_raises_original_error(self, environment: Mock):
+        """When rollback succeeds, the original error type must be preserved (no masking, no RuntimeError)."""
+        environment.return_value.implement_design.side_effect = DesignModelError("Broken model")
+        job = self.get_mocked_job(test_designs.SimpleDesign)
+        # No savepoint patching: the real rollback succeeds, so the original error propagates unchanged.
+        self.assertRaises(DesignModelError, job.run, dryrun=False, **self.data)
 
 
 class TestDesignJobIntegration(DesignTestCase):
