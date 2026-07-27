@@ -8,6 +8,12 @@ Adds automatic IP allocation via the new `next_ip` tag and makes it easier to se
 
 <!-- towncrier release notes start -->
 
+## [v3.1.2 (2026-07-27)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v3.1.2)
+
+### Fixed
+
+- [#294](https://github.com/nautobot/nautobot-app-design-builder/issues/294) - Fixed compatibility with Nautobot 3.2 for changes to the Cable data model.
+
 ## [v3.1.1 (2026-06-23)](https://github.com/nautobot/nautobot-app-design-builder/releases/tag/v3.1.1)
 
 ### Fixed
