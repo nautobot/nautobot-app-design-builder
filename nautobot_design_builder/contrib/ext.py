@@ -335,10 +335,13 @@ class CableConnectionExtension(AttributeExtension, LookupMixin):
                 }
             )
 
-            existing_cable = dcim.Cable.objects.filter(
-                Q(termination_a_id=model_instance.design_instance.id)
-                | Q(termination_b_id=remote_instance.design_instance.id)
-            ).first()
+            # Q(termination_a_id=...) is unsupported in Nautobot 3.2+ due to the Cable data model changes in 3.2.0.
+            # .filter(termination_a_id=...) is explicitly supported for backwards compatibility and is the simplest
+            # approach for compatibility both pre-3.2 and post-3.2.
+            existing_cable = (
+                dcim.Cable.objects.filter(termination_a_id=model_instance.design_instance.id).first()
+                or dcim.Cable.objects.filter(termination_b_id=remote_instance.design_instance.id).first()
+            )
             Cable = self.environment.model_factory(dcim.Cable)  # pylint:disable=invalid-name
             if existing_cable:
                 if (

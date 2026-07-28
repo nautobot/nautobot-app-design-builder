@@ -347,13 +347,36 @@ class DesignJob(Job, ABC):  # pylint: disable=too-many-instance-attributes
                 transaction.savepoint_rollback(sid)
                 self.logger.info("%s can be imported successfully - No database changes made", self.name)
         except (DesignImplementationError, DesignModelError) as ex:
-            transaction.savepoint_rollback(sid)
             self.logger.fatal("Failed to implement design")
             self.logger.fatal(str(ex))
+            self._safe_savepoint_rollback(sid, ex)
             raise ex
         except Exception as ex:
-            transaction.savepoint_rollback(sid)
+            self._safe_savepoint_rollback(sid, ex)
             raise ex
+
+    @staticmethod
+    def _safe_savepoint_rollback(sid, original_exc):
+        """Roll back to a savepoint, surfacing the original error if the rollback fails.
+
+        A database-level error can leave the transaction in a broken state (e.g. a dead
+        connection, or a savepoint that no longer exists). When that happens the savepoint
+        rollback itself raises and obscures the root cause. Re-raise the original error
+        instead so the underlying failure is visible, while also reporting the rollback
+        failure so neither error is swallowed.
+
+        Args:
+            sid: The savepoint identifier returned by `transaction.savepoint()`.
+            original_exc (Exception): The exception that triggered the rollback.
+        """
+        try:
+            transaction.savepoint_rollback(sid)
+        except Exception as rollback_exc:
+            raise RuntimeError(
+                f"A database-level error left the transaction in a broken state. "
+                f"Original error ({type(original_exc).__name__}): {original_exc}. "
+                f"Rollback also failed ({type(rollback_exc).__name__}): {rollback_exc}"
+            ) from original_exc
 
     def save_design_file(self, filename, content):
         """Save some content to a job file.
