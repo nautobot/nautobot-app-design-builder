@@ -2,10 +2,17 @@
 
 from django.contrib.contenttypes.models import ContentType
 from drf_spectacular.utils import extend_schema_field
-from nautobot.apps.api import NautobotModelSerializer, TaggedModelSerializerMixin
+from nautobot.apps.api import (
+    NautobotModelSerializer,
+    TaggedModelSerializerMixin,
+)
+from nautobot.apps.exceptions import SerializerNotFound
 from nautobot.core.api import ContentTypeField
-from nautobot.core.api.utils import get_serializer_for_model
-from rest_framework.fields import DictField, SerializerMethodField
+from nautobot.core.api.utils import (
+    get_nested_serializer_depth,
+    return_nested_serializer_data_based_on_depth,
+)
+from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ReadOnlyField
 
 from nautobot_design_builder.models import ChangeRecord, ChangeSet, Deployment, Design
@@ -66,11 +73,15 @@ class ChangeRecordSerializer(NautobotModelSerializer):
         model = ChangeRecord
         fields = "__all__"
 
-    @extend_schema_field(DictField())
+    @extend_schema_field({"type": "object", "nullable": True})
     def get_design_object(self, obj):
         """Get design object serialized."""
         if obj.design_object:
-            serializer = get_serializer_for_model(obj.design_object)
-            context = {"request": self.context["request"]}
-            return serializer(obj.design_object, context=context).data
+            try:
+                depth = get_nested_serializer_depth(self)
+                return return_nested_serializer_data_based_on_depth(
+                    self, depth, obj, obj.design_object, "design_object"
+                )
+            except SerializerNotFound:
+                return None
         return None
