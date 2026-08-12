@@ -1,0 +1,1 @@
+Fixed ChangeRecord.design_object API serializer not respecting the depth property.
